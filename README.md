@@ -15,13 +15,13 @@ The dcrtime stack as as follows:
 ~~~~~~~~ Internet ~~~~~~~~~
             |
 +-------------------------+
-|  dcrtimestored (proxy)  |
+|    dcrtimed (proxy)     |
 +-------------------------+
             |
 ~~~~~~~~~~ VPN ~~~~~~~~~~~~
             |
 +-------------------------+
-| dcrtimestored (backend) |
+|   dcrtimed (backend)    |
 +-------------------------+
             |
 +-------------------------+
@@ -35,7 +35,7 @@ The dcrtime stack as as follows:
 
 ## Components
 * dcrtime - Reference client application
-* dcrtimestored
+* dcrtimed
 	- Proxy Mode: Forwards requests to the backend server.
 	- Backend mode: Manages timestamps and creates decred transaction that anchors transactions in the blockchain.
 
@@ -51,7 +51,7 @@ The dcrtime stack as as follows:
 
 ### Backend
 
-This example dcrtimestored.conf connects to dcrwallet running on localhost using the testnet network.
+This example dcrtimed.conf connects to dcrwallet running on localhost using the testnet network.
 
 ```
 wallethost=localhost
@@ -62,11 +62,11 @@ testnet=1
 
 Start the store.
 ```
-store-server$ dcrtimestored
+store-server$ dcrtimed
 07:36:09 2017-06-09 [INF] DCRT: Version : 0.1.0
 07:36:09 2017-06-09 [INF] DCRT: Mode    : Store
 07:36:09 2017-06-09 [INF] DCRT: Network : testnet2
-07:36:09 2017-06-09 [INF] DCRT: Home dir: /home/user/.dcrtimestored
+07:36:09 2017-06-09 [INF] DCRT: Home dir: /home/user/.dcrtimed
 07:36:09 2017-06-09 [INF] DCRT: Generating HTTPS keypair...
 07:36:09 2017-06-09 [INF] DCRT: HTTPS keypair created...
 07:36:09 2017-06-09 [INF] FSBE: Wallet: 127.0.0.1:19111
@@ -82,18 +82,18 @@ store-server$ dcrtimestored
 
 ### Proxy
 
-dcrtimestored also has a proxy mode.  It is activated by specifying the --storehost and --storecert options.
+dcrtimed also has a proxy mode.  It is activated by specifying the --storehost and --storecert options.
 In this example, we assume the proxy has an internal interface with ip 10.0.0.2 that connects to storehost.example.com at 10.0.0.1.
 
 ```
-proxy-server$ mkdir ~/.dcrtimestored
-proxy-server$ scp storehost.example.com:/home/user/.dcrtimestored/https.cert ~/.dcrtimestored/dcrtimestored.cert
-proxy-server$ dcrtimestored --testnet --storehost=storehost.example.com --storecert=~/.dcrtimestored/dcrtimestored.cert
-07:50:59 2017-06-09 [WRN] DCRT: open /home/user/.dcrtimestored/dcrtimestored.conf: no such file or directory
+proxy-server$ mkdir ~/.dcrtimed
+proxy-server$ scp storehost.example.com:/home/user/.dcrtimed/https.cert ~/.dcrtimed/dcrtimed.cert
+proxy-server$ dcrtimed --testnet --storehost=storehost.example.com --storecert=~/.dcrtimed/dcrtimed.cert
+07:50:59 2017-06-09 [WRN] DCRT: open /home/user/.dcrtimed/dcrtimed.conf: no such file or directory
 07:50:59 2017-06-09 [INF] DCRT: Version : 0.1.0
 07:50:59 2017-06-09 [INF] DCRT: Mode    : Proxy
 07:50:59 2017-06-09 [INF] DCRT: Network : testnet2
-07:50:59 2017-06-09 [INF] DCRT: Home dir: /home/user/.dcrtimestored
+07:50:59 2017-06-09 [INF] DCRT: Home dir: /home/user/.dcrtimed
 07:50:59 2017-06-09 [INF] DCRT: Generating HTTPS keypair...
 07:50:59 2017-06-09 [INF] DCRT: HTTPS keypair created...
 07:50:59 2017-06-09 [INF] DCRT: Start of day
@@ -104,7 +104,7 @@ proxy-server$ dcrtimestored --testnet --storehost=storehost.example.com --storec
 08:16:36 2017-06-09 [INF] DCRT: Verify 204.0.113.4:57146: Timestamps 0 Digests 1
 ```
 
-Now we test the setup using dcrtime.  Note that for this example one digest was already known to the system and one was not.  You can spot the difference in the dcrtimestored trace byt the words "accepted" and "rejected".  Accepted means the file digest was unknown to the store and could therefore be added.  Rejected on the other hands means that said digest already exists and therefore can not be added again.  A digest can only be queried once it has been added to the store.
+Now we test the setup using dcrtime.  Note that for this example one digest was already known to the system and one was not.  You can spot the difference in the dcrtimed trace byt the words "accepted" and "rejected".  Accepted means the file digest was unknown to the store and could therefore be added.  Rejected on the other hands means that said digest already exists and therefore can not be added again.  A digest can only be queried once it has been added to the store.
 
 Per the trace above we issue a known digest first:
 ```

@@ -12,8 +12,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/decred/dcrtime/dcrtimestored/backend"
-	"github.com/decred/dcrtime/dcrtimestored/backend/filesystem"
+	"github.com/decred/dcrtime/dcrtimed/backend"
+	"github.com/decred/dcrtime/dcrtimed/backend/filesystem"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/opt"
 )
