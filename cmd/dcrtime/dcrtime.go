@@ -25,7 +25,9 @@ import (
 const (
 	dcrtimeClientID = "dcrtime cli"
 
+	defaultMainnetHost = "https://time.decred.org"
 	defaultMainnetPort = "49152"
+	defaultTestnetHost = "https://time.testnet.decred.org"
 	defaultTestnetPort = "59152"
 )
 
@@ -34,7 +36,7 @@ var (
 	printJson = flag.Bool("json", false, "Print JSON")
 	fileOnly  = flag.Bool("file", false, "Treat digests and timestamps "+
 		"as file names")
-	host    = flag.String("h", "https://127.0.0.1", "Timestamping host")
+	host    = flag.String("h", "", "Timestamping host")
 	trial   = flag.Bool("t", false, "Trial run, don't contact server")
 	verbose = flag.Bool("v", false, "Verbose")
 )
@@ -374,6 +376,14 @@ func upload(digests []string, exists map[string]string) error {
 
 func _main() error {
 	flag.Parse()
+
+	if *host == "" {
+		if *testnet {
+			*host = defaultTestnetHost
+		} else {
+			*host = defaultMainnetHost
+		}
+	}
 
 	port := defaultMainnetPort
 	if *testnet {

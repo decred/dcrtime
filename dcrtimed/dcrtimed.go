@@ -22,8 +22,8 @@ import (
 	"time"
 
 	"github.com/decred/dcrtime/api/v1"
-	"github.com/decred/dcrtime/dcrtimestored/backend"
-	"github.com/decred/dcrtime/dcrtimestored/backend/filesystem"
+	"github.com/decred/dcrtime/dcrtimed/backend"
+	"github.com/decred/dcrtime/dcrtimed/backend/filesystem"
 	"github.com/decred/dcrtime/util"
 	pb "github.com/decred/dcrwallet/rpc/walletrpc"
 	"github.com/gorilla/mux"
@@ -451,7 +451,7 @@ func _main() error {
 		!fileExists(loadedCfg.HTTPSCert) {
 		log.Infof("Generating HTTPS keypair...")
 
-		err := util.GenCertPair("dcrtimestored", loadedCfg.HTTPSCert,
+		err := util.GenCertPair("dcrtimed", loadedCfg.HTTPSCert,
 			loadedCfg.HTTPSKey)
 		if err != nil {
 			return fmt.Errorf("unable to create https keypair: %v",

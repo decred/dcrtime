@@ -18,8 +18,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/decred/dcrtime/dcrtimestored/backend"
-	"github.com/decred/dcrtime/dcrtimestored/dcrtimewallet"
+	"github.com/decred/dcrtime/dcrtimed/backend"
+	"github.com/decred/dcrtime/dcrtimed/dcrtimewallet"
 	"github.com/decred/dcrtime/merkle"
 	"github.com/robfig/cron"
 	"github.com/syndtr/goleveldb/leveldb"

@@ -20,18 +20,18 @@ import (
 )
 
 const (
-	defaultConfigFilename = "dcrtimestored.conf"
+	defaultConfigFilename = "dcrtimed.conf"
 	defaultDataDirname    = "data"
 	defaultLogLevel       = "info"
 	defaultLogDirname     = "logs"
-	defaultLogFilename    = "dcrtimestored.log"
+	defaultLogFilename    = "dcrtimed.log"
 
 	defaultMainnetPort = "49152"
 	defaultTestnetPort = "59152"
 )
 
 var (
-	defaultHomeDir       = dcrutil.AppDataDir("dcrtimestored", false)
+	defaultHomeDir       = dcrutil.AppDataDir("dcrtimed", false)
 	defaultConfigFile    = filepath.Join(defaultHomeDir, defaultConfigFilename)
 	defaultDataDir       = filepath.Join(defaultHomeDir, defaultDataDirname)
 	defaultHTTPSKeyFile  = filepath.Join(defaultHomeDir, "https.key")
