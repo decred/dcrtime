@@ -66,6 +66,8 @@ type FileSystem struct {
 	duration time.Duration // How often we combine digests
 	commit   uint          // Current version, incremented during flush
 
+	enableCollections bool // Set to true to enable collection query
+
 	wallet *dcrtimewallet.DcrtimeWallet // Wallet context.
 
 	// testing only entries
@@ -640,16 +642,27 @@ func (fs *FileSystem) GetTimestamps(timestamps []int64) ([]backend.TimestampResu
 
 	// Iterate over timestamps and translate results to backend interface.
 	for _, ts := range timestamps {
-		gtme, err := fs.getTimestamp(ts)
-		if err != nil {
+		var (
+			gtme backend.TimestampResult
+			err  error
+		)
+		if fs.enableCollections {
+			gtme, err = fs.getTimestamp(ts)
+			if err != nil {
+				gtme = backend.TimestampResult{
+					Timestamp: ts,
+					ErrorCode: backend.ErrorOK,
+				}
+				if os.IsNotExist(err) {
+					gtme.ErrorCode = backend.ErrorNotFound
+				} else {
+					return nil, err
+				}
+			}
+		} else {
 			gtme = backend.TimestampResult{
 				Timestamp: ts,
-				ErrorCode: backend.ErrorOK,
-			}
-			if os.IsNotExist(err) {
-				gtme.ErrorCode = backend.ErrorNotFound
-			} else {
-				return nil, err
+				ErrorCode: backend.ErrorNotAllowed,
 			}
 		}
 		gtmes = append(gtmes, gtme)
@@ -790,11 +803,12 @@ func internalNew(root string) (*FileSystem, error) {
 
 // New creates a new backend instance.  The caller should issue a Close once
 // the FileSystem backend is no longer needed.
-func New(root, cert, host string, passphrase []byte) (*FileSystem, error) {
+func New(root, cert, host string, enableCollections bool, passphrase []byte) (*FileSystem, error) {
 	fs, err := internalNew(root)
 	if err != nil {
 		return nil, err
 	}
+	fs.enableCollections = enableCollections
 
 	// Runtime bits
 	dcrtimewallet.UseLogger(log)

@@ -289,9 +289,9 @@ func (d *DcrtimeStore) verify(w http.ResponseWriter, r *http.Request) {
 			errorCode, err)
 
 		util.RespondWithError(w, http.StatusInternalServerError,
-			fmt.Sprintf("Could not retrieve timestamps, contact "+
-				"administrator and provide the following "+
-				"error code: %v", errorCode))
+			fmt.Sprintf("Could not retrieve timestamps, "+
+				"contact administrator and provide the"+
+				" following error code: %v", errorCode))
 		return
 	}
 
@@ -313,6 +313,8 @@ func (d *DcrtimeStore) verify(w http.ResponseWriter, r *http.Request) {
 			vt.Result = v1.ResultOK
 		case backend.ErrorNotFound:
 			vt.Result = v1.ResultDoesntExistError
+		case backend.ErrorNotAllowed:
+			vt.Result = v1.ResultDisabled
 		}
 		if vt.Result == -1 {
 			// Generic internal error.
@@ -487,6 +489,7 @@ func _main() error {
 		filesystem.UseLogger(fsbeLog)
 		b, err := filesystem.New(loadedCfg.DataDir,
 			loadedCfg.WalletCert, loadedCfg.WalletHost,
+			loadedCfg.EnableCollections,
 			[]byte(loadedCfg.WalletPassphrase))
 		if err != nil {
 			return err
