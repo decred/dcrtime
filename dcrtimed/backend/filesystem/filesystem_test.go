@@ -204,6 +204,9 @@ func TestGetTimestamp(t *testing.T) {
 	// Set testing flag.
 	fs.testing = true
 
+	// We want to verify collections as well.
+	fs.enableCollections = true
+
 	// Put batch success in current time
 	var hashes [][sha256.Size]byte
 	count := 10

@@ -17,9 +17,10 @@ const (
 	VerifyRoute    = "/v1/verify/"    // Multi verify ingest
 
 	// Result codes.
-	ResultOK               = 0 // Operation completed succefully
+	ResultOK               = 0 // Operation completed successfully
 	ResultExistsError      = 1 // Digest rejected because it exists
 	ResultDoesntExistError = 2 // Unknown timestamp or digest
+	ResultDisabled         = 3 // Querying is disallowed
 )
 
 var (
@@ -27,6 +28,7 @@ var (
 		ResultOK:               "OK",
 		ResultExistsError:      "Exists",
 		ResultDoesntExistError: "Doesn't exist",
+		ResultDisabled:         "Query disallowed",
 	}
 
 	// Valid text representation of digests and timestamps.
@@ -66,7 +68,8 @@ type VerifyDigest struct {
 	ChainInformation ChainInformation `json:"chaininformation"`
 }
 
-// ChainTimestamp is zero if this digest collection is not anchored in the blockchain; it is however set to the block timestamp it was anchored in.
+// ChainTimestamp is zero if this digest collection is not anchored in the
+// blockchain; it is however set to the block timestamp it was anchored in.
 type VerifyTimestamp struct {
 	ServerTimestamp       int64                 `json:"servertimestamp"`
 	Result                int                   `json:"result"`

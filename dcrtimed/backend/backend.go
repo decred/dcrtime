@@ -13,9 +13,10 @@ import (
 )
 
 const (
-	ErrorOK       = 0 // Everything's cool
-	ErrorExists   = 1 // Digest exists
-	ErrorNotFound = 2 // Generic not found error
+	ErrorOK         = 0 // Everything's cool
+	ErrorExists     = 1 // Digest exists
+	ErrorNotFound   = 2 // Generic not found error
+	ErrorNotAllowed = 3 // Generic not allowed error
 )
 
 var (
