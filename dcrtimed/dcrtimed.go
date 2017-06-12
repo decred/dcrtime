@@ -523,7 +523,8 @@ func _main() error {
 
 	// Bind to a port and pass our router in
 	listenC := make(chan error)
-	for _, listen := range loadedCfg.Listeners {
+	for _, listener := range loadedCfg.Listeners {
+		listen := listener
 		go func() {
 			log.Infof("Listen: %v", listen)
 			listenC <- http.ListenAndServeTLS(listen,

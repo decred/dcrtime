@@ -116,12 +116,10 @@ func Tree(hashes []*[sha256.Size]byte) []*[sha256.Size]byte {
 	// tree as a linear array and create an array of that size.
 	nextPoT := nextPowerOfTwo(len(hashes))
 	arraySize := nextPoT*2 - 1
-	merkles := make([]*[sha256.Size]byte, arraySize)
 
 	// Create the base transaction hashes and populate the array with them.
-	for i, hash := range hashes {
-		merkles[i] = hash
-	}
+	merkles := make([]*[sha256.Size]byte, arraySize)
+	copy(merkles, hashes)
 
 	// Start the array offset after the last transaction and adjusted to the
 	// next power of two.

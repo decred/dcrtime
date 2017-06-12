@@ -13,6 +13,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -394,7 +395,7 @@ func _main() error {
 	if err != nil {
 		return err
 	}
-	if u.Port() == "" {
+	if _, _, err := net.SplitHostPort(*host); err != nil {
 		u.Host += ":" + port
 	}
 	*host = u.String()
