@@ -19,7 +19,7 @@ This document describes the REST API provided by a `dcrtimed` server.  This API 
 
 #### `Timestamp`
 
-Timestampe the server to store one or more digests and return a server timestamp.
+Timestamp the server to store one or more digests and return a server timestamp.
 
 * **URL**
 
@@ -59,7 +59,7 @@ Timestampe the server to store one or more digests and return a server timestamp
 
 	`results`
 
-	results is a list of integers reprsenting the result for each digest.  See #Results for details on return codes.
+	results is a list of integers representing the result for each digest.  See #Results for details on return codes.
 
 #### `Verify`
 
@@ -105,7 +105,7 @@ Timestampe the server to store one or more digests and return a server timestamp
 
 	`chaininformation`
 
-	A json object with the information about the onchain timestamp.
+	A JSON object with the information about the onchain timestamp.
 
 	`chaintimestamp`
 
