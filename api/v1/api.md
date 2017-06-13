@@ -1,8 +1,8 @@
-# dcrtime API Specificiation
+# dcrtime API Specification
 
 ## V1
 
-This document describes the REST API provided by a `dcrtimed` server.  This API allows users to create upload hashes which are periodically submitted to the decred blockchain and timestamped as well as to confirm such timestamps.
+This document describes the REST API provided by a `dcrtimed` server.  This API allows users to create upload hashes which are periodically submitted to the Decred blockchain and timestamped as well as to confirm such timestamps.
 
 **Methods**
 
@@ -20,7 +20,7 @@ This document describes the REST API provided by a `dcrtimed` server.  This API 
 
 #### `Timestamp`
 
-Query the server to store one or more digests and return a collection the will contain the supplied digest.
+Upload one or more digests to the time server.  The server will then add these digests to a collection and eventually to a transaction that goes in a Decred block.  This method only returns if the server was able to add the block to a collection, not if it has made it into a block (since that is done in batches at a set time interval).
 
 * **URL**
 
@@ -150,7 +150,7 @@ Reply:
 
 	`merklepath`
 
-	Merklepath of the block containint the transaction (if mined).
+	Merklepath contains additional information for the mined transaction (if available).
 
 * **Example**
 
@@ -196,13 +196,13 @@ Reply:
 
 	`0`
 
-	The Operation completed succefully.
+	The Operation completed successfully.
 
 * `ResultExistsError`
 
 	`1`
 
-The digest was rejected because it exists.  This is only relevant for the `Timestampe` call.
+The digest was rejected because it exists.  This is only relevant for the `Timestamp` call.
 
 * `ResultDoesntExistError`
 
