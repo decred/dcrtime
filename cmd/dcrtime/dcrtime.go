@@ -156,6 +156,10 @@ func download(questions []string) error {
 		return err
 	}
 
+	if *printJson {
+		fmt.Println(string(b))
+	}
+
 	// If this is a trial run return.
 	if *trial {
 		return nil
@@ -314,6 +318,10 @@ func upload(digests []string, exists map[string]string) error {
 	b, err := json.Marshal(ts)
 	if err != nil {
 		return err
+	}
+
+	if *printJson {
+		fmt.Println(string(b))
 	}
 
 	// If this is a trial run return.
