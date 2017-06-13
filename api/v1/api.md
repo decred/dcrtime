@@ -14,12 +14,13 @@ This document describes the REST API provided by a `dcrtimed` server.  This API 
 - [`ResultOK`](#ResultOK)
 - [`ResultExistsError`](#ResultExistsError)
 - [`ResultDoesntExistsError`](#ResultDoesntExistsError)
+- [`ResultDisabled`](#ResultDisabled)
 
 ### Methods
 
 #### `Timestamp`
 
-Timestamp the server to store one or more digests and return a server timestamp.
+Query the server to store one or more digests and return a collection the will contain the supplied digest.
 
 * **URL**
 
@@ -135,7 +136,7 @@ Timestamp the server to store one or more digests and return a server timestamp.
 
 	`1`
 
-	The digest was rejected because it exists.  This is only relevant for the `Timestampe` call.
+The digest was rejected because it exists.  This is only relevant for the `Timestampe` call.
 
 * `ResultDoesntExistError`
 
@@ -143,3 +144,8 @@ Timestamp the server to store one or more digests and return a server timestamp.
 
 The timestamp or digest could not be found by the server.  This is only relevant for the `Verify` call.
 
+* `ResultDisabled`
+
+`3`
+
+Querying is disabled.
