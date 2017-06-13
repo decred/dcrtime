@@ -396,7 +396,7 @@ func _main() error {
 		return err
 	}
 	if _, _, err := net.SplitHostPort(*host); err != nil {
-		u.Host += ":" + port
+		u.Host = net.JoinHostPort(u.Host, port)
 	}
 	*host = u.String()
 
