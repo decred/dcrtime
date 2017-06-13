@@ -1,6 +1,6 @@
 # dcrtime API Specificiation
 
-V1
+## V1
 
 This document describes the REST API provided by a `dcrtimed` server.  This API allows users to create upload hashes which are periodically submitted to the decred blockchain and timestamped as well as to confirm such timestamps.
 
@@ -61,6 +61,34 @@ Query the server to store one or more digests and return a collection the will c
 	`results`
 
 	results is a list of integers representing the result for each digest.  See #Results for details on return codes.
+
+* **Example**
+
+Request:
+
+```json
+{
+    "id":"dcrtime cli",
+    "digests":[
+        "d412ba345bc44fb6fbbaf2db9419b648752ecfcda6fd1aec213b45a5584d1b13"
+    ]
+}
+```
+
+Reply:
+
+```json
+{
+    "id":"dcrtime cli",
+	"servertimestamp":1497376800,
+	"digests":[
+	    "d412ba345bc44fb6fbbaf2db9419b648752ecfcda6fd1aec213b45a5584d1b13"
+	],
+	"results":[
+	    1
+	]
+}
+```
 
 #### `Verify`
 
@@ -123,6 +151,44 @@ Query the server to store one or more digests and return a collection the will c
 	`merklepath`
 
 	Merklepath of the block containint the transaction (if mined).
+
+* **Example**
+
+Request:
+
+```json
+{
+    "id":"dcrtime cli",
+	"digests":[
+        "d412ba345bc44fb6fbbaf2db9419b648752ecfcda6fd1aec213b45a5584d1b13"
+    ],
+	"timestamps":null
+}
+```
+
+Reply:
+
+```json
+{
+    "id":"dcrtime cli",
+	"digests":[{
+	    "digest":"d412ba345bc44fb6fbbaf2db9419b648752ecfcda6fd1aec213b45a5584d1b13",
+	    "servertimestamp":1497376800,
+	    "result":0,
+	    "chaininformation":{
+	        "chaintimestamp":0,
+	        "transaction":"0000000000000000000000000000000000000000000000000000000000000000",
+	        "merkleroot":"0000000000000000000000000000000000000000000000000000000000000000",
+	        "merklepath":{
+	            "NumLeaves":0,
+	            "Hashes":null,
+	            "Flags":null
+	        }
+	    }
+	}],
+	"timestamps":[]
+}
+```
 
 ### Results
 
