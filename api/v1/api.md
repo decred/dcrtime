@@ -20,7 +20,7 @@ This document describes the REST API provided by a `dcrtimed` server.  This API 
 
 #### `Timestamp`
 
-Upload one or more digests to the time server.  The server will then add these digests to a collection and eventually to a transaction that goes in a Decred block.  This method only returns immediately with the collection the digest has been added to.  You must use the verify call to find out when it has been anchored to a block (which is done in batches at a set time interval that is not related to the api calls).
+Upload one or more digests to the time server.  The server will then add these digests to a collection and eventually to a transaction that goes in a Decred block.  This method returns immediately with the collection the digest has been added to.  You must use the verify call to find out when it has been anchored to a block (which is done in batches at a set time interval that is not related to the api calls).
 
 * **URL**
 
