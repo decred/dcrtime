@@ -2,7 +2,7 @@
 
 ## V1
 
-This document describes the REST API provided by a `dcrtimed` server.  This API allows users to create upload hashes which are periodically submitted to the Decred blockchain and timestamped as well as to confirm such timestamps.
+This document describes the REST API provided by a `dcrtimed` server.  This API allows users to create and upload hashes which are periodically submitted to the Decred blockchain.  It also provides the ability to to confirm such the addition of the hash to a timestamped collection and showing and validating their inclusion in the Decred blockchain.
 
 **Methods**
 
@@ -20,7 +20,7 @@ This document describes the REST API provided by a `dcrtimed` server.  This API 
 
 #### `Timestamp`
 
-Upload one or more digests to the time server.  The server will then add these digests to a collection and eventually to a transaction that goes in a Decred block.  This method only returns if the server was able to add the block to a collection, not if it has made it into a block (since that is done in batches at a set time interval).
+Upload one or more digests to the time server.  The server will then add these digests to a collection and eventually to a transaction that goes in a Decred block.  This method only returns if the server was able to add the block to a collection, not if it has made it into a block (since that is done in batches at a set time interval that is not related to the api calls).
 
 * **URL**
 
