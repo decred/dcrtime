@@ -428,7 +428,11 @@ func _main() error {
 	if err != nil {
 		return fmt.Errorf("Could not load configuration file: %v", err)
 	}
-	defer backendLog.Flush()
+	defer func() {
+		if logRotator != nil {
+			logRotator.Close()
+		}
+	}()
 
 	var proxy bool
 	mode := "Store"

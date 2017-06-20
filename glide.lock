@@ -1,16 +1,18 @@
-hash: cd90cc268d9ceef6e276bfa7a615c5f85b5a27b0d917ee3f1f1e5d5598f2fa00
-updated: 2017-06-09T14:11:57.96775988-04:00
+hash: 38dd80858269877d2972fd1e13fc37cce7fa8df51cb51709a779cda93a68fead
+updated: 2017-06-20T13:20:30.5486935-04:00
 imports:
+- name: github.com/agl/ed25519
+  version: 278e1ec8e8a6e017cd07577924d6766039146ced
+  subpackages:
+  - edwards25519
 - name: github.com/btcsuite/btclog
-  version: 73889fb79bd687870312b6e40effcecffbd57d30
+  version: 30bef3d5a6b4600e2129de8b6527ffcc1ee397ca
 - name: github.com/btcsuite/go-flags
   version: 6c288d648c1cc1befcb90cb5511dcacf64ae8e61
-- name: github.com/btcsuite/seelog
-  version: ae8891d029dd3c269dcfd6f261ad23e761acd99f
 - name: github.com/decred/blake256
   version: a840e32d7c31fe2e0218607334cb120a683951a4
 - name: github.com/decred/dcrd
-  version: 0d48ca0105e0d512f89629e39ef841a4194c448b
+  version: ce4b77d3d9e3a4d3393e1fa3baeee5679cad518d
   subpackages:
   - chaincfg
   - chaincfg/chainec
@@ -21,18 +23,14 @@ imports:
   - txscript
   - wire
 - name: github.com/decred/dcrutil
-  version: ebd2e98736e819ac043d54439969b30144b92ced
+  version: a5fab53cab39b793142c8453caa4c6f83bc152d4
   subpackages:
   - base58
 - name: github.com/decred/dcrwallet
-  version: ae00abf404a5f62c91a26c70a9996c5ec57d18c3
+  version: 56954e8ce2d801e35d5df5524d32983268dc64c2
   subpackages:
   - netparams
   - rpc/walletrpc
-- name: github.com/decred/ed25519
-  version: b0909d3f798b97a03c9e77023f97a5301a2a7900
-  subpackages:
-  - edwards25519
 - name: github.com/golang/protobuf
   version: fec3b39b059c0f88fa6b20f5ed012b1aa203a8b4
   subpackages:
@@ -44,6 +42,10 @@ imports:
   version: 08b5f424b9271eedf6f9f0ce86cb9396ed337a42
 - name: github.com/gorilla/mux
   version: bcd8bc72b08df0f70df986b97f95590779502d31
+- name: github.com/jrick/logrotate
+  version: 4ed05ed86ef17d10ff99cce77481e0fcf6f2c7b0
+  subpackages:
+  - rotator
 - name: github.com/robfig/cron
   version: b024fc5ea0e34bc3f83d9941c8d60b0622bfaca4
 - name: github.com/syndtr/goleveldb
@@ -62,11 +64,11 @@ imports:
   - leveldb/table
   - leveldb/util
 - name: golang.org/x/crypto
-  version: 0fe963104e9d1877082f8fb38f816fcd97eb1d10
+  version: adbae1b6b6fb4b02448a0fc0dbbc9ba2b95b294d
   subpackages:
   - ripemd160
 - name: golang.org/x/net
-  version: 513929065c19401a1c7b76ecd942f9f86a0c061b
+  version: fe686d45ea04bc1bd4eff6a52865ce8757320325
   subpackages:
   - context
   - http2
@@ -76,7 +78,7 @@ imports:
   - lex/httplex
   - trace
 - name: golang.org/x/text
-  version: 19e51611da83d6be54ddafce4a4af510cb3e9ea4
+  version: 4e9ab9ee170f2a39bd66c92b3e0a47ff47a4bc77
   subpackages:
   - secure/bidirule
   - transform

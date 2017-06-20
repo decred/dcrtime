@@ -2,8 +2,6 @@ package: github.com/decred/dcrtime
 import:
 - package: github.com/btcsuite/btclog
 - package: github.com/btcsuite/go-flags
-- package: github.com/btcsuite/seelog
-  version: ^2.1.0
 - package: github.com/decred/dcrd
   subpackages:
   - chaincfg
@@ -28,6 +26,9 @@ import:
   subpackages:
   - credentials
   - grpclog
+- package: github.com/jrick/logrotate
+  subpackages:
+  - rotator
 testImport:
 - package: github.com/davecgh/go-spew
   subpackages:
