@@ -26,9 +26,9 @@ import (
 const (
 	dcrtimeClientID = "dcrtime cli"
 
-	defaultMainnetHost = "https://time.decred.org"
+	defaultMainnetHost = "time.decred.org"
 	defaultMainnetPort = "49152"
-	defaultTestnetHost = "https://time.testnet.decred.org"
+	defaultTestnetHost = "time.testnet.decred.org"
 	defaultTestnetPort = "59152"
 )
 
@@ -41,6 +41,16 @@ var (
 	trial   = flag.Bool("t", false, "Trial run, don't contact server")
 	verbose = flag.Bool("v", false, "Verbose")
 )
+
+// normalizeAddress returns addr with the passed default port appended if
+// there is not already a port specified.
+func normalizeAddress(addr, defaultPort string) string {
+	_, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		return net.JoinHostPort(addr, defaultPort)
+	}
+	return addr
+}
 
 // isDir determines if the provided filename points to a directory.
 func isDir(filename string) bool {
@@ -398,13 +408,13 @@ func _main() error {
 	if *testnet {
 		port = defaultTestnetPort
 	}
+
+	*host = normalizeAddress(*host, port)
+
 	// Set port if not specified.
-	u, err := url.Parse(*host)
+	u, err := url.Parse("https://" + *host)
 	if err != nil {
 		return err
-	}
-	if _, _, err := net.SplitHostPort(*host); err != nil {
-		u.Host += ":" + port
 	}
 	*host = u.String()
 
