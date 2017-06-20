@@ -28,7 +28,7 @@ const (
 
 	defaultMainnetHost = "time.decred.org"
 	defaultMainnetPort = "49152"
-	defaultTestnetHost = "time.testnet.decred.org"
+	defaultTestnetHost = "time-testnet.decred.org"
 	defaultTestnetPort = "59152"
 )
 
@@ -141,6 +141,16 @@ func convertDigest(d string) ([sha256.Size]byte, bool) {
 	return digest, true
 }
 
+func newClient(skipVerify bool) *http.Client {
+	tlsConfig := &tls.Config{
+		InsecureSkipVerify: skipVerify,
+	}
+	tr := &http.Transport{
+		TLSClientConfig: tlsConfig,
+	}
+	return &http.Client{Transport: tr}
+}
+
 func download(questions []string) error {
 	ver := v1.Verify{
 		ID: dcrtimeClientID,
@@ -175,14 +185,7 @@ func download(questions []string) error {
 		return nil
 	}
 
-	tlsConfig := &tls.Config{
-		// TODO: verify certificates
-		InsecureSkipVerify: true,
-	}
-	tr := &http.Transport{
-		TLSClientConfig: tlsConfig,
-	}
-	c := &http.Client{Transport: tr}
+	c := newClient(false)
 	r, err := c.Post(*host+v1.VerifyRoute, "application/json",
 		bytes.NewReader(b))
 	if err != nil {
@@ -339,14 +342,7 @@ func upload(digests []string, exists map[string]string) error {
 		return nil
 	}
 
-	tlsConfig := &tls.Config{
-		// TODO: verify certificates
-		InsecureSkipVerify: true,
-	}
-	tr := &http.Transport{
-		TLSClientConfig: tlsConfig,
-	}
-	c := &http.Client{Transport: tr}
+	c := newClient(false)
 	r, err := c.Post(*host+v1.TimestampRoute, "application/json",
 		bytes.NewReader(b))
 	if err != nil {
