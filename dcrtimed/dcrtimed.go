@@ -96,9 +96,6 @@ func (d *DcrtimeStore) sendToBackend(w http.ResponseWriter, route, contentType, 
 	if err != nil {
 		log.Errorf("Error responding to client: %v", err)
 	}
-
-	return
-
 }
 
 func (d *DcrtimeStore) proxyTimestamp(w http.ResponseWriter, r *http.Request) {
