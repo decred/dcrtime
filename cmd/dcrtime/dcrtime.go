@@ -25,11 +25,6 @@ import (
 
 const (
 	dcrtimeClientID = "dcrtime cli"
-
-	defaultMainnetHost = "time.decred.org"
-	defaultMainnetPort = "49152"
-	defaultTestnetHost = "time-testnet.decred.org"
-	defaultTestnetPort = "59152"
 )
 
 var (
@@ -394,15 +389,15 @@ func _main() error {
 
 	if *host == "" {
 		if *testnet {
-			*host = defaultTestnetHost
+			*host = v1.DefaultTestnetTimeHost
 		} else {
-			*host = defaultMainnetHost
+			*host = v1.DefaultMainnetTimeHost
 		}
 	}
 
-	port := defaultMainnetPort
+	port := v1.DefaultMainnetTimePort
 	if *testnet {
-		port = defaultTestnetPort
+		port = v1.DefaultTestnetTimePort
 	}
 
 	*host = normalizeAddress(*host, port)
