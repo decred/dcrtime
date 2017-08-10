@@ -21,6 +21,11 @@ const (
 	ResultExistsError      = 1 // Digest rejected because it exists
 	ResultDoesntExistError = 2 // Unknown timestamp or digest
 	ResultDisabled         = 3 // Querying is disallowed
+
+	DefaultMainnetTimeHost = "time.decred.org"
+	DefaultMainnetTimePort = "49152"
+	DefaultTestnetTimeHost = "time-testnet.decred.org"
+	DefaultTestnetTimePort = "59152"
 )
 
 var (
