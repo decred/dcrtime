@@ -1,4 +1,5 @@
 cmd/dcrtime/dcrtime
+cmd/dcrtime_timestamp/dcrtime_timestamp
 dcrtimed/dcrtimed
 vendor/
 *~

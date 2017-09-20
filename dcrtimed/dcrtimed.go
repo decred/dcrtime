@@ -87,7 +87,7 @@ func (d *DcrtimeStore) sendToBackend(w http.ResponseWriter, route, contentType, 
 				storeHost, resp.Status, e)
 		}
 		util.RespondWithError(w, http.StatusInternalServerError,
-			string(bodyBuf.Bytes()))
+			bodyBuf.String())
 		return
 	}
 
