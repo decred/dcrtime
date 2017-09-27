@@ -1,4 +1,7 @@
 cmd/dcrtime/dcrtime
+cmd/dcrtime_dumpdb/dcrtime_dumpdb
+cmd/dcrtime_timestamp/dcrtime_timestamp
+cmd/dcrtime_unflush/dcrtime_unflush
 dcrtimed/dcrtimed
 vendor/
 *~
