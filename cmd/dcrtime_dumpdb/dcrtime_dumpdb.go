@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/decred/dcrd/dcrutil"
 	"github.com/decred/dcrtime/dcrtimed/backend/filesystem"
-	"github.com/decred/dcrutil"
 )
 
 var (
