@@ -25,7 +25,6 @@ import (
 	"github.com/decred/dcrtime/dcrtimed/backend"
 	"github.com/decred/dcrtime/dcrtimed/backend/filesystem"
 	"github.com/decred/dcrtime/util"
-	pb "github.com/decred/dcrwallet/rpc/walletrpc"
 	"github.com/gorilla/mux"
 )
 
@@ -41,7 +40,6 @@ type DcrtimeStore struct {
 	cfg        *config
 	router     *mux.Router
 	ctx        context.Context
-	wallet     pb.WalletServiceClient
 	httpClient *http.Client
 }
 
@@ -144,14 +142,6 @@ func (d *DcrtimeStore) proxyVerify(w http.ResponseWriter, r *http.Request) {
 		r.RemoteAddr, bytes.NewReader(b))
 	log.Infof("Verify %v: Timestamps %v Digests %v",
 		r.RemoteAddr, len(v.Timestamps), len(v.Digests))
-}
-
-func convertBinary(digests [][sha256.Size]byte) []string {
-	result := make([]string, 0, len(digests))
-	for _, h := range digests {
-		result = append(result, hex.EncodeToString(h[:]))
-	}
-	return result
 }
 
 func convertDigests(d []string) ([][sha256.Size]byte, error) {
