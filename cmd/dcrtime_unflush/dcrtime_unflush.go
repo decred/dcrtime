@@ -22,12 +22,6 @@ const (
 	flushedKey = "flushed"
 )
 
-// isFlushed returns true if the provided db has been flushed.
-func isFlushed(db *leveldb.DB) bool {
-	found, _ := db.Has([]byte(flushedKey), nil)
-	return found
-}
-
 func _main() error {
 	reset := flag.Bool("reset", false, "Only reset ChainTimestamp")
 
