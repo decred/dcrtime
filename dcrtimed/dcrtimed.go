@@ -212,6 +212,8 @@ func (d *DcrtimeStore) status(w http.ResponseWriter, r *http.Request) {
 
 // timestamp takes a frontend timestamp and sends it off to the backend.
 func (d *DcrtimeStore) timestamp(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
 	var t v1.Timestamp
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&t); err != nil {
@@ -219,7 +221,6 @@ func (d *DcrtimeStore) timestamp(w http.ResponseWriter, r *http.Request) {
 			"Invalid request payload")
 		return
 	}
-	defer r.Body.Close()
 
 	// Validate all digests.  If one is invalid return failure.
 	digests, err := convertDigests(t.Digests)
@@ -289,6 +290,8 @@ func (d *DcrtimeStore) timestamp(w http.ResponseWriter, r *http.Request) {
 }
 
 func (d *DcrtimeStore) verify(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
 	var v v1.Verify
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&v); err != nil {
@@ -296,7 +299,6 @@ func (d *DcrtimeStore) verify(w http.ResponseWriter, r *http.Request) {
 			"Invalid request payload")
 		return
 	}
-	defer r.Body.Close()
 
 	// Validate all digests.  If one is invalid return failure.
 	digests, err := convertDigests(v.Digests)
