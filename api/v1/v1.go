@@ -13,6 +13,7 @@ import (
 // XXX add a clamp to all batches
 
 const (
+	StatusRoute    = "/v1/status/"    // Server status
 	TimestampRoute = "/v1/timestamp/" // Digests ingest
 	VerifyRoute    = "/v1/verify/"    // Multi verify ingest
 
@@ -40,6 +41,17 @@ var (
 	RegexpSHA256    = regexp.MustCompile("[A-Fa-f0-9]{64}")
 	RegexpTimestamp = regexp.MustCompile("[0-9]{10}")
 )
+
+// Status is used to ask the server if everything is running properly.
+// ID is user settable and can be used as a unique identifier by the client.
+type Status struct {
+	ID string `json:"id"`
+}
+
+// StatusReply is returned by the server if everything is running properly.
+type StatusReply struct {
+	ID string `json:"id"`
+}
 
 // Timestamp is used to ask the timestamp server to store a batch of digests.
 // ID is user settable and can be used as a unique identifier by the client.
