@@ -6,22 +6,13 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
 	"github.com/btcsuite/btclog"
 	"github.com/jrick/logrotate/rotator"
 )
-
-// logWriter implements an io.Writer that outputs to both standard output and
-// the write-end pipe of an initialized log rotator.
-type logWriter struct{}
-
-func (logWriter) Write(p []byte) (n int, err error) {
-	os.Stdout.Write(p)
-	logRotator.Write(p)
-	return len(p), nil
-}
 
 // Loggers per subsystem.  A single backend logger is created and all subsytem
 // loggers created from it will write to the backend.  When adding new
@@ -35,7 +26,7 @@ var (
 	// backendLog is the logging backend used to create all subsystem loggers.
 	// The backend must not be used before the log rotator has been initialized,
 	// or data races and/or nil pointer dereferences will occur.
-	backendLog = btclog.NewBackend(logWriter{})
+	backendLog = btclog.NewBackend(io.MultiWriter(os.Stdout, logRotator))
 
 	// logRotator is one of the logging outputs.  It should be closed on
 	// application shutdown.
