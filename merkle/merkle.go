@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"math/bits"
 	"sort"
 )
 
@@ -67,10 +68,7 @@ func nextPowerOfTwo(n int) int {
 	if n&(n-1) == 0 {
 		return n
 	}
-
-	// Figure out and return the next power of two.
-	exponent := uint(math.Log2(float64(n))) + 1
-	return 1 << exponent // 2^exponent
+	return 1 << uint64(bits.Len(uint(n)))
 }
 
 // Tree creates a merkle tree from a slice of transactions,
