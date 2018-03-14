@@ -43,10 +43,10 @@ type DcrtimeStore struct {
 	httpClient *http.Client
 }
 
-func (d *DcrtimeStore) sendToBackend(w http.ResponseWriter, route, contentType, remoteAddr string, body *bytes.Reader) {
+func (d *DcrtimeStore) sendToBackend(w http.ResponseWriter, method, route, contentType, remoteAddr string, body *bytes.Reader) {
 	storeHost := fmt.Sprintf("https://%s%s", d.cfg.StoreHost, route)
 
-	req, err := http.NewRequest("POST", storeHost, body)
+	req, err := http.NewRequest(method, storeHost, body)
 	if err != nil {
 		log.Errorf("Error generating new http request: %v", err)
 		util.RespondWithError(w, http.StatusServiceUnavailable,
@@ -96,6 +96,28 @@ func (d *DcrtimeStore) sendToBackend(w http.ResponseWriter, route, contentType, 
 	}
 }
 
+func (d *DcrtimeStore) proxyStatus(w http.ResponseWriter, r *http.Request) {
+	b, err := ioutil.ReadAll(r.Body)
+	r.Body.Close()
+	if err != nil {
+		util.RespondWithError(w, http.StatusBadRequest,
+			"Unable to read request")
+		return
+	}
+
+	var s v1.Status
+	decoder := json.NewDecoder(bytes.NewReader(b))
+	if err := decoder.Decode(&s); err != nil {
+		util.RespondWithError(w, http.StatusBadRequest,
+			"Invalid request payload")
+		return
+	}
+
+	d.sendToBackend(w, r.Method, v1.StatusRoute, r.Header.Get("Content-Type"),
+		r.RemoteAddr, bytes.NewReader(b))
+	log.Infof("Status %v", r.RemoteAddr)
+}
+
 func (d *DcrtimeStore) proxyTimestamp(w http.ResponseWriter, r *http.Request) {
 	b, err := ioutil.ReadAll(r.Body)
 	r.Body.Close()
@@ -113,7 +135,7 @@ func (d *DcrtimeStore) proxyTimestamp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	d.sendToBackend(w, v1.TimestampRoute, r.Header.Get("Content-Type"),
+	d.sendToBackend(w, r.Method, v1.TimestampRoute, r.Header.Get("Content-Type"),
 		r.RemoteAddr, bytes.NewReader(b))
 
 	for _, v := range t.Digests {
@@ -138,7 +160,7 @@ func (d *DcrtimeStore) proxyVerify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	d.sendToBackend(w, v1.VerifyRoute, r.Header.Get("Content-Type"),
+	d.sendToBackend(w, r.Method, v1.VerifyRoute, r.Header.Get("Content-Type"),
 		r.RemoteAddr, bytes.NewReader(b))
 	log.Infof("Verify %v: Timestamps %v Digests %v",
 		r.RemoteAddr, len(v.Timestamps), len(v.Digests))
@@ -163,8 +185,35 @@ func convertDigests(d []string) ([][sha256.Size]byte, error) {
 	return result, nil
 }
 
+// status returns server status information
+func (d *DcrtimeStore) status(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
+	var s v1.Status
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&s); err != nil {
+		util.RespondWithError(w, http.StatusBadRequest,
+			"Invalid request payload")
+		return
+	}
+
+	// Log for audit trail and reuse loop to translate MultiError to JSON
+	// Results.
+	via := r.RemoteAddr
+	xff := r.Header.Get(forward)
+	if xff != "" {
+		via = fmt.Sprintf("%v via %v", xff, r.RemoteAddr)
+	}
+	log.Infof("Status %v", via)
+
+	// Tell client the good news.
+	util.RespondWithJSON(w, http.StatusOK, v1.StatusReply(s))
+}
+
 // timestamp takes a frontend timestamp and sends it off to the backend.
 func (d *DcrtimeStore) timestamp(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
 	var t v1.Timestamp
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&t); err != nil {
@@ -172,7 +221,6 @@ func (d *DcrtimeStore) timestamp(w http.ResponseWriter, r *http.Request) {
 			"Invalid request payload")
 		return
 	}
-	defer r.Body.Close()
 
 	// Validate all digests.  If one is invalid return failure.
 	digests, err := convertDigests(t.Digests)
@@ -242,6 +290,8 @@ func (d *DcrtimeStore) timestamp(w http.ResponseWriter, r *http.Request) {
 }
 
 func (d *DcrtimeStore) verify(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
 	var v v1.Verify
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&v); err != nil {
@@ -249,7 +299,6 @@ func (d *DcrtimeStore) verify(w http.ResponseWriter, r *http.Request) {
 			"Invalid request payload")
 		return
 	}
-	defer r.Body.Close()
 
 	// Validate all digests.  If one is invalid return failure.
 	digests, err := convertDigests(v.Digests)
@@ -500,11 +549,15 @@ func _main() error {
 			TLSClientConfig: tlsConfig,
 		}
 		d.httpClient = &http.Client{Transport: tr}
+		d.router.HandleFunc(v1.StatusRoute,
+			d.proxyStatus).Methods("GET")
 		d.router.HandleFunc(v1.TimestampRoute,
 			d.proxyTimestamp).Methods("POST")
 		d.router.HandleFunc(v1.VerifyRoute,
 			d.proxyVerify).Methods("POST")
 	} else {
+		d.router.HandleFunc(v1.StatusRoute,
+			d.status).Methods("GET")
 		d.router.HandleFunc(v1.TimestampRoute,
 			d.timestamp).Methods("POST")
 		d.router.HandleFunc(v1.VerifyRoute,
