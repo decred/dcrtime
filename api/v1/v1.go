@@ -13,19 +13,46 @@ import (
 // XXX add a clamp to all batches
 
 const (
-	StatusRoute    = "/v1/status/"    // Server status
-	TimestampRoute = "/v1/timestamp/" // Digests ingest
-	VerifyRoute    = "/v1/verify/"    // Multi verify ingest
+	// StatusRoute defines the API route for retrieving
+	// the server status.
+	StatusRoute = "/v1/status/"
 
-	// Result codes.
-	ResultOK               = 0 // Operation completed successfully
-	ResultExistsError      = 1 // Digest rejected because it exists
-	ResultDoesntExistError = 2 // Unknown timestamp or digest
-	ResultDisabled         = 3 // Querying is disallowed
+	// TimestampRoute defines the API route for submitting
+	// both timestamps and digests.
+	TimestampRoute = "/v1/timestamp/"
 
+	// VerifyRoute defines the API route for both timestamp
+	// and digest verification.
+	VerifyRoute = "/v1/verify/" // Multi verify ingest
+
+	// ResultOK indicates the operation completed successfully.
+	ResultOK = 0
+
+	// ResultExistsError indicates the digest already exists and was
+	// rejected.
+	ResultExistsError = 1
+
+	// ResultDoesntExistError indiciates the timestamp or digest does not
+	// exist.
+	ResultDoesntExistError = 2
+
+	// ResultDisabled indicates querying is disabled.
+	ResultDisabled = 3
+
+	// DefaultMainnetTimeHost indicates the default mainnet time host
+	// server.
 	DefaultMainnetTimeHost = "time.decred.org"
+
+	// DefaultMainnetTimePort indicates the default mainnet time host
+	// port.
 	DefaultMainnetTimePort = "49152"
+
+	// DefaultTestnetTimeHost indicates the default testnet time host
+	// server.
 	DefaultTestnetTimeHost = "time-testnet.decred.org"
+
+	// DefaultTestnetTimePort indicates the default testnet time host
+	// port.
 	DefaultTestnetTimePort = "59152"
 )
 
@@ -37,8 +64,10 @@ var (
 		ResultDisabled:         "Query disallowed",
 	}
 
-	// Valid text representation of digests and timestamps.
-	RegexpSHA256    = regexp.MustCompile("[A-Fa-f0-9]{64}")
+	// RegexpSHA256 is the valid text representation of a sha256 digest.
+	RegexpSHA256 = regexp.MustCompile("[A-Fa-f0-9]{64}")
+
+	// RegexpTimestamp is the valid text representation of a timestamp.
 	RegexpTimestamp = regexp.MustCompile("[0-9]{10}")
 )
 
@@ -85,7 +114,7 @@ type VerifyDigest struct {
 	ChainInformation ChainInformation `json:"chaininformation"`
 }
 
-// ChainTimestamp is zero if this digest collection is not anchored in the
+// VerifyTimestamp is zero if this digest collection is not anchored in the
 // blockchain; it is however set to the block timestamp it was anchored in.
 type VerifyTimestamp struct {
 	ServerTimestamp       int64                 `json:"servertimestamp"`
@@ -100,10 +129,10 @@ type VerifyReply struct {
 }
 
 type ChainInformation struct {
-	ChainTimestamp int64               `json:"chaintimestamp"`
-	Transaction    string              `json:"transaction"`
-	MerkleRoot     string              `json:"merkleroot"`
-	MerklePath     merkle.MerkleBranch `json:"merklepath"`
+	ChainTimestamp int64         `json:"chaintimestamp"`
+	Transaction    string        `json:"transaction"`
+	MerkleRoot     string        `json:"merkleroot"`
+	MerklePath     merkle.Branch `json:"merklepath"`
 }
 
 type CollectionInformation struct {
