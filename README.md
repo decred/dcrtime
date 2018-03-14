@@ -1,7 +1,9 @@
 dcrtime
 =======
 
-[![ISC License](http://img.shields.io/badge/license-ISC-blue.svg)](http://copyfree.org)
+[![Build Status](https://travis-ci.org/decred/dcrtime.png?branch=master)](https://travis-ci.org/decred/dcrtime)
+[![ISC License](https://img.shields.io/badge/license-ISC-blue.svg)](http://copyfree.org)
+[![GoDoc](https://img.shields.io/badge/godoc-reference-blue.svg)](https://godoc.org/github.com/decred/dcrtime)
 
 Decred anchored timestamp client and server.
 

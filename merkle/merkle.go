@@ -156,7 +156,7 @@ func Root(hashes []*[sha256.Size]byte) *[sha256.Size]byte {
 }
 
 // authPath is used to house intermediate information needed to generate a
-// MerkleBranch.
+// Branch.
 type authPath struct {
 	numLeaves   uint32
 	matchedBits []byte
@@ -210,16 +210,16 @@ func (a *authPath) traverseAndBuild(height, pos uint32) {
 	}
 }
 
-// MerkleBrnach is a cooked merkle authentication path that can be transmitted
+// Branch is a cooked merkle authentication path that can be transmitted
 // over a wire and can be verified on the other end.
-type MerkleBranch struct {
+type Branch struct {
 	NumLeaves uint32              // Nuber of leaves
 	Hashes    [][sha256.Size]byte // Merkle branch
 	Flags     []byte              // Bitmap of merkle tree
 }
 
 // AuthPath returns a Merkle tree authentication path.
-func AuthPath(leaves []*[sha256.Size]byte, hash *[sha256.Size]byte) *MerkleBranch {
+func AuthPath(leaves []*[sha256.Size]byte, hash *[sha256.Size]byte) *Branch {
 	numLeaves := uint32(len(leaves))
 	if numLeaves == 0 {
 		return nil
@@ -248,7 +248,7 @@ func AuthPath(leaves []*[sha256.Size]byte, hash *[sha256.Size]byte) *MerkleBranc
 	ap.traverseAndBuild(height, 0)
 
 	// Create merkle branch.
-	mb := &MerkleBranch{
+	mb := &Branch{
 		NumLeaves: numLeaves,
 		Hashes:    make([][sha256.Size]byte, 0, len(ap.finalHashes)),
 		Flags:     make([]byte, (len(ap.bits)+7)/8),
@@ -309,8 +309,8 @@ func (m *merkleBranch) extract(height, pos uint32) (*[sha256.Size]byte, error) {
 	return concatDigests(left, left), nil
 }
 
-// VerifyAuthPath takes a MerkleBranch and ensures that it is a valid tree.
-func VerifyAuthPath(mb *MerkleBranch) (*[sha256.Size]byte, error) {
+// VerifyAuthPath takes a Branch and ensures that it is a valid tree.
+func VerifyAuthPath(mb *Branch) (*[sha256.Size]byte, error) {
 	if mb.NumLeaves == 0 || len(mb.Hashes) == 0 {
 		return nil, ErrEmpty
 	}

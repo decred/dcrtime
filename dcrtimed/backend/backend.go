@@ -54,13 +54,13 @@ type TimestampResult struct {
 
 // GetResult is a cooked result returned by the backend.
 type GetResult struct {
-	Digest            [sha256.Size]byte   // Digest
-	ErrorCode         uint                // Error code
-	Timestamp         int64               // Server timestamp
-	AnchoredTimestamp int64               // Anchored timestamp
-	Tx                chainhash.Hash      // Anchor Tx
-	MerkleRoot        [sha256.Size]byte   // Merkle root
-	MerklePath        merkle.MerkleBranch // Auth path
+	Digest            [sha256.Size]byte // Digest
+	ErrorCode         uint              // Error code
+	Timestamp         int64             // Server timestamp
+	AnchoredTimestamp int64             // Anchored timestamp
+	Tx                chainhash.Hash    // Anchor Tx
+	MerkleRoot        [sha256.Size]byte // Merkle root
+	MerklePath        merkle.Branch     // Auth path
 }
 
 type Backend interface {
