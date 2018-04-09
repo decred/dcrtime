@@ -65,10 +65,10 @@ var (
 	}
 
 	// RegexpSHA256 is the valid text representation of a sha256 digest.
-	RegexpSHA256 = regexp.MustCompile("[A-Fa-f0-9]{64}")
+	RegexpSHA256 = regexp.MustCompile("^[A-Fa-f0-9]{64}$")
 
 	// RegexpTimestamp is the valid text representation of a timestamp.
-	RegexpTimestamp = regexp.MustCompile("[0-9]{10}")
+	RegexpTimestamp = regexp.MustCompile("^[0-9]{10}$")
 )
 
 // Status is used to ask the server if everything is running properly.
