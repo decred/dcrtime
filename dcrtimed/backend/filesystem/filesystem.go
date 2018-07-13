@@ -143,7 +143,7 @@ func (fs *FileSystem) openRead(ts int64) (*leveldb.DB, error) {
 }
 
 // openWrite tries to open the database associated with the provided timestamp
-// for writes.  The function will create the container directoryf create is set
+// for writes.  The function will create the container directory create is set
 // to true.  The caller is responsible for closing the database.
 func (fs *FileSystem) openWrite(ts int64, create bool) (*leveldb.DB, error) {
 	// Always create container.
@@ -269,9 +269,10 @@ func (fs *FileSystem) flush(ts int64) ([]*[sha256.Size]byte, error) {
 	return hashes, nil
 }
 
-// doFlush walks timestamp directories backwards iand flushed them to the
-// global database until it finds a flushed timestamp directory.  At that point
-// the flusher exits.  It returns the number of directories that were flushed.
+// doFlush walks timestamp directories backwards and flushes them to the
+// global database until it finds a flushed timestamp directory.  At that
+// point the flusher exits.  It returns the number of directories that were
+// flushed.
 //
 // This must be called with the WRITE lock held.  We may have to consider
 // errors out of this function terminal.
@@ -359,8 +360,8 @@ var (
 	errNotEnoughConfirmation = errors.New("not enough confirmations")
 )
 
-// lazyFlush takes a pointer to a flush record and update the chain anchor
-// timestamp of said record and writed is back to the database.
+// lazyFlush takes a pointer to a flush record and updates the chain anchor
+// timestamp of said record and writes it back to the database.
 //
 // IMPORTANT NOTE: We *may* write to a timestamp database in case of a lazy
 // timestamp update to the flush record while holding the READ lock.  This is
@@ -777,8 +778,13 @@ func (fs *FileSystem) Close() {
 	defer fs.Unlock()
 	defer log.Infof("Exiting")
 
-	fs.cron.Stop()
-	fs.wallet.Close()
+	// We need nil tests when in dump/restore mode.
+	if fs.cron != nil {
+		fs.cron.Stop()
+	}
+	if fs.wallet != nil {
+		fs.wallet.Close()
+	}
 	fs.db.Close()
 }
 

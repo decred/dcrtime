@@ -7,6 +7,7 @@ package backend
 import (
 	"crypto/sha256"
 	"errors"
+	"os"
 
 	"github.com/decred/dcrd/chaincfg/chainhash"
 	"github.com/decred/dcrtime/merkle"
@@ -63,6 +64,41 @@ type GetResult struct {
 	MerklePath        merkle.Branch     // Auth path
 }
 
+// DigestReceived describes when a digest was received by the server.
+type DigestReceived struct {
+	Digest    string `json:"digest"`    // Digest that was flushed
+	Timestamp int64  `json:"timestamp"` // Server received timestamp
+}
+
+// FlushRecordJSON is identical to FlushRecord but with corrected JSON
+// capitalization. At some point the DB needs to start using this type instead
+// of broken one. Timestamp is optional based on the backend.
+type FlushRecordJSON struct {
+	Root           [sha256.Size]byte    `json:"root"`                // Merkle root
+	Hashes         []*[sha256.Size]byte `json:"hashes"`              // All digests
+	Tx             chainhash.Hash       `json:"tx"`                  // Tx that anchored merkle tree
+	ChainTimestamp int64                `json:"chaintimestamp"`      // Blockchain timestamp, if available
+	FlushTimestamp int64                `json:"flushtimestamp"`      // Time flush actually happened
+	Timestamp      int64                `json:"timestamp,omitempty"` // Timestamp received
+}
+
+// Record types.
+const (
+	RecordTypeDigestReceived       = "digest"
+	RecordTypeDigestReceivedGlobal = "digestglobal"
+	RecordTypeFlushRecord          = "flush"
+
+	RecordTypeVersion = 1
+)
+
+// RecordType indicates what the next record is in a restore stream. All
+// records are dumped prefixed with a RecordType so that they can be simply
+// replayed as a journal.
+type RecordType struct {
+	Version uint   `json:"version"` // Version of RecordType
+	Type    string `json:"type"`    // Type or record
+}
+
 type Backend interface {
 	// Return timestamp information for given digests.
 	Get([][sha256.Size]byte) ([]GetResult, error)
@@ -76,4 +112,15 @@ type Backend interface {
 
 	// Close performs cleanup of the backend.
 	Close()
+
+	// Dump dumps database to the provided file descriptor. If the
+	// human flag is set to true it pretty prints the database content
+	// otherwise it dumps a JSON stream.
+	Dump(*os.File, bool) error
+
+	// Restore recreates the the database from the provided file
+	// descriptor. The verbose flag is set to true to indicate that this
+	// call may parint to stdout. The provided string describes the target
+	// location and is implementation specific.
+	Restore(*os.File, bool, string) error
 }
