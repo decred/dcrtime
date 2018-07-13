@@ -20,27 +20,27 @@ import (
 
 	"google.golang.org/grpc/grpclog"
 
-	"github.com/btcsuite/btclog"
+	"github.com/decred/slog"
 )
 
 // log is a logger that is initialized with no output filters.  This
 // means the package will not perform any logging by default until the caller
 // requests it.
-var log = btclog.Disabled
+var log = slog.Disabled
 
 // UseLogger sets the logger to use for the gRPC server.
-func UseLogger(l btclog.Logger) {
+func UseLogger(l slog.Logger) {
 	grpclog.SetLogger(logger{l})
 	log = l
 }
 
-// logger uses a btclog.Logger to implement the grpclog.Logger interface.
+// logger uses a slog.Logger to implement the grpclog.Logger interface.
 type logger struct {
-	btclog.Logger
+	slog.Logger
 }
 
 // stripGrpcPrefix removes the package prefix for all logs made to the grpc
-// logger, since these are already included as the btclog subsystem name.
+// logger, since these are already included as the slog subsystem name.
 func stripGrpcPrefix(logstr string) string {
 	return strings.TrimPrefix(logstr, "grpc: ")
 }
