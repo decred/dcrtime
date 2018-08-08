@@ -12,12 +12,6 @@
 
 [[projects]]
   branch = "master"
-  name = "github.com/btcsuite/btclog"
-  packages = ["."]
-  revision = "84c8d2346e9fc8c7b947e243b9c24e6df9fd206a"
-
-[[projects]]
-  branch = "master"
   name = "github.com/btcsuite/go-flags"
   packages = ["."]
   revision = "6c288d648c1cc1befcb90cb5511dcacf64ae8e61"
@@ -41,12 +35,14 @@
   version = "v1.0.0"
 
 [[projects]]
+  branch = "master"
   name = "github.com/decred/dcrd"
   packages = [
     "certgen",
     "chaincfg",
     "chaincfg/chainec",
     "chaincfg/chainhash",
+    "dcrec",
     "dcrec/edwards",
     "dcrec/secp256k1",
     "dcrec/secp256k1/schnorr",
@@ -54,17 +50,16 @@
     "txscript",
     "wire"
   ]
-  revision = "fd99f572cfd52ca722ad501ccb34acdcb22b4a67"
-  version = "v1.2.0"
+  revision = "f0e65ec62f916b4b8aaafca6906c67c34c242dac"
 
 [[projects]]
+  branch = "master"
   name = "github.com/decred/dcrwallet"
   packages = [
     "netparams",
     "rpc/walletrpc"
   ]
-  revision = "cf426bf26d89e6b0c750bd0cdb0f2b2635eecda9"
-  version = "v1.1.0"
+  revision = "640cbe14449e70dc5bd58b7d55049d1457cd5415"
 
 [[projects]]
   name = "github.com/decred/slog"
@@ -73,6 +68,7 @@
   version = "v1.0.0"
 
 [[projects]]
+  branch = "master"
   name = "github.com/golang/protobuf"
   packages = [
     "proto",
@@ -81,8 +77,7 @@
     "ptypes/duration",
     "ptypes/timestamp"
   ]
-  revision = "b4deda0973fb4c70b50d226b1af49f3da59f5265"
-  version = "v1.1.0"
+  revision = "89a0c16f4dc2a70c0ed864d8ef64878f24fdaa51"
 
 [[projects]]
   branch = "master"
@@ -215,6 +210,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "03d2c4ffcc73d70bd99305fbcf87f07076108a743defe9e7ba469aa5a2628535"
+  inputs-digest = "7b431b40a535f3086c500850beedf1c9e41acf74aa7604b218f841aa3682e897"
   solver-name = "gps-cdcl"
   solver-version = 1
