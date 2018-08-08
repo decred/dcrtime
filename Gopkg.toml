@@ -8,12 +8,12 @@
   version = "1.1.0"
 
 [[constraint]]
+  branch = "master"
   name = "github.com/decred/dcrd"
-  version = "1.2.0"
 
 [[constraint]]
+  branch = "master"
   name = "github.com/decred/dcrwallet"
-  version = "1.1.0"
 
 [[constraint]]
   name = "github.com/decred/slog"
