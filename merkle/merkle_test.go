@@ -53,7 +53,7 @@ func concat(l, r []byte) []byte {
 func digest(src []byte, dst *[]byte) {
 	h := sha256.New()
 	h.Write(src)
-	copy([]byte(*dst)[:], h.Sum(nil))
+	copy((*dst)[:], h.Sum(nil))
 }
 
 // makeHashes takes an array of []byte and converts it to sha256 digest
