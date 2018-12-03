@@ -1,14 +1,15 @@
 language: go
 go:
-  - 1.9.x
-  - 1.10.x
+  - 1.11.x
 sudo: false
 install:
-  - go get -v github.com/golang/dep/cmd/dep
-  - dep ensure
-  - go install ./dcrtimed/... ./cmd/...
   - go get -v github.com/alecthomas/gometalinter
   - gometalinter --install
 script:
-  - export PATH=$PATH:$HOME/gopath/bin
+  - export GO111MODULE=on
+  - (cd cmd/dcrtime && go build)
+  - (cd cmd/dcrtime_dumpdb && go build)
+  - (cd cmd/dcrtime_timestamp && go build)
+  - (cd cmd/dcrtime_unflush && go build)
+  - (cd dcrtimed && go build)
   - ./goclean.sh
