@@ -550,14 +550,14 @@ func _main() error {
 		}
 		d.httpClient = &http.Client{Transport: tr}
 		d.router.HandleFunc(v1.StatusRoute,
-			d.proxyStatus).Methods("GET")
+			d.proxyStatus).Methods("POST")
 		d.router.HandleFunc(v1.TimestampRoute,
 			d.proxyTimestamp).Methods("POST")
 		d.router.HandleFunc(v1.VerifyRoute,
 			d.proxyVerify).Methods("POST")
 	} else {
 		d.router.HandleFunc(v1.StatusRoute,
-			d.status).Methods("GET")
+			d.status).Methods("POST")
 		d.router.HandleFunc(v1.TimestampRoute,
 			d.timestamp).Methods("POST")
 		d.router.HandleFunc(v1.VerifyRoute,
