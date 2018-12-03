@@ -1,4 +1,4 @@
-// Copyright (c) 2017 The Decred developers
+// Copyright (c) 2017-2018 The Decred developers
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
 
@@ -16,12 +16,14 @@ func RespondWithError(w http.ResponseWriter, code int, message string) {
 func RespondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	response, _ := json.Marshal(payload)
 
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	w.Write(response)
 }
 
 func RespondWithCopy(w http.ResponseWriter, code int, contentType string, body []byte) error {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Content-Type", contentType)
 	w.WriteHeader(code)
 	_, err := w.Write(body)
