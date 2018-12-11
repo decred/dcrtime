@@ -14,6 +14,7 @@ require (
 	github.com/decred/slog v1.0.0
 	github.com/golang/snappy v0.0.0-20180518054509-2e65f85255db // indirect
 	github.com/gorilla/context v1.1.1 // indirect
+	github.com/gorilla/handlers v1.4.0
 	github.com/gorilla/mux v1.6.2
 	github.com/jrick/logrotate v1.0.0
 	github.com/robfig/cron v0.0.0-20180505203441-b41be1df6967
