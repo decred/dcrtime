@@ -26,6 +26,7 @@ import (
 	"github.com/decred/dcrtime/dcrtimed/backend"
 	"github.com/decred/dcrtime/dcrtimed/backend/filesystem"
 	"github.com/decred/dcrtime/util"
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )
 
@@ -581,10 +582,15 @@ func _main() error {
 	for _, listener := range loadedCfg.Listeners {
 		listen := listener
 		go func() {
+			// CORS options
+			origins := handlers.AllowedOrigins([]string{"*"})
+			methods := handlers.AllowedMethods([]string{"GET", "OPTIONS", "POST"})
+			headers := handlers.AllowedHeaders([]string{"Content-Type"})
+
 			log.Infof("Listen: %v", listen)
 			listenC <- http.ListenAndServeTLS(listen,
 				loadedCfg.HTTPSCert, loadedCfg.HTTPSKey,
-				d.router)
+				handlers.CORS(origins, methods, headers)(d.router))
 		}()
 	}
 
