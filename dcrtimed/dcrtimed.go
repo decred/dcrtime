@@ -18,6 +18,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -540,6 +541,10 @@ func _main() error {
 	// Setup mux
 	d.router = mux.NewRouter()
 
+	var statusRoute func(http.ResponseWriter, *http.Request)
+	var timestampRoute func(http.ResponseWriter, *http.Request)
+	var verifyRoute func(http.ResponseWriter, *http.Request)
+
 	if certPool != nil {
 		// PROXY ENABLED
 		tlsConfig := &tls.Config{
@@ -549,19 +554,22 @@ func _main() error {
 			TLSClientConfig: tlsConfig,
 		}
 		d.httpClient = &http.Client{Transport: tr}
-		d.router.HandleFunc(v1.StatusRoute,
-			d.proxyStatus).Methods("GET")
-		d.router.HandleFunc(v1.TimestampRoute,
-			d.proxyTimestamp).Methods("POST")
-		d.router.HandleFunc(v1.VerifyRoute,
-			d.proxyVerify).Methods("POST")
+
+		statusRoute = d.proxyStatus
+		timestampRoute = d.proxyTimestamp
+		verifyRoute = d.proxyVerify
 	} else {
-		d.router.HandleFunc(v1.StatusRoute,
-			d.status).Methods("GET")
-		d.router.HandleFunc(v1.TimestampRoute,
-			d.timestamp).Methods("POST")
-		d.router.HandleFunc(v1.VerifyRoute,
-			d.verify).Methods("POST")
+		statusRoute = d.status
+		timestampRoute = d.timestamp
+		verifyRoute = d.verify
+	}
+	d.router.HandleFunc(v1.StatusRoute, statusRoute).Methods("POST")
+	d.router.HandleFunc(v1.TimestampRoute, timestampRoute).Methods("POST")
+	d.router.HandleFunc(v1.VerifyRoute, verifyRoute).Methods("POST")
+
+	// Handle non-api /status as well
+	if trimmed := strings.TrimSuffix(v1.StatusRoute, "/"); trimmed != v1.StatusRoute {
+		d.router.HandleFunc(trimmed, statusRoute).Methods("POST")
 	}
 
 	// Pretty print web page for individual digest/timestamp
