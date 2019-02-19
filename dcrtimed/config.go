@@ -15,8 +15,8 @@ import (
 	"strconv"
 	"strings"
 
-	flags "github.com/btcsuite/go-flags"
 	"github.com/decred/dcrd/dcrutil"
+	flags "github.com/jessevdk/go-flags"
 )
 
 const (

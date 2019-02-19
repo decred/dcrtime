@@ -1,7 +1,6 @@
 module github.com/decred/dcrtime
 
 require (
-	github.com/btcsuite/go-flags v0.0.0-20150116065318-6c288d648c1c
 	github.com/davecgh/go-spew v1.1.1
 	github.com/decred/dcrd/certgen v1.0.2
 	github.com/decred/dcrd/chaincfg v1.3.0
@@ -12,10 +11,11 @@ require (
 	github.com/decred/dcrwallet v1.2.3-0.20190128160919-849f7c01c12d
 	github.com/decred/dcrwallet/rpc/walletrpc v0.2.0
 	github.com/decred/slog v1.0.0
-	github.com/golang/snappy v0.0.0-20180518054509-2e65f85255db // indirect
+	github.com/golang/snappy v0.0.1 // indirect
 	github.com/gorilla/context v1.1.1 // indirect
 	github.com/gorilla/handlers v1.4.0
 	github.com/gorilla/mux v1.6.2
+	github.com/jessevdk/go-flags v1.4.0
 	github.com/jrick/logrotate v1.0.0
 	github.com/onsi/ginkgo v1.7.0 // indirect
 	github.com/robfig/cron v0.0.0-20180505203441-b41be1df6967
