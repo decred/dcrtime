@@ -99,6 +99,17 @@ type RecordType struct {
 	Type    string `json:"type"`    // Type or record
 }
 
+// FsckOptions provides generic options on how to handle an fsck. Sane defaults
+// will be used in lieu of options being provided.
+type FsckOptions struct {
+	Verbose     bool // Normal verbosity
+	PrintHashes bool // Prints every hash
+	Fix         bool // Fix fixable errors
+
+	URL  string // URL for dcrdata, used to verify anchors
+	File string // Path for results file
+}
+
 type Backend interface {
 	// Return timestamp information for given digests.
 	Get([][sha256.Size]byte) ([]GetResult, error)
@@ -123,4 +134,8 @@ type Backend interface {
 	// call may parint to stdout. The provided string describes the target
 	// location and is implementation specific.
 	Restore(*os.File, bool, string) error
+
+	// Fsck walks all data and verifies its integrity. In addition it
+	// verifies anchored timestamps' existence on the blockchain.
+	Fsck(*FsckOptions) error
 }

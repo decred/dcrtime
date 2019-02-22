@@ -43,7 +43,9 @@ The dcrtime stack as as follows:
 
 ## Library and interfaces
 * api/v1 - JSON REST API for dcrtime clients.
-* cmd/dcrtime - Client reference implementation
+* cmd/dcrtime - Client reference implementation.
+* cmd/dcrtime_dump - Data dump/restore tool for filesystem based backend.
+* cmd/dcrtime_fsck - Data integrity tool for filesystem based backend.
 * cmd/dcrtime_unflush - Debug backend tool to either delete the flush record or reset the chain timestamp.
 * cmd/dcrtime_timestamp - Tool to convert between various timestamp formats.
 * merkle -  Merkle algorithm implementation.

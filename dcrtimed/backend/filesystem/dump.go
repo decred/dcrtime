@@ -58,8 +58,8 @@ func NewRestore(root string) (*FileSystem, error) {
 	return &FileSystem{root: root, db: db}, nil
 }
 
-func dumpDigestTimestamp(f *os.File, human bool, recordType string, dr backend.DigestReceived) error {
-	if human {
+func dumpDigestTimestamp(f *os.File, verbose bool, recordType string, dr backend.DigestReceived) error {
+	if verbose {
 		ts := ts2dirname(dr.Timestamp)
 		fmt.Fprintf(f, "Digest     : %v\n", dr.Digest)
 		fmt.Fprintf(f, "Timestamp  : %v -> %v\n", dr.Timestamp, ts)
@@ -85,14 +85,14 @@ func dumpDigestTimestamp(f *os.File, human bool, recordType string, dr backend.D
 	return nil
 }
 
-func (fs *FileSystem) dumpGlobal(f *os.File, human bool) error {
+func (fs *FileSystem) dumpGlobal(f *os.File, verbose bool) error {
 
 	i := fs.db.NewIterator(nil, nil)
 	defer i.Release()
 	for i.Next() {
 		key := hex.EncodeToString(i.Key())
 		value := int64(binary.LittleEndian.Uint64(i.Value()))
-		err := dumpDigestTimestamp(f, human,
+		err := dumpDigestTimestamp(f, verbose,
 			backend.RecordTypeDigestReceivedGlobal,
 			backend.DigestReceived{
 				Digest:    key,
@@ -104,8 +104,20 @@ func (fs *FileSystem) dumpGlobal(f *os.File, human bool) error {
 	}
 	return i.Error()
 }
+func dumpFlushRecord(f *os.File, flushRecord *backend.FlushRecord) {
+	fmt.Fprintf(f, "Merkle root    : %x\n",
+		flushRecord.Root)
+	fmt.Fprintf(f, "Tx             : %v\n", flushRecord.Tx)
+	fmt.Fprintf(f, "Chain timestamp: %v\n",
+		flushRecord.ChainTimestamp)
+	fmt.Fprintf(f, "Flush timestamp: %v\n",
+		flushRecord.FlushTimestamp)
+	for _, v := range flushRecord.Hashes {
+		fmt.Fprintf(f, "  Flushed      : %x\n", *v)
+	}
+}
 
-func (fs *FileSystem) dumpTimestamp(f *os.File, human bool, ts int64) error {
+func (fs *FileSystem) dumpTimestamp(f *os.File, verbose bool, ts int64) error {
 	db, err := fs.openRead(ts)
 	if err != nil {
 		return err
@@ -134,17 +146,8 @@ func (fs *FileSystem) dumpTimestamp(f *os.File, human bool, ts int64) error {
 	}
 
 	if flushRecord != nil {
-		if human {
-			fmt.Fprintf(f, "Merkle root    : %x\n",
-				flushRecord.Root)
-			fmt.Fprintf(f, "Tx             : %v\n", flushRecord.Tx)
-			fmt.Fprintf(f, "Chain timestamp: %v\n",
-				flushRecord.ChainTimestamp)
-			fmt.Fprintf(f, "Flush timestamp: %v\n",
-				flushRecord.FlushTimestamp)
-			for _, v := range flushRecord.Hashes {
-				fmt.Fprintf(f, "  Hashes       : %x\n", *v)
-			}
+		if verbose {
+			dumpFlushRecord(f, flushRecord)
 		} else {
 			e := json.NewEncoder(f)
 			rt := backend.RecordType{
@@ -171,7 +174,7 @@ func (fs *FileSystem) dumpTimestamp(f *os.File, human bool, ts int64) error {
 	}
 
 	for _, v := range digests {
-		err := dumpDigestTimestamp(f, human,
+		err := dumpDigestTimestamp(f, verbose,
 			backend.RecordTypeDigestReceived, v)
 		if err != nil {
 			return err
@@ -181,7 +184,7 @@ func (fs *FileSystem) dumpTimestamp(f *os.File, human bool, ts int64) error {
 	return nil
 }
 
-func (fs *FileSystem) dumpTimestamps(f *os.File, human bool) error {
+func (fs *FileSystem) dumpTimestamps(f *os.File, verbose bool) error {
 	files, err := ioutil.ReadDir(fs.root)
 	if err != nil {
 		return err
@@ -201,11 +204,11 @@ func (fs *FileSystem) dumpTimestamps(f *os.File, human bool) error {
 			return fmt.Errorf("invalid timestamp: %v", fi.Name())
 		}
 
-		if human {
+		if verbose {
 			fmt.Fprintf(f, "--- Timestamp: %v %v\n", fi.Name(),
 				t.Unix())
 		}
-		err = fs.dumpTimestamp(f, human, t.Unix())
+		err = fs.dumpTimestamp(f, verbose, t.Unix())
 		if err != nil {
 			return err
 		}
@@ -214,15 +217,15 @@ func (fs *FileSystem) dumpTimestamps(f *os.File, human bool) error {
 	return nil
 }
 
-// Dump walks all directories and dumps the content to either human
+// Dump walks all directories and dumps the content to either verbose
 // readable or JSON format.
-func (fs *FileSystem) Dump(f *os.File, human bool) error {
-	err := fs.dumpTimestamps(f, human)
+func (fs *FileSystem) Dump(f *os.File, verbose bool) error {
+	err := fs.dumpTimestamps(f, verbose)
 	if err != nil {
 		return err
 	}
 	// Dump global
-	return fs.dumpGlobal(f, human)
+	return fs.dumpGlobal(f, verbose)
 }
 
 // restoreOpen opens/creates a leveldb based on the timestamp that is passed

@@ -5,38 +5,28 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/decred/dcrd/chaincfg"
 	"github.com/decred/dcrd/dcrutil"
+	"github.com/decred/dcrtime/dcrtimed/backend"
 	"github.com/decred/dcrtime/dcrtimed/backend/filesystem"
 )
 
 var (
 	defaultHomeDir = dcrutil.AppDataDir("dcrtimed", false)
 
-	destination = flag.String("destination", "", "Restore destination")
-	dumpJSON    = flag.Bool("json", false, "Dump JSON")
-	restore     = flag.Bool("restore", false, "Restore backend, -destination is required")
+	file        = flag.String("file", "", "journal of modifications if used (will be written despite -fix)")
+	fix         = flag.Bool("fix", false, "Try to correct correctable failures")
+	dcrdataHost = flag.String("host", "", "dcrdata block explorer")
+	printHashes = flag.Bool("printhashes", false, "Print all hashes")
 	fsRoot      = flag.String("source", "", "Source directory")
 	testnet     = flag.Bool("testnet", false, "Use testnet port")
+	verbose     = flag.Bool("v", false, "Print more information during run")
 )
 
 func _main() error {
 	flag.Parse()
-
-	if *restore {
-		if *destination == "" {
-			return fmt.Errorf("-destination must be set")
-		}
-
-		fs, err := filesystem.NewRestore(*destination)
-		if err != nil {
-			return err
-		}
-		defer fs.Close()
-
-		return fs.Restore(os.Stdin, true, *destination)
-	}
 
 	root := *fsRoot
 	if root == "" {
@@ -48,7 +38,17 @@ func _main() error {
 		}
 	}
 
-	// Dump
+	if *dcrdataHost == "" {
+		if *testnet {
+			*dcrdataHost = "https://testnet.dcrdata.org/api/tx/"
+		} else {
+			*dcrdataHost = "https://explorer.dcrdata.org/api/tx/"
+		}
+	} else {
+		if !strings.HasSuffix(*dcrdataHost, "/") {
+			*dcrdataHost += "/"
+		}
+	}
 
 	fmt.Printf("=== Root: %v\n", root)
 
@@ -58,7 +58,13 @@ func _main() error {
 	}
 	defer fs.Close()
 
-	return fs.Dump(os.Stdout, !*dumpJSON)
+	return fs.Fsck(&backend.FsckOptions{
+		Verbose:     *verbose,
+		PrintHashes: *printHashes,
+		Fix:         *fix,
+		URL:         *dcrdataHost,
+		File:        *file,
+	})
 }
 
 func main() {
