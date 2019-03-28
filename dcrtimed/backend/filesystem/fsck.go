@@ -1,4 +1,4 @@
-// Copyright (c) 2017 The Decred developers
+// Copyright (c) 2017-2019 The Decred developers
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
 
@@ -18,7 +18,7 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/decred/dcrd/txscript"
-	"github.com/decred/dcrdata/v4/api/types"
+	"github.com/decred/dcrdata/api/types"
 	"github.com/decred/dcrtime/dcrtimed/backend"
 	"github.com/decred/dcrtime/merkle"
 	"github.com/syndtr/goleveldb/leveldb"
