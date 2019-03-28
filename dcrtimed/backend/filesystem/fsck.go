@@ -311,11 +311,6 @@ func (fs *FileSystem) fsckTimestamp(options *backend.FsckOptions, ts int64, empt
 			// The bug that caused this has since been fixed.
 			fmt.Printf("   *** ERROR timestamp mismatch: %v %v %v\n",
 				k, dbts, ts)
-			if flushRecord != nil {
-				// Shouldn't happen.
-				return fmt.Errorf("   *** ERROR timestamp " +
-					"mismatch: found flush record")
-			}
 
 			// Record action before verifying Fix
 			err = journal(options.File, FilesystemActionDeleteDigest,
@@ -347,7 +342,7 @@ func (fs *FileSystem) fsckTimestamp(options *backend.FsckOptions, ts int64, empt
 
 	// Check again and add to empties. We may have deleted the last record
 	// while fixing timestamp mismatches.
-	if len(digests) == 0 && flushRecord == nil {
+	if len(digests) == 0 {
 		empties[ts] = struct{}{}
 	}
 
