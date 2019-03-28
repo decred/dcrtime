@@ -19,8 +19,9 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/decred/dcrtime/api/v1"
+	v1 "github.com/decred/dcrtime/api/v1"
 	"github.com/decred/dcrtime/merkle"
+	"github.com/decred/dcrtime/util"
 )
 
 const (
@@ -29,7 +30,8 @@ const (
 
 var (
 	testnet   = flag.Bool("testnet", false, "Use testnet port")
-	printJson = flag.Bool("json", false, "Print JSON")
+	debug     = flag.Bool("debug", false, "Print JSON that is sent to server")
+	printJson = flag.Bool("json", false, "Print JSON response from server")
 	fileOnly  = flag.Bool("file", false, "Treat digests and timestamps "+
 		"as file names")
 	host    = flag.String("h", "", "Timestamping host")
@@ -73,21 +75,6 @@ func isDigest(digest string) bool {
 // isTimestamp determines if a string is a valid UNIX timestamp.
 func isTimestamp(timestamp string) bool {
 	return v1.RegexpTimestamp.MatchString(timestamp)
-}
-
-// digestFile returns the SHA256 of a file.
-func digestFile(filename string) (string, error) {
-	h := sha256.New()
-	f, err := os.Open(filename)
-	if err != nil {
-		return "", err
-	}
-	defer f.Close()
-	if _, err = io.Copy(h, f); err != nil {
-		return "", err
-	}
-
-	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
 // getError returns the error that is embedded in a JSON reply.
@@ -171,7 +158,7 @@ func download(questions []string) error {
 		return err
 	}
 
-	if *printJson {
+	if *debug {
 		fmt.Println(string(b))
 	}
 
@@ -328,7 +315,7 @@ func upload(digests []string, exists map[string]string) error {
 		return err
 	}
 
-	if *printJson {
+	if *debug {
 		fmt.Println(string(b))
 	}
 
@@ -418,7 +405,7 @@ func _main() error {
 	for _, a := range flag.Args() {
 		// Try to see if argument is a valid file.
 		if isFile(a) || *fileOnly {
-			d, err := digestFile(a)
+			d, err := util.DigestFile(a)
 			if err != nil {
 				return err
 			}
