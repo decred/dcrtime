@@ -37,7 +37,7 @@ var (
 	host    = flag.String("h", "", "Timestamping host")
 	trial   = flag.Bool("t", false, "Trial run, don't contact server")
 	verbose = flag.Bool("v", false, "Verbose")
-	digest  = flag.String("digest", "", "Raw 256 bit digest to anchor")
+	digest  = flag.String("digest", "", "Submit a raw 256 bit digest to anchor")
 )
 
 // normalizeAddress returns addr with the passed default port appended if
@@ -380,8 +380,22 @@ func uploadDigest(digest string) error {
 	return upload([]string{digest}, make(map[string]string))
 }
 
+// Ensures that there are no conflicting flags
+func ensureFlagCompatibility() error {
+	if *fileOnly && hasDigestFlag() {
+		return fmt.Errorf("-digest and -file flags cannot be used simultaneously")
+	}
+
+	return nil
+}
+
 func _main() error {
 	flag.Parse()
+
+	flagError := ensureFlagCompatibility()
+	if flagError != nil {
+		return flagError
+	}
 
 	if *host == "" {
 		if *testnet {
