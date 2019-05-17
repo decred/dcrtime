@@ -37,7 +37,7 @@ var (
 	host    = flag.String("h", "", "Timestamping host")
 	trial   = flag.Bool("t", false, "Trial run, don't contact server")
 	verbose = flag.Bool("v", false, "Verbose")
-	digest  = flag.String("digest", "", "Timestamp a precalculated 256 bit digest")
+	digest  = flag.String("digest", "", "Raw 256 bit digest to anchor")
 )
 
 // normalizeAddress returns addr with the passed default port appended if
