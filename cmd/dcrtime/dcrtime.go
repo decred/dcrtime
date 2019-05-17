@@ -37,6 +37,7 @@ var (
 	host    = flag.String("h", "", "Timestamping host")
 	trial   = flag.Bool("t", false, "Trial run, don't contact server")
 	verbose = flag.Bool("v", false, "Verbose")
+	digest  = flag.String("digest", "", "Timestamp a precalculated 256 bit digest")
 )
 
 // normalizeAddress returns addr with the passed default port appended if
@@ -67,7 +68,7 @@ func isFile(filename string) bool {
 	return fi.Mode().IsRegular()
 }
 
-// isTimestamp determines if a string is a valid SHA256 digest.
+// isDigest determines if a string is a valid SHA256 digest.
 func isDigest(digest string) bool {
 	return v1.RegexpSHA256.MatchString(digest)
 }
@@ -371,6 +372,14 @@ func upload(digests []string, exists map[string]string) error {
 	return nil
 }
 
+func hasDigestFlag() bool {
+	return digest != nil && *digest != ""
+}
+
+func uploadDigest(digest string) error {
+	return upload([]string{digest}, make(map[string]string))
+}
+
 func _main() error {
 	flag.Parse()
 
@@ -395,6 +404,12 @@ func _main() error {
 		return err
 	}
 	*host = u.String()
+
+	// Allow submitting a pre-calculated 256 bit digest from the command line, rather than
+	// needing to hash a payload.
+	if hasDigestFlag() {
+		return uploadDigest(*digest)
+	}
 
 	// We attempt to open files first; if that doesn't work we treat the
 	// args as digests or timestamps.  Digests and timestamps are sent to
