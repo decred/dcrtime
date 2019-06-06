@@ -1,4 +1,4 @@
-// Copyright (c) 2017 The Decred developers
+// Copyright (c) 2019 The Decred developers
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
 
@@ -21,7 +21,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/decred/dcrtime/api/v1"
+	v1 "github.com/decred/dcrtime/api/v1"
 	"github.com/decred/dcrtime/dcrtimed/backend"
 	"github.com/decred/dcrtime/dcrtimed/backend/filesystem"
 	"github.com/decred/dcrtime/util"
@@ -46,6 +46,7 @@ type DcrtimeStore struct {
 	router     *mux.Router
 	ctx        context.Context
 	httpClient *http.Client
+	apiTokens  map[string]struct{}
 }
 
 func (d *DcrtimeStore) sendToBackend(w http.ResponseWriter, method, route, contentType, remoteAddr string, body *bytes.Reader) {
@@ -81,6 +82,12 @@ func (d *DcrtimeStore) sendToBackend(w http.ResponseWriter, method, route, conte
 	}
 
 	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusUnauthorized {
+			util.RespondWithCopy(w, http.StatusUnauthorized, "application/json",
+				bodyBuf.Bytes())
+			return
+		}
+
 		e, err := getError(resp.Body)
 		if err != nil {
 			log.Errorf("Bad status posting to %v: %v", storeHost,
@@ -89,6 +96,7 @@ func (d *DcrtimeStore) sendToBackend(w http.ResponseWriter, method, route, conte
 			log.Errorf("Bad status posting to %v: %v\n%v",
 				storeHost, resp.Status, e)
 		}
+
 		util.RespondWithError(w, http.StatusInternalServerError,
 			bodyBuf.String())
 		return
@@ -188,6 +196,23 @@ func convertDigests(d []string) ([][sha256.Size]byte, error) {
 	}
 
 	return result, nil
+}
+
+func (d *DcrtimeStore) proxyWalletBalance(w http.ResponseWriter, r *http.Request) {
+	r.Body.Close()
+
+	var apiToken string
+	queryTokens := r.URL.Query()["apitoken"]
+	if len(queryTokens) > 0 {
+		apiToken = queryTokens[0]
+	}
+
+	// Only forward the first apitoken query string parameter
+	route := v1.WalletBalanceRoute + "?apitoken=" + apiToken
+	d.sendToBackend(w, r.Method, route, r.Header.Get("Content-Type"),
+		r.RemoteAddr, bytes.NewReader([]byte{}))
+
+	log.Infof("WalletBalance %v", r.RemoteAddr)
 }
 
 // status returns server status information
@@ -444,6 +469,55 @@ func (d *DcrtimeStore) verify(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// isAuthorized returns true if the first api token query parameter
+// matches any APIToken configuration value. Otherwise, it returns false.
+func (d *DcrtimeStore) isAuthorized(r *http.Request) bool {
+	// Extract api token from query parameters.
+	queryTokens := r.URL.Query()["apitoken"]
+
+	var apiToken string
+	if len(queryTokens) > 0 {
+		// If the request has multiple apitoken
+		// values, only consider the first one.
+		apiToken = queryTokens[0]
+	} else {
+		return false
+	}
+
+	if _, exist := d.apiTokens[apiToken]; exist {
+		return true
+	}
+
+	log.Errorf("isAuthorized %v: authentication failed", r.RemoteAddr)
+	return false
+}
+
+func (d *DcrtimeStore) walletBalance(w http.ResponseWriter, r *http.Request) {
+	if !d.isAuthorized(r) {
+		util.RespondWithError(w, http.StatusUnauthorized, "not authorized")
+		return
+	}
+
+	balanceResult, err := d.backend.GetBalance()
+	if err != nil {
+		errorCode := time.Now().Unix()
+
+		log.Errorf("%v walletBalance error code %v: %v",
+			r.RemoteAddr, errorCode, err)
+		util.RespondWithError(w, http.StatusInternalServerError,
+			fmt.Sprintf("failed to retrieve wallet balance, "+
+				"Contact administrator and provide "+
+				"the following error code: %v", errorCode))
+		return
+	}
+
+	util.RespondWithJSON(w, http.StatusOK, v1.WalletBalanceReply{
+		Total:       balanceResult.Total,
+		Spendable:   balanceResult.Spendable,
+		Unconfirmed: balanceResult.Unconfirmed,
+	})
+}
+
 // getError returns the error that is embedded in a JSON reply.
 func getError(r io.Reader) (string, error) {
 	var e interface{}
@@ -460,6 +534,15 @@ func getError(r io.Reader) (string, error) {
 		return "", fmt.Errorf("No error response")
 	}
 	return fmt.Sprintf("%v", rError), nil
+}
+
+// apiTokenMap converts the APITokens config values to a map
+func apiTokenMap(cfg *config) map[string]struct{} {
+	lookup := make(map[string]struct{})
+	for _, token := range cfg.APITokens {
+		lookup[token] = struct{}{}
+	}
+	return lookup
 }
 
 func _main() error {
@@ -510,8 +593,9 @@ func _main() error {
 
 	// Setup application context
 	d := &DcrtimeStore{
-		cfg: loadedCfg,
-		ctx: context.Background(),
+		cfg:       loadedCfg,
+		ctx:       context.Background(),
+		apiTokens: apiTokenMap(loadedCfg),
 	}
 
 	var certPool *x509.CertPool
@@ -531,14 +615,16 @@ func _main() error {
 		}
 	} else {
 		// Setup backend.
-		filesystem.UseLogger(fsbeLog)
 		b, err := filesystem.New(loadedCfg.DataDir,
-			loadedCfg.WalletCert, loadedCfg.WalletHost,
+			loadedCfg.WalletCert,
+			loadedCfg.WalletHost,
 			loadedCfg.EnableCollections,
 			[]byte(loadedCfg.WalletPassphrase))
+
 		if err != nil {
 			return err
 		}
+
 		d.backend = b
 	}
 
@@ -548,6 +634,7 @@ func _main() error {
 	var statusRoute func(http.ResponseWriter, *http.Request)
 	var timestampRoute func(http.ResponseWriter, *http.Request)
 	var verifyRoute func(http.ResponseWriter, *http.Request)
+	var walletBalanceRoute func(http.ResponseWriter, *http.Request)
 
 	if certPool != nil {
 		// PROXY ENABLED
@@ -562,14 +649,18 @@ func _main() error {
 		statusRoute = d.proxyStatus
 		timestampRoute = d.proxyTimestamp
 		verifyRoute = d.proxyVerify
+		walletBalanceRoute = d.proxyWalletBalance
 	} else {
 		statusRoute = d.status
 		timestampRoute = d.timestamp
 		verifyRoute = d.verify
+		walletBalanceRoute = d.walletBalance
 	}
+
 	d.router.HandleFunc(v1.StatusRoute, statusRoute).Methods("POST")
 	d.router.HandleFunc(v1.TimestampRoute, timestampRoute).Methods("POST")
 	d.router.HandleFunc(v1.VerifyRoute, verifyRoute).Methods("POST")
+	d.router.HandleFunc(v1.WalletBalanceRoute, walletBalanceRoute).Methods("GET")
 
 	// Handle non-api /status as well
 	if trimmed := strings.TrimSuffix(v1.StatusRoute, "/"); trimmed != v1.StatusRoute {

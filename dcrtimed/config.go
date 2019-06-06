@@ -1,5 +1,4 @@
-// Copyright (c) 2013-2014 The btcsuite developers
-// Copyright (c) 2015-2017 The Decred developers
+// Copyright (c) 2015-2019 The Decred developers
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
 
@@ -63,11 +62,12 @@ type config struct {
 	WalletCert        string   `long:"walletcert" description:"Certificate path for wallet server"`
 	WalletPassphrase  string   `long:"walletpassphrase" description:"Passphrase for wallet server"`
 	Version           string
-	HTTPSCert         string `long:"httpscert" description:"File containing the https certificate file"`
-	HTTPSKey          string `long:"httpskey" description:"File containing the https certificate key"`
-	StoreHost         string `long:"storehost" description:"Enable proxy mode - send requests to the specified ip:port"`
-	StoreCert         string `long:"storecert" description:"File containing the https certificate file for storehost"`
-	EnableCollections bool   `long:"enablecollections" description:"Allow clienst to query collection timestamps."`
+	HTTPSCert         string   `long:"httpscert" description:"File containing the https certificate file"`
+	HTTPSKey          string   `long:"httpskey" description:"File containing the https certificate key"`
+	StoreHost         string   `long:"storehost" description:"Enable proxy mode - send requests to the specified ip:port"`
+	StoreCert         string   `long:"storecert" description:"File containing the https certificate file for storehost"`
+	EnableCollections bool     `long:"enablecollections" description:"Allow clients to query collection timestamps."`
+	APITokens         []string `long:"apitoken" description:"Token used to grant access to privileged API resources"`
 }
 
 // serviceOptions defines the configuration options for the daemon as a service
@@ -475,6 +475,31 @@ func loadConfig() (*config, []string, error) {
 		}
 
 		cfg.WalletCert = path
+	}
+
+	if len(cfg.APITokens) > 0 {
+		var validTokens []string
+		for _, token := range cfg.APITokens {
+			token = strings.TrimSpace(token)
+
+			// Do not allow blank API tokens.
+			// If one of the tokens is blank, fail.
+			if token == "" {
+				var strErr string
+				if len(validTokens) == 0 {
+					strErr = "%s: api token is required but was not set"
+				} else {
+					strErr = "%s: all configured api tokens must not be blank"
+				}
+
+				err := fmt.Errorf(strErr, funcName)
+				return nil, nil, err
+			}
+
+			validTokens = append(validTokens, token)
+		}
+
+		cfg.APITokens = validTokens
 	}
 
 	// Warn about missing config file only after all other configuration is

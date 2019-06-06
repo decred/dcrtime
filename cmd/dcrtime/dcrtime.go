@@ -34,10 +34,14 @@ var (
 	printJson = flag.Bool("json", false, "Print JSON response from server")
 	fileOnly  = flag.Bool("file", false, "Treat digests and timestamps "+
 		"as file names")
-	host    = flag.String("h", "", "Timestamping host")
-	trial   = flag.Bool("t", false, "Trial run, don't contact server")
-	verbose = flag.Bool("v", false, "Verbose")
-	digest  = flag.String("digest", "", "Submit a raw 256 bit digest to anchor")
+	host     = flag.String("h", "", "Timestamping host")
+	trial    = flag.Bool("t", false, "Trial run, don't contact server")
+	verbose  = flag.Bool("v", false, "Verbose")
+	digest   = flag.String("digest", "", "Submit a raw 256 bit digest to anchor")
+	apiToken = flag.String("apitoken", "", `long:"apitoken" description:"Token`+
+		` for accessing privileged API resources"`)
+	balance = flag.Bool("balance", false, `long:"balance" description:"Display`+
+		` the connected server's wallet balance. An API Token is required"`)
 )
 
 // normalizeAddress returns addr with the passed default port appended if
@@ -383,7 +387,95 @@ func uploadDigest(digest string) error {
 // Ensures that there are no conflicting flags
 func ensureFlagCompatibility() error {
 	if *fileOnly && hasDigestFlag() {
-		return fmt.Errorf("-digest and -file flags cannot be used simultaneously")
+		return fmt.Errorf(
+			"-digest and -file flags cannot be used simultaneously")
+	}
+
+	return nil
+}
+
+// getWalletBalance returns the total balance of the primary dcrtimed wallet,
+// in atoms.
+func showWalletBalance() error {
+	c := newClient(false)
+
+	route := *host + v1.WalletBalanceRoute
+	url := fmt.Sprintf("%s?apitoken=%s", route, *apiToken)
+	request, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+
+	response, err := c.Do(request)
+	if err != nil {
+		return err
+	}
+
+	defer response.Body.Close()
+
+	if *printJson {
+		io.Copy(os.Stdout, response.Body)
+		fmt.Printf("\n")
+		return nil
+	}
+
+	if response.StatusCode != http.StatusOK {
+		e, err := getError(response.Body)
+		if err != nil {
+			return fmt.Errorf("Retrieve wallet balance failed: %v",
+				response.Status)
+		}
+		return fmt.Errorf("Retrieve wallet balance failed - %v: %v",
+			response.Status, e)
+	}
+
+	// Decode the response from dcrtimed
+	var balance v1.WalletBalanceReply
+	jsonDecoder := json.NewDecoder(response.Body)
+	if err := jsonDecoder.Decode(&balance); err != nil {
+		return fmt.Errorf("Could not decode WalletBalanceReply: %v", err)
+	}
+
+	if *verbose {
+		fmt.Printf(
+			"Wallet balance (atoms)\n"+
+				"Spendable:   %v\n"+
+				"Total:       %v\n"+
+				"Unconfirmed: %v\n",
+			balance.Spendable, balance.Total, balance.Unconfirmed)
+	} else {
+		fmt.Printf("Spendable wallet balance (atoms): %v\n", balance.Spendable)
+	}
+
+	return nil
+}
+
+// credentialsRequired determines if any of the flags
+// require credentials to be provided.
+func credentialsRequired() bool {
+	return *balance
+}
+
+// loadCredentialsIfRequired checks if a username/password is expected
+// based on the provided command line flags.
+func loadCredentialsIfRequired() error {
+	if !credentialsRequired() {
+		return nil
+	}
+
+	if *apiToken == "" {
+		// Token not provided via command line. Try to load via config file.
+		config, err := loadConfig()
+		if err != nil {
+			return fmt.Errorf("Attempt to load api token "+
+				"from configuration file failed: %v", err)
+		}
+
+		*apiToken = config.APIToken
+	}
+
+	if *apiToken == "" {
+		return fmt.Errorf("API token is required but was not provided")
 	}
 
 	return nil
@@ -391,6 +483,12 @@ func ensureFlagCompatibility() error {
 
 func _main() error {
 	flag.Parse()
+	err := loadCredentialsIfRequired()
+	if err != nil {
+		return err
+	}
+
+	didRunCommand := false
 
 	flagError := ensureFlagCompatibility()
 	if flagError != nil {
@@ -419,10 +517,20 @@ func _main() error {
 	}
 	*host = u.String()
 
-	// Allow submitting a pre-calculated 256 bit digest from the command line, rather than
-	// needing to hash a payload.
+	// Allow submitting a pre-calculated 256 bit digest from the command line,
+	// rather than needing to hash a payload.
 	if hasDigestFlag() {
 		return uploadDigest(*digest)
+	}
+
+	// Print the wallet balance via privileged endpoint.
+	if *balance {
+		err := showWalletBalance()
+		if err != nil {
+			return err
+		}
+
+		didRunCommand = true
 	}
 
 	// We attempt to open files first; if that doesn't work we treat the
@@ -472,7 +580,7 @@ func _main() error {
 			a)
 	}
 
-	if len(uploads) == 0 && len(downloads) == 0 {
+	if len(uploads) == 0 && len(downloads) == 0 && !didRunCommand {
 		return fmt.Errorf("nothing to do")
 	}
 

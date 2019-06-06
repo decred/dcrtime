@@ -1,4 +1,4 @@
-// Copyright (c) 2017 The Decred developers
+// Copyright (c) 2019 The Decred developers
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
 
@@ -110,6 +110,14 @@ type FsckOptions struct {
 	File string // Path for results file
 }
 
+// GetBalanceResult contains information account balance
+// info for wallet used by the backend.
+type GetBalanceResult struct {
+	Total       int64
+	Spendable   int64
+	Unconfirmed int64
+}
+
 type Backend interface {
 	// Return timestamp information for given digests.
 	Get([][sha256.Size]byte) ([]GetResult, error)
@@ -138,4 +146,8 @@ type Backend interface {
 	// Fsck walks all data and verifies its integrity. In addition it
 	// verifies anchored timestamps' existence on the blockchain.
 	Fsck(*FsckOptions) error
+
+	// GetBalance retrieves balance information for the wallet
+	// backing this instance
+	GetBalance() (*GetBalanceResult, error)
 }

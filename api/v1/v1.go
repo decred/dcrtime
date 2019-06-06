@@ -1,4 +1,4 @@
-// Copyright (c) 2017 The Decred developers
+// Copyright (c) 2019 The Decred developers
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
 
@@ -24,6 +24,10 @@ const (
 	// VerifyRoute defines the API route for both timestamp
 	// and digest verification.
 	VerifyRoute = "/v1/verify/" // Multi verify ingest
+
+	// WalletBalanceRoute defines the API route for retrieving
+	// the account balance from dcrtimed's wallet instance
+	WalletBalanceRoute = "/v1/balance"
 
 	// ResultOK indicates the operation completed successfully.
 	ResultOK = 0
@@ -140,4 +144,10 @@ type CollectionInformation struct {
 	Transaction    string   `json:"transaction"`
 	MerkleRoot     string   `json:"merkleroot"`
 	Digests        []string `json:"digests"`
+}
+
+type WalletBalanceReply struct {
+	Total       int64 `json:"total"`
+	Spendable   int64 `json:"spendable"`
+	Unconfirmed int64 `json:"unconfirmed"`
 }
