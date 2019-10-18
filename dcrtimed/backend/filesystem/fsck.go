@@ -18,7 +18,7 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/decred/dcrd/txscript"
-	"github.com/decred/dcrdata/v4/api/types"
+	"github.com/decred/dcrdata/api/types/v4"
 	"github.com/decred/dcrtime/dcrtimed/backend"
 	"github.com/decred/dcrtime/merkle"
 	"github.com/syndtr/goleveldb/leveldb"

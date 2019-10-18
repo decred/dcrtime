@@ -1,18 +1,15 @@
 module github.com/decred/dcrtime
 
 require (
-	github.com/btcsuite/btcd v0.0.0-20190115013929-ed77733ec07d // indirect
-	github.com/btcsuite/btcutil v0.0.0-20190112041146-bf1e1be93589 // indirect
 	github.com/davecgh/go-spew v1.1.1
 	github.com/decred/dcrd/certgen v1.0.2
-	github.com/decred/dcrd/chaincfg v1.3.0
-	github.com/decred/dcrd/chaincfg/chainhash v1.0.1
-	github.com/decred/dcrd/dcrec v0.0.0-20190205162449-73a60c8f02ab // indirect
-	github.com/decred/dcrd/dcrec/edwards v0.0.0-20190205162449-73a60c8f02ab // indirect
+	github.com/decred/dcrd/chaincfg v1.5.1
+	github.com/decred/dcrd/chaincfg/chainhash v1.0.2
 	github.com/decred/dcrd/dcrutil v1.2.1-0.20190118223730-3a5281156b73
 	github.com/decred/dcrd/txscript v1.0.2
 	github.com/decred/dcrd/wire v1.2.0
-	github.com/decred/dcrdata/v4 v4.0.0-20190206163941-7c1f1b7a1594
+	github.com/decred/dcrdata/api/types/v4 v4.0.3-0.20191018131657-8f5538d3b4b3
+	github.com/decred/dcrdata/db/dbtypes/v2 v2.1.4 // indirect
 	github.com/decred/dcrwallet v1.2.3-0.20190128160919-849f7c01c12d
 	github.com/decred/dcrwallet/rpc/walletrpc v0.2.0
 	github.com/decred/slog v1.0.0
@@ -23,11 +20,6 @@ require (
 	github.com/jrick/logrotate v1.0.0
 	github.com/robfig/cron v0.0.0-20180505203441-b41be1df6967
 	github.com/syndtr/goleveldb v1.0.0
-	golang.org/x/crypto v0.0.0-20190131182504-b8fe1690c613 // indirect
-	golang.org/x/net v0.0.0-20190213061140-3a22650c66bd // indirect
-	golang.org/x/sync v0.0.0-20181221193216-37e7f081c4d4 // indirect
-	golang.org/x/sys v0.0.0-20190204203706-41f3e6584952 // indirect
-	golang.org/x/text v0.3.1-0.20180807135948-17ff2d5776d2 // indirect
 	google.golang.org/genproto v0.0.0-20190201180003-4b09977fb922 // indirect
 	google.golang.org/grpc v1.18.0
 )
