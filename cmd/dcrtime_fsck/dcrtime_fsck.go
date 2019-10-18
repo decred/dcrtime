@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/decred/dcrd/chaincfg"
-	"github.com/decred/dcrd/dcrutil"
+	"github.com/decred/dcrd/chaincfg/v2"
+	"github.com/decred/dcrd/dcrutil/v2"
 	"github.com/decred/dcrtime/dcrtimed/backend"
 	"github.com/decred/dcrtime/dcrtimed/backend/filesystem"
 )
@@ -32,9 +32,9 @@ func _main() error {
 	if root == "" {
 		root = filepath.Join(defaultHomeDir, "data")
 		if *testnet {
-			root = filepath.Join(root, chaincfg.TestNet3Params.Name)
+			root = filepath.Join(root, chaincfg.TestNet3Params().Name)
 		} else {
-			root = filepath.Join(root, chaincfg.MainNetParams.Name)
+			root = filepath.Join(root, chaincfg.MainNetParams().Name)
 		}
 	}
 

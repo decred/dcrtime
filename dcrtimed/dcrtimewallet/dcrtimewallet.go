@@ -13,7 +13,7 @@ import (
 	"google.golang.org/grpc/credentials"
 
 	"github.com/decred/dcrd/chaincfg/chainhash"
-	"github.com/decred/dcrd/txscript"
+	"github.com/decred/dcrd/txscript/v2"
 	pb "github.com/decred/dcrwallet/rpc/walletrpc"
 )
 
