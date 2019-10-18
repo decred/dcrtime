@@ -9,7 +9,7 @@ import (
 	"net/http"
 
 	"github.com/decred/dcrd/txscript"
-	"github.com/decred/dcrdata/v4/api/types"
+	"github.com/decred/dcrdata/api/types/v4"
 )
 
 // VerifyAnchor verifies proof of existence of the supplied merkle root on the
