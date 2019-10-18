@@ -6,7 +6,7 @@
 package main
 
 import (
-	"github.com/decred/dcrd/chaincfg"
+	"github.com/decred/dcrd/chaincfg/v2"
 	"github.com/decred/dcrd/wire"
 	"github.com/decred/dcrwallet/netparams"
 )
@@ -29,7 +29,7 @@ type params struct {
 // it does not handle on to dcrd.  This approach allows the wallet process
 // to emulate the full reference implementation RPC API.
 var mainNetParams = params{
-	Params:              &chaincfg.MainNetParams,
+	Params:              chaincfg.MainNetParams(),
 	WalletRPCServerPort: netparams.MainNetParams.GRPCServerPort,
 }
 
@@ -38,14 +38,14 @@ var mainNetParams = params{
 // reference implementation - see the mainNetParams comment for details.
 
 var testNet3Params = params{
-	Params:              &chaincfg.TestNet3Params,
+	Params:              chaincfg.TestNet3Params(),
 	WalletRPCServerPort: netparams.TestNet3Params.GRPCServerPort,
 }
 
 // simNetParams contains parameters specific to the simulation test network
 // (wire.SimNet).
 var simNetParams = params{
-	Params:              &chaincfg.SimNetParams,
+	Params:              chaincfg.SimNetParams(),
 	WalletRPCServerPort: netparams.SimNetParams.GRPCServerPort,
 }
 
