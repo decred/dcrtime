@@ -1,3 +1,4 @@
+// Copyright (c) 2013-2014 The btcsuite developers
 // Copyright (c) 2015-2019 The Decred developers
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
@@ -482,21 +483,22 @@ func loadConfig() (*config, []string, error) {
 		for _, token := range cfg.APITokens {
 			token = strings.TrimSpace(token)
 
-			// Do not allow blank API tokens.
-			// If one of the tokens is blank, fail.
-			if token == "" {
-				var strErr string
-				if len(validTokens) == 0 {
-					strErr = "%s: api token is required but was not set"
-				} else {
-					strErr = "%s: all configured api tokens must not be blank"
-				}
-
-				err := fmt.Errorf(strErr, funcName)
-				return nil, nil, err
+			// Aggregate non-empty tokens.
+			if token != "" {
+				validTokens = append(validTokens, token)
+				continue
 			}
 
-			validTokens = append(validTokens, token)
+			// If one of the tokens is an empty value, fail fast.
+			var strErr string
+			if len(validTokens) == 0 {
+				strErr = "%s: required apitoken config value was not provided"
+			} else {
+				strErr = "%s: all apitoken config values must not be blank"
+			}
+
+			err := fmt.Errorf(strErr, funcName)
+			return nil, nil, err
 		}
 
 		cfg.APITokens = validTokens

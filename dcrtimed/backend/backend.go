@@ -1,4 +1,4 @@
-// Copyright (c) 2019 The Decred developers
+// Copyright (c) 2017-2019 The Decred developers
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
 
@@ -113,9 +113,9 @@ type FsckOptions struct {
 // GetBalanceResult contains information account balance
 // info for wallet used by the backend.
 type GetBalanceResult struct {
-	Total       int64
-	Spendable   int64
-	Unconfirmed int64
+	Total       int64 `json:"total"`
+	Spendable   int64 `json:"spendable"`
+	Unconfirmed int64 `json:"unconfirmed"`
 }
 
 type Backend interface {

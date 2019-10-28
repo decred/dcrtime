@@ -1,4 +1,4 @@
-// Copyright (c) 2019 The Decred developers
+// Copyright (c) 2017-2019 The Decred developers
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
 
@@ -35,9 +35,9 @@ type Result struct {
 // BalanceResult contains information about the backing dcrwallet
 // account balance connected to by dcrtimed.
 type BalanceResult struct {
-	Total       int64
-	Spendable   int64
-	Unconfirmed int64
+	Total       int64 `json:"total"`
+	Spendable   int64 `json:"spendable"`
+	Unconfirmed int64 `json:"unconfirmed"`
 }
 
 // Lookup looks up the provided TX hash and returns a Result structure.
