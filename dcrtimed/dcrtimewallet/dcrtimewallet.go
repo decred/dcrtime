@@ -35,9 +35,9 @@ type Result struct {
 // BalanceResult contains information about the backing dcrwallet
 // account balance connected to by dcrtimed.
 type BalanceResult struct {
-	Total       int64 `json:"total"`
-	Spendable   int64 `json:"spendable"`
-	Unconfirmed int64 `json:"unconfirmed"`
+	Total       int64
+	Spendable   int64
+	Unconfirmed int64
 }
 
 // Lookup looks up the provided TX hash and returns a Result structure.

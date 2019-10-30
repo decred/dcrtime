@@ -70,6 +70,7 @@ func (d *DcrtimeStore) sendToBackend(w http.ResponseWriter, method, route, conte
 			"Server busy, please try again later.")
 		return
 	}
+
 	defer resp.Body.Close()
 
 	bodyBuf := new(bytes.Buffer)
@@ -111,7 +112,6 @@ func (d *DcrtimeStore) sendToBackend(w http.ResponseWriter, method, route, conte
 
 func (d *DcrtimeStore) proxyStatus(w http.ResponseWriter, r *http.Request) {
 	b, err := ioutil.ReadAll(r.Body)
-	r.Body.Close()
 	if err != nil {
 		util.RespondWithError(w, http.StatusBadRequest,
 			"Unable to read request")
@@ -133,7 +133,6 @@ func (d *DcrtimeStore) proxyStatus(w http.ResponseWriter, r *http.Request) {
 
 func (d *DcrtimeStore) proxyTimestamp(w http.ResponseWriter, r *http.Request) {
 	b, err := ioutil.ReadAll(r.Body)
-	r.Body.Close()
 	if err != nil {
 		util.RespondWithError(w, http.StatusBadRequest,
 			"Unable to read request")
@@ -158,7 +157,6 @@ func (d *DcrtimeStore) proxyTimestamp(w http.ResponseWriter, r *http.Request) {
 
 func (d *DcrtimeStore) proxyVerify(w http.ResponseWriter, r *http.Request) {
 	b, err := ioutil.ReadAll(r.Body)
-	r.Body.Close()
 	if err != nil {
 		util.RespondWithError(w, http.StatusBadRequest,
 			"Unable to read request")
@@ -199,8 +197,6 @@ func convertDigests(d []string) ([][sha256.Size]byte, error) {
 }
 
 func (d *DcrtimeStore) proxyWalletBalance(w http.ResponseWriter, r *http.Request) {
-	r.Body.Close()
-
 	var apiToken string
 	queryTokens := r.URL.Query()["apitoken"]
 	if len(queryTokens) > 0 {
@@ -217,8 +213,6 @@ func (d *DcrtimeStore) proxyWalletBalance(w http.ResponseWriter, r *http.Request
 
 // status returns server status information
 func (d *DcrtimeStore) status(w http.ResponseWriter, r *http.Request) {
-	defer r.Body.Close()
-
 	var s v1.Status
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&s); err != nil {
@@ -242,8 +236,6 @@ func (d *DcrtimeStore) status(w http.ResponseWriter, r *http.Request) {
 
 // timestamp takes a frontend timestamp and sends it off to the backend.
 func (d *DcrtimeStore) timestamp(w http.ResponseWriter, r *http.Request) {
-	defer r.Body.Close()
-
 	var t v1.Timestamp
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&t); err != nil {
@@ -320,8 +312,6 @@ func (d *DcrtimeStore) timestamp(w http.ResponseWriter, r *http.Request) {
 }
 
 func (d *DcrtimeStore) verify(w http.ResponseWriter, r *http.Request) {
-	defer r.Body.Close()
-
 	var v v1.Verify
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&v); err != nil {
@@ -498,6 +488,8 @@ func (d *DcrtimeStore) walletBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Infof("WalletBalance %v", r.RemoteAddr)
+
 	balanceResult, err := d.backend.GetBalance()
 	if err != nil {
 		errorCode := time.Now().Unix()
@@ -506,7 +498,7 @@ func (d *DcrtimeStore) walletBalance(w http.ResponseWriter, r *http.Request) {
 			r.RemoteAddr, errorCode, err)
 		util.RespondWithError(w, http.StatusInternalServerError,
 			fmt.Sprintf("failed to retrieve wallet balance, "+
-				"Contact administrator and provide "+
+				"contact administrator and provide "+
 				"the following error code: %v", errorCode))
 		return
 	}
@@ -543,6 +535,23 @@ func apiTokenMap(cfg *config) map[string]struct{} {
 		lookup[token] = struct{}{}
 	}
 	return lookup
+}
+
+// closeBody wraps the provided function as a closure and returns a new
+// function that ensures the request body is closed. This is done to avoid
+// resource leaks.
+func closeBody(f http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		f(w, r)
+		r.Body.Close()
+	}
+}
+
+// addRoute adds the route on the provided DcrtimeStore's router and ensures
+// that the request body is closed after handling the request, to avoid leaks.
+func (d *DcrtimeStore) addRoute(method string, route string, handler http.HandlerFunc) {
+	closedHandler := closeBody(handler)
+	d.router.HandleFunc(route, closedHandler).Methods(method)
 }
 
 func _main() error {
@@ -631,10 +640,10 @@ func _main() error {
 	// Setup mux
 	d.router = mux.NewRouter()
 
-	var statusRoute func(http.ResponseWriter, *http.Request)
-	var timestampRoute func(http.ResponseWriter, *http.Request)
-	var verifyRoute func(http.ResponseWriter, *http.Request)
-	var walletBalanceRoute func(http.ResponseWriter, *http.Request)
+	var statusRoute http.HandlerFunc
+	var timestampRoute http.HandlerFunc
+	var verifyRoute http.HandlerFunc
+	var walletBalanceRoute http.HandlerFunc
 
 	if certPool != nil {
 		// PROXY ENABLED
@@ -657,14 +666,14 @@ func _main() error {
 		walletBalanceRoute = d.walletBalance
 	}
 
-	d.router.HandleFunc(v1.StatusRoute, statusRoute).Methods("POST")
-	d.router.HandleFunc(v1.TimestampRoute, timestampRoute).Methods("POST")
-	d.router.HandleFunc(v1.VerifyRoute, verifyRoute).Methods("POST")
-	d.router.HandleFunc(v1.WalletBalanceRoute, walletBalanceRoute).Methods("GET")
+	d.addRoute("POST", v1.StatusRoute, statusRoute)
+	d.addRoute("POST", v1.TimestampRoute, timestampRoute)
+	d.addRoute("POST", v1.VerifyRoute, verifyRoute)
+	d.addRoute("GET", v1.WalletBalanceRoute, walletBalanceRoute)
 
 	// Handle non-api /status as well
 	if trimmed := strings.TrimSuffix(v1.StatusRoute, "/"); trimmed != v1.StatusRoute {
-		d.router.HandleFunc(trimmed, statusRoute).Methods("POST")
+		d.addRoute("POST", trimmed, statusRoute)
 	}
 
 	// Pretty print web page for individual digest/timestamp

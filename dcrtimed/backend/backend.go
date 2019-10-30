@@ -113,9 +113,9 @@ type FsckOptions struct {
 // GetBalanceResult contains information account balance
 // info for wallet used by the backend.
 type GetBalanceResult struct {
-	Total       int64 `json:"total"`
-	Spendable   int64 `json:"spendable"`
-	Unconfirmed int64 `json:"unconfirmed"`
+	Total       int64
+	Spendable   int64
+	Unconfirmed int64
 }
 
 type Backend interface {
