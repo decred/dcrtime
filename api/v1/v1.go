@@ -84,8 +84,11 @@ type StatusReply struct {
 
 // Timestamp is used to ask the timestamp server to store a batch of digests.
 // ID is user settable and can be used as a unique identifier by the client.
+// Digest is a string for a single hash sent by a client. It is appended to
+// the digests array when processed by the backend.
 type Timestamp struct {
 	ID      string   `json:"id"`
+	Digest  string   `json:"digest"`
 	Digests []string `json:"digests"`
 }
 

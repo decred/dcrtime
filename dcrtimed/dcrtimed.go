@@ -224,7 +224,13 @@ func (d *DcrtimeStore) timestamp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate all digests.  If one is invalid return failure.
+	// If a single digest was set on the request, append it
+	// to the digests array
+	if t.Digest != "" {
+		t.Digests = append(t.Digests, t.Digest)
+	}
+
+	// Validate all digests. If one is invalid return failure.
 	digests, err := convertDigests(t.Digests)
 	if err != nil {
 		util.RespondWithError(w, http.StatusBadRequest,
