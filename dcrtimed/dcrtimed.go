@@ -218,6 +218,7 @@ func (d *DcrtimeStore) timestamp(w http.ResponseWriter, r *http.Request) {
 
 	var t v1.Timestamp
 	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&t); err != nil {
 		util.RespondWithError(w, http.StatusBadRequest,
 			"Invalid request payload")
@@ -296,6 +297,7 @@ func (d *DcrtimeStore) verify(w http.ResponseWriter, r *http.Request) {
 
 	var v v1.Verify
 	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&v); err != nil {
 		util.RespondWithError(w, http.StatusBadRequest,
 			"Invalid request payload")
