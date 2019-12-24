@@ -11,6 +11,8 @@ require (
 	github.com/decred/dcrd/txscript/v2 v2.1.0
 	github.com/decred/dcrd/wire v1.3.0
 	github.com/decred/dcrdata/api/types/v4 v4.0.4
+	github.com/decred/dcrtime/api/v2 v2.0.0
+	github.com/decred/dcrwallet v1.2.2
 	github.com/decred/dcrwallet/rpc/walletrpc v0.3.0
 	github.com/decred/slog v1.0.0
 	github.com/gorilla/handlers v1.4.2
@@ -21,3 +23,5 @@ require (
 	github.com/syndtr/goleveldb v1.0.0
 	google.golang.org/grpc v1.27.1
 )
+
+replace github.com/decred/dcrtime/api/v2 => ./api/v2
