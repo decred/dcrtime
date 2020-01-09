@@ -1,4 +1,4 @@
-// Copyright (c) 2017 The Decred developers
+// Copyright (c) 2017-2020 The Decred developers
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
 
@@ -53,7 +53,7 @@ func concat(l, r []byte) []byte {
 func digest(src []byte, dst *[]byte) {
 	h := sha256.New()
 	h.Write(src)
-	copy((*dst)[:], h.Sum(nil))
+	copy(*dst, h.Sum(nil))
 }
 
 // makeHashes takes an array of []byte and converts it to sha256 digest
@@ -79,7 +79,7 @@ func TestMerkle(t *testing.T) {
 
 	// Note that we flip left and right because the digest of right is less
 	// than the digest of left.
-	b := concat(right[:], left[:])
+	b := concat(right, left)
 
 	merkleRoot := make([]byte, sha256.Size)
 	digest(b, &merkleRoot)
@@ -156,7 +156,6 @@ func TestAuthPath(t *testing.T) {
 				t.Fatalf("invalid merkle root got %x, want %x",
 					*merkleRoot, *mt[len(mt)-1])
 			}
-
 		}
 	}
 }

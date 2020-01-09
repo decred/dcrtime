@@ -94,7 +94,6 @@ func (d *DcrtimeWallet) Lookup(tx chainhash.Hash) (*Result, error) {
 
 // Construct creates aand submits an anchored tx with the provided merkle root.
 func (d *DcrtimeWallet) Construct(merkleRoot [sha256.Size]byte) (*chainhash.Hash, error) {
-
 	// Generate script that contains OP_RETURN followed by the merkle root.
 	script, err := txscript.NewScriptBuilder().AddOp(txscript.OP_RETURN).
 		AddData(merkleRoot[:]).Script()

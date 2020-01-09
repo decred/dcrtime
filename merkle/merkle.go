@@ -1,5 +1,5 @@
 // Copyright (c) 2013-2016 The btcsuite developers
-// Copyright (c) 2015-2017 The Decred developers
+// Copyright (c) 2015-2020 The Decred developers
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
 
@@ -135,7 +135,7 @@ func Tree(hashes []*[sha256.Size]byte) []*[sha256.Size]byte {
 			merkles[offset] = newHash
 
 		// The normal case sets the parent node to the hash of the
-		// concatentation of the left and right children.
+		// concatenation of the left and right children.
 		default:
 			newHash := concatDigests(merkles[i], merkles[i+1])
 			merkles[offset] = newHash

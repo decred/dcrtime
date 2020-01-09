@@ -80,7 +80,7 @@ func validJournalAction(action string) bool {
 	return true
 }
 
-// journal records what fix occured at what time if filename != "".
+// journal records what fix occurred at what time if filename != "".
 func journal(filename, action string, payload interface{}) error {
 	// See if we are journaling
 	if filename == "" {
@@ -334,7 +334,7 @@ func (fs *FileSystem) fsckTimestamp(options *backend.FsckOptions, ts int64, empt
 			err = db.Delete(key, nil)
 			if err != nil {
 				return fmt.Errorf("   *** ERROR timestamp " +
-					"mismatch: delete\n")
+					"mismatch: delete")
 			}
 			delete(digests, k)
 		}
@@ -357,7 +357,7 @@ func (fs *FileSystem) fsckTimestamps(options *backend.FsckOptions, empties map[i
 
 	for _, fi := range files {
 		if !fi.IsDir() {
-			return fmt.Errorf("Unexpected file %v\n",
+			return fmt.Errorf("Unexpected file %v",
 				filepath.Join(fs.root, fi.Name()))
 		}
 		if fi.Name() == globalDBDir {
@@ -599,7 +599,7 @@ func (fs *FileSystem) fsckDups(options *backend.FsckOptions) error {
 	digests := make(map[string]int64)
 	for _, fi := range files {
 		if !fi.IsDir() {
-			return fmt.Errorf("Unexpected file %v\n",
+			return fmt.Errorf("Unexpected file %v",
 				filepath.Join(fs.root, fi.Name()))
 		}
 		if fi.Name() == globalDBDir {
