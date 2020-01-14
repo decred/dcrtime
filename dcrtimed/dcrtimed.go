@@ -618,6 +618,83 @@ func (d *DcrtimeStore) statusV2(w http.ResponseWriter, r *http.Request) {
 	util.RespondWithJSON(w, http.StatusOK, v2.StatusReply(s))
 }
 
+// timestampV2 takes a single digest from a client and sends it to the backend.
+// Handles /v2/timestamp
+func (d *DcrtimeStore) timestampV2(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
+	var t v2.Timestamp
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&t); err != nil {
+		util.RespondWithError(w, http.StatusBadRequest,
+			"Invalid request payload")
+		return
+	}
+
+	// Validate digest. If it is invalid return failure.
+	digest, err := convertDigests([]string{t.Digest})
+	if err != nil {
+		util.RespondWithError(w, http.StatusBadRequest,
+			"Invalid Digest")
+		return
+	}
+
+	// Push to backend
+	ts, me, err := d.backend.Put(digest)
+	if err != nil {
+		// Generic internal error.
+		errorCode := time.Now().Unix()
+		log.Errorf("%v timestamp error code %v: %v", r.RemoteAddr,
+			errorCode, err)
+
+		// Tell client there is a transient error.
+		if err == backend.ErrTryAgainLater {
+			util.RespondWithError(w, http.StatusServiceUnavailable,
+				"Server busy, please try again later.")
+			return
+		}
+
+		// Log what went wrong
+		log.Errorf("%v timestamp error code %v: %v", r.RemoteAddr,
+			errorCode, err)
+		util.RespondWithError(w, http.StatusInternalServerError,
+			fmt.Sprintf("Could not store payload, contact "+
+				"administrator and provide the following "+
+				"error code: %v", errorCode))
+		return
+	}
+
+	// Log for audit trail and reuse loop to translate MultiError to JSON
+	// Results.
+	via := r.RemoteAddr
+	xff := r.Header.Get(forward)
+	if xff != "" {
+		via = fmt.Sprintf("%v via %v", xff, r.RemoteAddr)
+	}
+	var (
+		result int
+		verb   string
+	)
+	pr := me[len(me)-1] // Digest from PutResult
+	tsS := time.Unix(ts, 0).UTC().Format(fStr)
+	if pr.ErrorCode == backend.ErrorOK {
+		verb = "accepted"
+		result = v2.ResultOK
+	} else {
+		verb = "rejected"
+		result = v2.ResultExistsError
+	}
+	log.Infof("Timestamp %v: %v %v %x", via, verb, tsS, pr.Digest)
+
+	util.RespondWithJSON(w, http.StatusOK, v2.TimestampReply{
+		ID:              t.ID,
+		Digest:          t.Digest,
+		ServerTimestamp: ts,
+		Result:          result,
+	})
+}
+
 // timestampsV2 takes multiple digests from a client and sends it to the backend.
 // Handles /v2/timestamps
 func (d *DcrtimeStore) timestampsV2(w http.ResponseWriter, r *http.Request) {
@@ -849,83 +926,6 @@ func (d *DcrtimeStore) verifyV2(w http.ResponseWriter, r *http.Request) {
 		ID:         v.ID,
 		Timestamps: tsReply,
 		Digests:    dReply,
-	})
-}
-
-// timestampV2 takes a single digest from a client and sends it to the backend.
-// Handles /v2/timestamp
-func (d *DcrtimeStore) timestampV2(w http.ResponseWriter, r *http.Request) {
-	defer r.Body.Close()
-
-	var t v2.Timestamp
-	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&t); err != nil {
-		util.RespondWithError(w, http.StatusBadRequest,
-			"Invalid request payload")
-		return
-	}
-
-	// Validate digest. If it is invalid return failure.
-	digest, err := convertDigests([]string{t.Digest})
-	if err != nil {
-		util.RespondWithError(w, http.StatusBadRequest,
-			"Invalid Digest")
-		return
-	}
-
-	// Push to backend
-	ts, me, err := d.backend.Put(digest)
-	if err != nil {
-		// Generic internal error.
-		errorCode := time.Now().Unix()
-		log.Errorf("%v timestamp error code %v: %v", r.RemoteAddr,
-			errorCode, err)
-
-		// Tell client there is a transient error.
-		if err == backend.ErrTryAgainLater {
-			util.RespondWithError(w, http.StatusServiceUnavailable,
-				"Server busy, please try again later.")
-			return
-		}
-
-		// Log what went wrong
-		log.Errorf("%v timestamp error code %v: %v", r.RemoteAddr,
-			errorCode, err)
-		util.RespondWithError(w, http.StatusInternalServerError,
-			fmt.Sprintf("Could not store payload, contact "+
-				"administrator and provide the following "+
-				"error code: %v", errorCode))
-		return
-	}
-
-	// Log for audit trail and reuse loop to translate MultiError to JSON
-	// Results.
-	via := r.RemoteAddr
-	xff := r.Header.Get(forward)
-	if xff != "" {
-		via = fmt.Sprintf("%v via %v", xff, r.RemoteAddr)
-	}
-	var (
-		result int
-		verb   string
-	)
-	pr := me[len(me)-1] // Digest from PutResult
-	tsS := time.Unix(ts, 0).UTC().Format(fStr)
-	if pr.ErrorCode == backend.ErrorOK {
-		verb = "accepted"
-		result = v2.ResultOK
-	} else {
-		verb = "rejected"
-		result = v2.ResultExistsError
-	}
-	log.Infof("Timestamp %v: %v %v %x", via, verb, tsS, pr.Digest)
-
-	util.RespondWithJSON(w, http.StatusOK, v2.TimestampReply{
-		ID:              t.ID,
-		Digest:          t.Digest,
-		ServerTimestamp: ts,
-		Result:          result,
 	})
 }
 

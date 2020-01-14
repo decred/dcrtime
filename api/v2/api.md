@@ -2,7 +2,7 @@
 
 ## V2
 
-This document describes the REST API provided by a `dcrtimed` server. This API allows users to create and upload hashes which are periodically submitted to the Decred blockchain. It gives the option to send a single string digest, as well as multiples in a array of string digests. It also provides the ability to to confirm the addition of the hash to a timestamped collection along with showing and validating their inclusion in the Decred blockchain.
+This document describes the REST API provided by a `dcrtimed` server. This API allows users to create and upload hashes which are periodically submitted to the Decred blockchain. It gives the option to send a single string digest, as well as multiples in a array of string digests. It also provides the ability to confirm the addition of the hash to a timestamped collection along with showing and validating their inclusion in the Decred blockchain.
 
 **Methods**
 
@@ -160,11 +160,7 @@ Reply:
 
 #### `Verify`
 
-Verifies the status of a batch of digests or timestamps on the server. If verifying a digest,
-it'll return the chain information relative to that digest, including its merkle path. If 
-verifying a timestamp, it'll return the collection information relative to that timestamp, 
-including all the digests grouped on that collection. If it has not been anchored on the 
-blockchain yet, it returns zero. Digests and timestamps can be verified on the same request.
+Verifies the status of a batch of digests or timestamps on the server. If verifying a digest, it'll return the chain information relative to that digest, including its merkle path. If verifying a timestamp, it'll return the collection information relative to that timestamp, including all the digests grouped on that collection. If it has not been anchored on the blockchain yet, it returns zero. Digests and timestamps can be verified on the same request.
 
 * **URL**
 
