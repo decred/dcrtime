@@ -84,6 +84,7 @@ Reply:
 	"result": 1
 }
 ```
+
 #### `Timestamps`
 
 Upload multiple digests to the time server. Behaves the same as /v2/timestamp, except for the hability to send multiple
@@ -156,7 +157,14 @@ Reply:
 	]
 }
 ```
+
 #### `Verify`
+
+Verifies the status of a batch of digests or timestamps on the server. If verifying a digest,
+it'll return the chain information relative to that digest, including its merkle path. If 
+verifying a timestamp, it'll return the collection information relative to that timestamp, 
+including all the digests grouped on that collection. If it has not been anchored on the 
+blockchain yet, it returns zero. Digests and timestamps can be verified on the same request.
 
 * **URL**
 
@@ -172,7 +180,14 @@ Reply:
 
 	`digests=[{hash},{...}]`
 
-	A list of hashes to be confirmed by the server.
+	A list of string hashes to be confirmed by the server.
+
+	or
+
+	`timestamps=[{timestamp}, {...}]`
+
+
+	A list of int64 timestamps to be confirmed by the server.
 
 	**Optional**
 
@@ -185,6 +200,10 @@ Reply:
 	`id`
 
 	id is copied from the original call for the client to use to match calls and responses.
+
+	`digests`
+
+	The batch of digests requested by the client. Each digest will return the following fields:
 
 	`digest`
 
@@ -218,6 +237,39 @@ Reply:
 
 	Merklepath contains additional information for the mined transaction (if available).
 
+	`timestamps`
+
+	The batch of timestamps requested by the client. Each timestamp will return the following fields:
+
+	`servertimestamp`
+
+	The timestamp itself.
+
+	`result`
+
+	Return code, see #Results.
+
+	`collectioninformation`	
+
+	A JSON object with the information about that timestamp collection.
+
+	`chaintimestamp`
+
+	Timestamp from the server.
+
+	`transaction` 
+
+	Transaction hash that includes the digest.
+
+	`merkleroot`
+
+	MerkleRoot of the block containing the transaction (if mined).
+
+	`digests`	
+
+	Digests contains all digests grouped and anchored on the collection.
+
+
 * **Example**
 
 Request:
@@ -228,7 +280,9 @@ Request:
 	"digests":[
         "d412ba345bc44fb6fbbaf2db9419b648752ecfcda6fd1aec213b45a5584d1b13"
     ],
-	"timestamps":null
+	"timestamps": [
+		1497376800
+	]
 }
 ```
 
@@ -252,7 +306,18 @@ Reply:
 	        }
 	    }
 	}],
-	"timestamps":[]
+	"timestamps":[{
+		"servertimestamp":1497376800,
+		"result":0,
+		"collectioninformation":{
+			"chaintimestamp":0,
+			"transaction":"0000000000000000000000000000000000000000000000000000000000000000",
+			"merkleroot":"0000000000000000000000000000000000000000000000000000000000000000",
+			"digests":[
+				"d412ba345bc44fb6fbbaf2db9419b648752ecfcda6fd1aec213b45a5584d1b13"
+			]
+		}
+	}]
 }
 ```
 
