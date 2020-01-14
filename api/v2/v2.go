@@ -6,7 +6,6 @@ package v2
 
 import (
 	"github.com/decred/dcrtime/merkle"
-	"regexp"
 )
 
 const (
@@ -49,12 +48,6 @@ var (
 		ResultDoesntExistError: "Doesn't exist",
 		ResultDisabled:         "Query disallowed",
 	}
-
-	// RegexpSHA256 is the valid text representation of a sha256 digest.
-	RegexpSHA256 = regexp.MustCompile("^[A-Fa-f0-9]{64}$")
-
-	// RegexpTimestamp is the valid text representation of a timestamp.
-	RegexpTimestamp = regexp.MustCompile("^[0-9]{10}$")
 )
 
 // Status is used to ask the server if everything is running properly.
@@ -138,6 +131,8 @@ type VerifyReply struct {
 	Timestamps []VerifyTimestamp `json:"timestamps"`
 }
 
+// ChainInformation is returned by the server on a verify digest request. It contains
+// the merkle path of that digest.
 type ChainInformation struct {
 	ChainTimestamp int64         `json:"chaintimestamp"`
 	Transaction    string        `json:"transaction"`
@@ -145,6 +140,8 @@ type ChainInformation struct {
 	MerklePath     merkle.Branch `json:"merklepath"`
 }
 
+// CollectionInformation is returned by the server on a verify timestamp request.
+// It contains all digests grouped on the collection of the requested block timestamp.
 type CollectionInformation struct {
 	ChainTimestamp int64    `json:"chaintimestamp"`
 	Transaction    string   `json:"transaction"`
