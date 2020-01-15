@@ -87,8 +87,8 @@ Reply:
 
 #### `Timestamps`
 
-Upload multiple digests to the time server. Behaves the same as /v2/timestamp, except for the hability to send multiple
-hashes in a single request.
+Upload multiple digests to the time server. Behaves the same as /v2/timestamp, except for the ability to send multiple
+digests in a single request.
 
 * **URL**
 
@@ -160,7 +160,7 @@ Reply:
 
 #### `Verify`
 
-Verifies the status of a batch of digests or timestamps on the server. If verifying a digest, it'll return the chain information relative to that digest, including its merkle path. If verifying a timestamp, it'll return the collection information relative to that timestamp, including all the digests grouped on that collection. If it has not been anchored on the blockchain yet, it returns zero. Digests and timestamps can be verified on the same request.
+Verifies the status of a batch of digests or timestamps on the server. If verifying digests, it'll return the chain information relative to that digest, including its merkle path. If verifying timestamps, it'll return the collection information relative to that timestamp, including all the digests grouped on that collection. If it has not been anchored on the blockchain yet, it returns zero. Digests and timestamps can be verified on the same request.
 
 * **URL**
 
@@ -176,14 +176,14 @@ Verifies the status of a batch of digests or timestamps on the server. If verify
 
 	`digests=[{hash},{...}]`
 
-	A list of string hashes to be confirmed by the server.
+	Digests is an array of digests (SHA256 hashes) to send to the server.
 
 	or
 
 	`timestamps=[{timestamp}, {...}]`
 
 
-	A list of int64 timestamps to be confirmed by the server.
+	Timestamps is an array of int64 timestamps to be confirmed by the server.
 
 	**Optional**
 
@@ -263,7 +263,7 @@ Verifies the status of a batch of digests or timestamps on the server. If verify
 
 	`digests`	
 
-	Digests contains all digests grouped and anchored on the collection.
+	Digests contains all digests grouped and anchored on that timestamp collection.
 
 
 * **Example**

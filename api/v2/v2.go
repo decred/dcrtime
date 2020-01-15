@@ -41,7 +41,7 @@ const (
 )
 
 var (
-	// Result is a map of the possible timestamp status
+	// Result is a map of possible http results
 	Result = map[int]string{
 		ResultOK:               "OK",
 		ResultExistsError:      "Exists",
