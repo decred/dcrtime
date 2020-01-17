@@ -104,7 +104,7 @@ digests in a single request.
 
    `digests=[{hash},{...}]`
 
-    Digest is an array of digests (SHA256 hashes) to send to the server.
+    Digests is an array of digests (SHA256 hashes) to send to the server.
 
 	**Optional**
 
