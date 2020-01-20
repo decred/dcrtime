@@ -673,7 +673,7 @@ func (d *DcrtimeStore) timestampV2(w http.ResponseWriter, r *http.Request) {
 		via = fmt.Sprintf("%v via %v", xff, r.RemoteAddr)
 	}
 	var (
-		result int
+		result v2.ResultT
 		verb   string
 	)
 	pr := me[len(me)-1] // Digest from PutResult
@@ -750,10 +750,10 @@ func (d *DcrtimeStore) timestampsV2(w http.ResponseWriter, r *http.Request) {
 		via = fmt.Sprintf("%v via %v", xff, r.RemoteAddr)
 	}
 	var (
-		result int
+		result v2.ResultT
 		verb   string
 	)
-	results := make([]int, 0, len(me))
+	results := make([]v2.ResultT, 0, len(me))
 	tsS := time.Unix(ts, 0).UTC().Format(fStr)
 	for _, v := range me {
 		if v.ErrorCode == backend.ErrorOK {
@@ -929,7 +929,7 @@ func (d *DcrtimeStore) verifyV2(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// ConvertDigests receives an array of string digests and converts it to
+// convertDigests receives an array of string digests and converts it to
 // sha256, format currently being used throughout the code.
 func convertDigests(d []string) ([][sha256.Size]byte, error) {
 	result := make([][sha256.Size]byte, 0, len(d))

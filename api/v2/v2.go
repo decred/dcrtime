@@ -8,6 +8,8 @@ import (
 	"github.com/decred/dcrtime/merkle"
 )
 
+type ResultT int
+
 const (
 	// StatusRoute defines the API route for retrieving
 	// the server status.
@@ -26,23 +28,23 @@ const (
 	VerifyRoute = "/v2/verify/" // Multi verify digests
 
 	// ResultOK indicates the operation completed successfully.
-	ResultOK = 0
+	ResultOK ResultT = 0
 
 	// ResultExistsError indicates the digest already exists and was
 	// rejected.
-	ResultExistsError = 1
+	ResultExistsError ResultT = 1
 
 	// ResultDoesntExistError indiciates the timestamp or digest does not
 	// exist.
-	ResultDoesntExistError = 2
+	ResultDoesntExistError ResultT = 2
 
 	// ResultDisabled indicates querying is disabled.
-	ResultDisabled = 3
+	ResultDisabled ResultT = 3
 )
 
 var (
 	// Result is a map of possible http results
-	Result = map[int]string{
+	Result = map[ResultT]string{
 		ResultOK:               "OK",
 		ResultExistsError:      "Exists",
 		ResultDoesntExistError: "Doesn't exist",
@@ -73,10 +75,10 @@ type Timestamp struct {
 // used by the client as a unique identifier. ServerTimestamp indicates what
 // collection the Digest belongs to. Result holds the result code for the digest.
 type TimestampReply struct {
-	ID              string `json:"id"`
-	ServerTimestamp int64  `json:"servertimestamp"`
-	Digest          string `json:"digest"`
-	Result          int    `json:"result"`
+	ID              string  `json:"id"`
+	ServerTimestamp int64   `json:"servertimestamp"`
+	Digest          string  `json:"digest"`
+	Result          ResultT `json:"result"`
 }
 
 // Timestamps is used to ask the timestamp server to store a batch of digests.
@@ -92,10 +94,10 @@ type Timestamps struct {
 // what collection the Digests belong to. Results contains individual result
 // codes for each digest.
 type TimestampsReply struct {
-	ID              string   `json:"id"`
-	ServerTimestamp int64    `json:"servertimestamp"`
-	Digests         []string `json:"digests"`
-	Results         []int    `json:"results"`
+	ID              string    `json:"id"`
+	ServerTimestamp int64     `json:"servertimestamp"`
+	Digests         []string  `json:"digests"`
+	Results         []ResultT `json:"results"`
 }
 
 // Verify is used to ask the server about the status of a batch of digests or
@@ -111,7 +113,7 @@ type Verify struct {
 type VerifyDigest struct {
 	Digest           string           `json:"digest"`
 	ServerTimestamp  int64            `json:"servertimestamp"`
-	Result           int              `json:"result"`
+	Result           ResultT          `json:"result"`
 	ChainInformation ChainInformation `json:"chaininformation"`
 }
 
@@ -119,7 +121,7 @@ type VerifyDigest struct {
 // blockchain; it is however set to the block timestamp it was anchored in.
 type VerifyTimestamp struct {
 	ServerTimestamp       int64                 `json:"servertimestamp"`
-	Result                int                   `json:"result"`
+	Result                ResultT               `json:"result"`
 	CollectionInformation CollectionInformation `json:"collectioninformation"`
 }
 

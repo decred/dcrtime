@@ -2,7 +2,12 @@
 
 ## V2
 
-This document describes the REST API provided by a `dcrtimed` server. This API allows users to create and upload hashes which are periodically submitted to the Decred blockchain. It gives the option to send a single string digest, as well as multiples in a array of string digests. It also provides the ability to confirm the addition of the hash to a timestamped collection along with showing and validating their inclusion in the Decred blockchain.
+This document describes the REST API provided by a `dcrtimed` server. This API 
+allows users to create and upload hashes which are periodically submitted to 
+the Decred blockchain. It gives the option to send a single string digest, as 
+well as multiples in a array of string digests. It also provides the ability 
+to confirm the addition of the hash to a timestamped collection along with 
+showing and validating their inclusion in the Decred blockchain.
 
 **Methods**
 
@@ -21,7 +26,12 @@ This document describes the REST API provided by a `dcrtimed` server. This API a
 
 #### `Timestamp`
 
-Upload one digest to the time server. The server will then add this digest to a collection and eventually to a transaction that goes in a Decred block. This method returns immediately with the collection the digest has been added to.  You must use the verify call to find out when it has been anchored to a block (which is done in batches at a set time interval that is not related to the api calls).
+Upload one digest to the time server. The server will then add this digest to
+a collection and eventually to a transaction that goes in a Decred block. 
+This method returns immediately with the collection the digest has been added 
+to.You must use the verify call to find out when it has been anchored to a 
+block (which is done in batches at a set time interval that is not related 
+to the api calls).
 
 * **URL**
 
@@ -43,13 +53,15 @@ Upload one digest to the time server. The server will then add this digest to a 
 
    `id=[string]`
 
-	ID is a user provided identifier that may be used in case the client requires a unique identifier.
+	ID is a user provided identifier that may be used in case the client 
+	requires a unique identifier.
 
 * **Results**
 
 	`id`
 
-	id is copied from the original call for the client to use to match calls and responses.
+	id is copied from the original call for the client to use to match calls
+	 and responses.
 
 	`servertimestamp`
 
@@ -61,7 +73,8 @@ Upload one digest to the time server. The server will then add this digest to a 
 
 	`result`
 
-	result is a integer representing the result for the digest. See #Result for details on return codes.
+	result is a integer representing the result for the digest. See #Result
+	 for details on return codes.
 
 * **Example**
 
@@ -70,7 +83,8 @@ Request:
 ```json
 {
     "id":"dcrtime cli",
-    "digest": "d412ba345bc44fb6fbbaf2db9419b648752ecfcda6fd1aec213b45a5584d1b13"
+    "digest": 
+		"d412ba345bc44fb6fbbaf2db9419b648752ecfcda6fd1aec213b45a5584d1b13"
 }
 ```
 
@@ -80,15 +94,16 @@ Reply:
 {
     "id":"dcrtime cli",
 	"servertimestamp":1497376800,
-	"digest": "d412ba345bc44fb6fbbaf2db9419b648752ecfcda6fd1aec213b45a5584d1b13",
+	"digest": 
+		"d412ba345bc44fb6fbbaf2db9419b648752ecfcda6fd1aec213b45a5584d1b13",
 	"result": 1
 }
 ```
 
 #### `Timestamps`
 
-Upload multiple digests to the time server. Behaves the same as /v2/timestamp, except for the ability to send multiple
-digests in a single request.
+Upload multiple digests to the time server. Behaves the same as /v2/timestamp, 
+except for the ability to send multiple digests in a single request.
 
 * **URL**
 
@@ -110,13 +125,15 @@ digests in a single request.
 
    `id=[string]`
 
-	ID is a user provided identifier that may be used in case the client requires a unique identifier.
+	ID is a user provided identifier that may be used in case the client 
+	requires a unique identifier.
 
 * **Results**
 
 	`id`
 
-	id is copied from the original call for the client to use to match calls and responses.
+	id is copied from the original call for the client to use to match calls
+	 and responses.
 
 	`servertimestamp`
 
@@ -128,7 +145,8 @@ digests in a single request.
 
 	`results`
 
-	results is a list of integers representing the result for each digest.  See #Results for details on return codes.
+	results is a list of integers representing the result for each digest.  
+	See #Results for details on return codes.
 
 * **Example**
 
@@ -160,7 +178,12 @@ Reply:
 
 #### `Verify`
 
-Verifies the status of a batch of digests or timestamps on the server. If verifying digests, it'll return the chain information relative to that digest, including its merkle path. If verifying timestamps, it'll return the collection information relative to that timestamp, including all the digests grouped on that collection. If it has not been anchored on the blockchain yet, it returns zero. Digests and timestamps can be verified on the same request.
+Verifies the status of a batch of digests or timestamps on the server. If 
+verifying digests, it'll return the chain information relative to that digest, 
+including its merkle path. If verifying timestamps, it'll return the 
+collection information relative to that timestamp, including all the digests 
+grouped on that collection. If it has not been anchored on the blockchain yet, 
+it returns zero. Digests and timestamps can be verified on the same request.
 
 * **URL**
 
@@ -189,17 +212,20 @@ Verifies the status of a batch of digests or timestamps on the server. If verify
 
    `id=[string]`
 
-	ID is a user provided identifier that may be used in case the client requires a unique identifier.
+	ID is a user provided identifier that may be used in case the client 
+	requires a unique identifier.
 
 * **Results**
 
 	`id`
 
-	id is copied from the original call for the client to use to match calls and responses.
+	id is copied from the original call for the client to use to match calls
+	and responses.
 
 	`digests`
 
-	The batch of digests requested by the client. Each digest will return the following fields:
+	The batch of digests requested by the client. Each digest will return the
+	following fields:
 
 	`digest`
 
@@ -231,11 +257,13 @@ Verifies the status of a batch of digests or timestamps on the server. If verify
 
 	`merklepath`
 
-	Merklepath contains additional information for the mined transaction (if available).
+	Merklepath contains additional information for the mined transaction 
+	(if available).
 
 	`timestamps`
 
-	The batch of timestamps requested by the client. Each timestamp will return the following fields:
+	The batch of timestamps requested by the client. Each timestamp will return
+	 the following fields:
 
 	`servertimestamp`
 
@@ -263,7 +291,8 @@ Verifies the status of a batch of digests or timestamps on the server. If verify
 
 	`digests`	
 
-	Digests contains all digests grouped and anchored on that timestamp collection.
+	Digests contains all digests grouped and anchored on that timestamp 
+	collection.
 
 
 * **Example**
@@ -288,13 +317,16 @@ Reply:
 {
     "id":"dcrtime cli",
 	"digests":[{
-	    "digest":"d412ba345bc44fb6fbbaf2db9419b648752ecfcda6fd1aec213b45a5584d1b13",
+	    "digest":
+			"d412ba345bc44fb6fbbaf2db9419b648752ecfcda6fd1aec213b45a5584d1b13",
 	    "servertimestamp":1497376800,
 	    "result":0,
 	    "chaininformation":{
 	        "chaintimestamp":0,
-	        "transaction":"0000000000000000000000000000000000000000000000000000000000000000",
-	        "merkleroot":"0000000000000000000000000000000000000000000000000000000000000000",
+	        "transaction":
+			"0000000000000000000000000000000000000000000000000000000000000000",
+	        "merkleroot":
+			"0000000000000000000000000000000000000000000000000000000000000000",
 	        "merklepath":{
 	            "NumLeaves":0,
 	            "Hashes":null,
@@ -307,10 +339,12 @@ Reply:
 		"result":0,
 		"collectioninformation":{
 			"chaintimestamp":0,
-			"transaction":"0000000000000000000000000000000000000000000000000000000000000000",
-			"merkleroot":"0000000000000000000000000000000000000000000000000000000000000000",
+			"transaction":
+			"0000000000000000000000000000000000000000000000000000000000000000",
+			"merkleroot":
+			"0000000000000000000000000000000000000000000000000000000000000000",
 			"digests":[
-				"d412ba345bc44fb6fbbaf2db9419b648752ecfcda6fd1aec213b45a5584d1b13"
+			"d412ba345bc44fb6fbbaf2db9419b648752ecfcda6fd1aec213b45a5584d1b13"
 			]
 		}
 	}]
@@ -329,13 +363,15 @@ Reply:
 
 	`1`
 
-The digest was rejected because it exists.  This is only relevant for the `Timestamp` call.
+The digest was rejected because it exists.  This is only relevant for the
+`Timestamp` call.
 
 * `ResultDoesntExistError`
 
 	`2`
 
-The timestamp or digest could not be found by the server.  This is only relevant for the `Verify` call.
+The timestamp or digest could not be found by the server.  This is only 
+relevant for the `Verify` call.
 
 * `ResultDisabled`
 
