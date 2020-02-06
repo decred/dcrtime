@@ -5,6 +5,8 @@
 package v2
 
 import (
+	"regexp"
+
 	"github.com/decred/dcrtime/merkle"
 )
 
@@ -48,6 +50,22 @@ const (
 
 	// ResultDisabled indicates querying is disabled.
 	ResultDisabled ResultT = 4
+
+	// DefaultMainnetTimeHost indicates the default mainnet time host
+	// server.
+	DefaultMainnetTimeHost = "time.decred.org"
+
+	// DefaultMainnetTimePort indicates the default mainnet time host
+	// port.
+	DefaultMainnetTimePort = "49152"
+
+	// DefaultTestnetTimeHost indicates the default testnet time host
+	// server.
+	DefaultTestnetTimeHost = "time-testnet.decred.org"
+
+	// DefaultTestnetTimePort indicates the default testnet time host
+	// port.
+	DefaultTestnetTimePort = "59152"
 )
 
 var (
@@ -59,6 +77,12 @@ var (
 		ResultDoesntExistError: "Doesn't exist",
 		ResultDisabled:         "Query disallowed",
 	}
+
+	// RegexpSHA256 is the valid text representation of a sha256 digest.
+	RegexpSHA256 = regexp.MustCompile("^[A-Fa-f0-9]{64}$")
+
+	// RegexpTimestamp is the valid text representation of a timestamp.
+	RegexpTimestamp = regexp.MustCompile("^[0-9]{10}$")
 )
 
 // VersionReply returns the version the server is currently running

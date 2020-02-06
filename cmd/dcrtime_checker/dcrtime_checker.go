@@ -9,7 +9,7 @@ import (
 	"os"
 	"strings"
 
-	v1 "github.com/decred/dcrtime/api/v1"
+	v2 "github.com/decred/dcrtime/api/v2"
 	"github.com/decred/dcrtime/merkle"
 	"github.com/decred/dcrtime/util"
 )
@@ -45,7 +45,7 @@ func _main() error {
 	if err != nil {
 		return err
 	}
-	var vr v1.VerifyReply
+	var vr v2.VerifyReply
 	decoder := json.NewDecoder(fProof)
 	if err := decoder.Decode(&vr); err != nil {
 		return fmt.Errorf("Could node decode VerifyReply: %v", err)
@@ -90,8 +90,8 @@ func _main() error {
 	v := vr.Digests[found]
 
 	// Verify result of matching digest
-	if _, ok := v1.Result[v.Result]; !ok {
-		return fmt.Errorf("%v invalid error code %v", v.Digest,
+	if _, ok := v2.Result[v.Result]; !ok {
+		return fmt.Errorf("%v invalid error code %v\n", v.Digest,
 			v.Result)
 	}
 

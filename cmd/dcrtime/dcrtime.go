@@ -19,7 +19,7 @@ import (
 	"os"
 	"strconv"
 
-	v1 "github.com/decred/dcrtime/api/v1"
+	v2 "github.com/decred/dcrtime/api/v2"
 	"github.com/decred/dcrtime/merkle"
 	"github.com/decred/dcrtime/util"
 )
@@ -74,12 +74,12 @@ func isFile(filename string) bool {
 
 // isDigest determines if a string is a valid SHA256 digest.
 func isDigest(digest string) bool {
-	return v1.RegexpSHA256.MatchString(digest)
+	return v2.RegexpSHA256.MatchString(digest)
 }
 
 // isTimestamp determines if a string is a valid UNIX timestamp.
 func isTimestamp(timestamp string) bool {
-	return v1.RegexpTimestamp.MatchString(timestamp)
+	return v2.RegexpTimestamp.MatchString(timestamp)
 }
 
 // getError returns the error that is embedded in a JSON reply.
@@ -139,7 +139,7 @@ func newClient(skipVerify bool) *http.Client {
 }
 
 func download(questions []string) error {
-	ver := v1.Verify{
+	ver := v2.Verify{
 		ID: dcrtimeClientID,
 	}
 
@@ -173,7 +173,7 @@ func download(questions []string) error {
 	}
 
 	c := newClient(false)
-	r, err := c.Post(*host+v1.VerifyRoute, "application/json",
+	r, err := c.Post(*host+v2.VerifyRoute, "application/json",
 		bytes.NewReader(b))
 	if err != nil {
 		return err
@@ -195,14 +195,14 @@ func download(questions []string) error {
 	}
 
 	// Decode response.
-	var vr v1.VerifyReply
+	var vr v2.VerifyReply
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&vr); err != nil {
 		return fmt.Errorf("could node decode VerifyReply: %v", err)
 	}
 
 	for _, v := range vr.Timestamps {
-		result, ok := v1.Result[v.Result]
+		result, ok := v2.Result[v.Result]
 		if !ok {
 			fmt.Printf("%v invalid error code %v\n", v.ServerTimestamp,
 				v.Result)
@@ -233,7 +233,7 @@ func download(questions []string) error {
 
 		// Print the good news.
 		if v.CollectionInformation.ChainTimestamp == 0 &&
-			v.Result == v1.ResultOK {
+			v.Result == v2.ResultOK {
 			result = "Not anchored"
 		}
 		fmt.Printf("%v %v\n", v.ServerTimestamp, result)
@@ -261,7 +261,7 @@ func download(questions []string) error {
 	}
 
 	for _, v := range vr.Digests {
-		result, ok := v1.Result[v.Result]
+		result, ok := v2.Result[v.Result]
 		if !ok {
 			fmt.Printf("%v invalid error code %v\n", v.Digest,
 				v.Result)
@@ -311,7 +311,7 @@ func download(questions []string) error {
 
 func upload(digests []string, exists map[string]string) error {
 	// batch uploads
-	ts := v1.Timestamp{
+	ts := v2.Timestamps{
 		ID:      dcrtimeClientID,
 		Digests: digests,
 	}
@@ -330,7 +330,7 @@ func upload(digests []string, exists map[string]string) error {
 	}
 
 	c := newClient(false)
-	r, err := c.Post(*host+v1.TimestampRoute, "application/json",
+	r, err := c.Post(*host+v2.TimestampsRoute, "application/json",
 		bytes.NewReader(b))
 	if err != nil {
 		return err
@@ -352,7 +352,7 @@ func upload(digests []string, exists map[string]string) error {
 	}
 
 	// Decode response.
-	var tsReply v1.TimestampReply
+	var tsReply v2.TimestampsReply
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&tsReply); err != nil {
 		return fmt.Errorf("Could node decode TimestampReply: %v", err)
@@ -361,7 +361,7 @@ func upload(digests []string, exists map[string]string) error {
 	// Print human readable results.
 	for k, v := range tsReply.Results {
 		filename := exists[tsReply.Digests[k]]
-		if v == v1.ResultOK {
+		if v == v2.ResultOK {
 			fmt.Printf("%v OK     %v\n", tsReply.Digests[k], filename)
 			continue
 		}
@@ -497,15 +497,15 @@ func _main() error {
 
 	if *host == "" {
 		if *testnet {
-			*host = v1.DefaultTestnetTimeHost
+			*host = v2.DefaultTestnetTimeHost
 		} else {
-			*host = v1.DefaultMainnetTimeHost
+			*host = v2.DefaultMainnetTimeHost
 		}
 	}
 
-	port := v1.DefaultMainnetTimePort
+	port := v2.DefaultMainnetTimePort
 	if *testnet {
-		port = v1.DefaultTestnetTimePort
+		port = v2.DefaultTestnetTimePort
 	}
 
 	*host = normalizeAddress(*host, port)
