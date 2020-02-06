@@ -27,24 +27,28 @@ const (
 	// and digest verification.
 	VerifyRoute = "/v2/verify/" // Multi verify digests
 
+	// ResultInvalid indicates the operation on the backend was invalid.
+	ResultInvalid ResultT = 0
+
 	// ResultOK indicates the operation completed successfully.
-	ResultOK ResultT = 0
+	ResultOK ResultT = 1
 
 	// ResultExistsError indicates the digest already exists and was
 	// rejected.
-	ResultExistsError ResultT = 1
+	ResultExistsError ResultT = 2
 
 	// ResultDoesntExistError indiciates the timestamp or digest does not
 	// exist.
-	ResultDoesntExistError ResultT = 2
+	ResultDoesntExistError ResultT = 3
 
 	// ResultDisabled indicates querying is disabled.
-	ResultDisabled ResultT = 3
+	ResultDisabled ResultT = 4
 )
 
 var (
 	// Result is a map of possible http results
 	Result = map[ResultT]string{
+		ResultInvalid:          "Invalid",
 		ResultOK:               "OK",
 		ResultExistsError:      "Exists",
 		ResultDoesntExistError: "Doesn't exist",

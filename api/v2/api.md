@@ -17,6 +17,7 @@ showing and validating their inclusion in the Decred blockchain.
 
 **Return Codes**
 
+- [`ResultInvalid`](#ResultInvalid)
 - [`ResultOK`](#ResultOK)
 - [`ResultExistsError`](#ResultExistsError)
 - [`ResultDoesntExistsError`](#ResultDoesntExistsError)
@@ -353,28 +354,34 @@ Reply:
 
 ### Results
 
-* `ResultOK`
+* `ResultInvalid`
 
 	`0`
 
-	The Operation completed successfully.
+The requested operation was invalid.
 
-* `ResultExistsError`
+* `ResultOK`
 
 	`1`
 
-The digest was rejected because it exists.  This is only relevant for the
+The operation completed successfully.
+
+* `ResultExistsError`
+
+	`2`
+
+The digest was rejected because it exists. This is only relevant for the
 `Timestamp` call.
 
 * `ResultDoesntExistError`
 
-	`2`
+	`3`
 
-The timestamp or digest could not be found by the server.  This is only 
+The timestamp or digest could not be found by the server. This is only 
 relevant for the `Verify` call.
 
 * `ResultDisabled`
 
-`3`
+	`4`
 
 Querying is disabled.
