@@ -11,6 +11,11 @@ import (
 type ResultT int
 
 const (
+	APIVersion = 2
+
+	// VersionRoute defines a top-level API route for retrieving latest version
+	VersionRoute = "/version/"
+
 	// StatusRoute defines the API route for retrieving
 	// the server status.
 	StatusRoute = "/v2/status/"
@@ -55,6 +60,11 @@ var (
 		ResultDisabled:         "Query disallowed",
 	}
 )
+
+// VersionReply returns the version the server is currently running
+type VersionReply struct {
+	Version uint `json:"version"` // dcrtime API version
+}
 
 // Status is used to ask the server if everything is running properly.
 // ID is user settable and can be used as a unique identifier by the client.

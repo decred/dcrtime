@@ -288,6 +288,25 @@ func (d *DcrtimeStore) proxyVerifyV2(w http.ResponseWriter, r *http.Request) {
 		r.RemoteAddr, len(v.Timestamps), len(v.Digests))
 }
 
+// version returns the current API version running on the server.
+// Handles /version
+func (d *DcrtimeStore) version(w http.ResponseWriter, r *http.Request) {
+	versionReply := v2.VersionReply{
+		Version: v2.APIVersion,
+	}
+
+	// Log for audit trail and reuse loop to translate MultiError to JSON
+	// Results.
+	via := r.RemoteAddr
+	xff := r.Header.Get(forward)
+	if xff != "" {
+		via = fmt.Sprintf("%v via %v", xff, r.RemoteAddr)
+	}
+	log.Infof("Version %v", via)
+
+	util.RespondWithJSON(w, http.StatusOK, versionReply)
+}
+
 // API v1 Handlers
 
 // statusV1 returns server status information.
@@ -1123,6 +1142,9 @@ func _main() error {
 		verifyV2Route = d.verifyV2
 	}
 
+	// Top-level route handler
+	d.router.HandleFunc(v2.VersionRoute, d.version).Methods("GET")
+
 	// API v1 handlers
 	d.router.HandleFunc(v1.StatusRoute, statusV1Route).Methods("POST")
 	d.router.HandleFunc(v1.TimestampRoute, timestampV1Route).Methods("POST")
@@ -1155,8 +1177,7 @@ func _main() error {
 			headers := handlers.AllowedHeaders([]string{"Content-Type"})
 
 			log.Infof("Listen: %v", listen)
-			listenC <- http.ListenAndServeTLS(listen,
-				loadedCfg.HTTPSCert, loadedCfg.HTTPSKey,
+			listenC <- http.ListenAndServe(listen,
 				handlers.CORS(origins, methods, headers)(d.router))
 		}()
 	}
