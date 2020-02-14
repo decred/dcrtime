@@ -642,13 +642,12 @@ func (d *DcrtimeStore) statusV2(w http.ResponseWriter, r *http.Request) {
 func (d *DcrtimeStore) timestampV2(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
-	var t v2.Timestamp
-	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&t); err != nil {
-		util.RespondWithError(w, http.StatusBadRequest,
-			"Invalid request payload")
-		return
+	r.ParseForm()
+	id := r.Form.Get("id")
+	dig := r.Form.Get("digest")
+	t := v2.Timestamp{
+		ID:     id,
+		Digest: dig,
 	}
 
 	// Validate digest. If it is invalid return failure.
@@ -783,7 +782,7 @@ func (d *DcrtimeStore) timestampsV2(w http.ResponseWriter, r *http.Request) {
 			result = v2.ResultExistsError
 		}
 		results = append(results, result)
-		log.Infof("Timestamp %v: %v %v %x", via, verb, tsS, v.Digest)
+		log.Infof("Timestamps %v: %v %v %x", via, verb, tsS, v.Digest)
 	}
 
 	// We don't set ChainTimestamp until it is included on the chain.
