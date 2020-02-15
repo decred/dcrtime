@@ -37,6 +37,7 @@ var (
 	defaultHTTPSKeyFile  = filepath.Join(defaultHomeDir, "https.key")
 	defaultHTTPSCertFile = filepath.Join(defaultHomeDir, "https.cert")
 	defaultLogDir        = filepath.Join(defaultHomeDir, defaultLogDirname)
+	defaultAPIVersions   = "1,2"
 )
 
 // runServiceCommand is only set to a real function on Windows.  It is used
@@ -69,6 +70,7 @@ type config struct {
 	StoreCert         string   `long:"storecert" description:"File containing the https certificate file for storehost"`
 	EnableCollections bool     `long:"enablecollections" description:"Allow clients to query collection timestamps."`
 	APITokens         []string `long:"apitoken" description:"Token used to grant access to privileged API resources"`
+	APIVersions       string   `long:"apiversions" description:"Enables API versions on the daemon"`
 }
 
 // serviceOptions defines the configuration options for the daemon as a service
@@ -218,6 +220,19 @@ func newConfigParser(cfg *config, so *serviceOptions, options flags.Options) *fl
 	return parser
 }
 
+func parseAPIVersionsConfig(vs string) ([]uint, error) {
+	versions := strings.Split(vs, ",")
+	parsed := make([]uint, 0, len(versions))
+	for _, v := range versions {
+		conv, err := strconv.Atoi(v)
+		if err != nil {
+			return nil, err
+		}
+		parsed = append(parsed, uint(conv))
+	}
+	return parsed, nil
+}
+
 // loadConfig initializes and parses the config using a config file and command
 // line options.
 //
@@ -233,14 +248,15 @@ func newConfigParser(cfg *config, so *serviceOptions, options flags.Options) *fl
 func loadConfig() (*config, []string, error) {
 	// Default config.
 	cfg := config{
-		HomeDir:    defaultHomeDir,
-		ConfigFile: defaultConfigFile,
-		DebugLevel: defaultLogLevel,
-		DataDir:    defaultDataDir,
-		LogDir:     defaultLogDir,
-		HTTPSKey:   defaultHTTPSKeyFile,
-		HTTPSCert:  defaultHTTPSCertFile,
-		Version:    version(),
+		HomeDir:     defaultHomeDir,
+		ConfigFile:  defaultConfigFile,
+		DebugLevel:  defaultLogLevel,
+		DataDir:     defaultDataDir,
+		LogDir:      defaultLogDir,
+		HTTPSKey:    defaultHTTPSKeyFile,
+		HTTPSCert:   defaultHTTPSCertFile,
+		Version:     version(),
+		APIVersions: defaultAPIVersions,
 	}
 
 	// Service options which are only added on Windows.
@@ -426,6 +442,24 @@ func loadConfig() (*config, []string, error) {
 			fmt.Fprintln(os.Stderr, usageMessage)
 			return nil, nil, err
 		}
+	}
+
+	// Validate API versions from config
+	var apiVersionsError bool
+	apiVersions, err := parseAPIVersionsConfig(cfg.APIVersions)
+	for _, v := range apiVersions {
+		if v != 1 && v != 2 {
+			apiVersionsError = true
+		}
+	}
+	if len(apiVersions) == 0 || len(apiVersions) > 2 {
+		apiVersionsError = true
+	}
+	if apiVersionsError || err != nil {
+		str := "%s: The API versions must be 1, 2 or both"
+		err := fmt.Errorf(str, funcName)
+		fmt.Fprintln(os.Stderr, err)
+		return nil, nil, err
 	}
 
 	// Add the default listener if none were specified. The default

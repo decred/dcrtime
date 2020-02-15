@@ -1144,17 +1144,25 @@ func _main() error {
 	// Top-level route handler
 	d.router.HandleFunc(v2.VersionRoute, d.version).Methods("GET")
 
-	// API v1 handlers
-	d.router.HandleFunc(v1.StatusRoute, statusV1Route).Methods("POST")
-	d.router.HandleFunc(v1.TimestampRoute, timestampV1Route).Methods("POST")
-	d.router.HandleFunc(v1.VerifyRoute, verifyV1Route).Methods("POST")
-	d.addRoute("GET", v1.WalletBalanceRoute, walletBalanceRoute)
+	versions, _ := parseAPIVersionsConfig(loadedCfg.APIVersions)
 
-	// API v2 handlers
-	d.router.HandleFunc(v2.StatusRoute, statusV2Route).Methods("POST")
-	d.router.HandleFunc(v2.TimestampRoute, timestampV2Route).Methods("POST")
-	d.router.HandleFunc(v2.TimestampsRoute, timestampsV2Route).Methods("POST")
-	d.router.HandleFunc(v2.VerifyRoute, verifyV2Route).Methods("POST")
+	// Add handlers according to supported API versions in cfg
+	for _, v := range versions {
+		switch v {
+		case 1:
+			// API v1 handlers
+			d.router.HandleFunc(v1.StatusRoute, statusV1Route).Methods("POST")
+			d.router.HandleFunc(v1.TimestampRoute, timestampV1Route).Methods("POST")
+			d.router.HandleFunc(v1.VerifyRoute, verifyV1Route).Methods("POST")
+			d.addRoute("GET", v1.WalletBalanceRoute, walletBalanceRoute)
+		case 2:
+			// API v2 handlers
+			d.router.HandleFunc(v2.StatusRoute, statusV2Route).Methods("POST")
+			d.router.HandleFunc(v2.TimestampRoute, timestampV2Route).Methods("POST")
+			d.router.HandleFunc(v2.TimestampsRoute, timestampsV2Route).Methods("POST")
+			d.router.HandleFunc(v2.VerifyRoute, verifyV2Route).Methods("POST")
+		}
+	}
 
 	// Handle non-api /status as well
 	if trimmed := strings.TrimSuffix(v1.StatusRoute, "/"); trimmed != v1.StatusRoute {
@@ -1176,9 +1184,11 @@ func _main() error {
 			headers := handlers.AllowedHeaders([]string{"Content-Type"})
 
 			log.Infof("Listen: %v", listen)
-			listenC <- http.ListenAndServeTLS(listen,
-				loadedCfg.HTTPSCert, loadedCfg.HTTPSKey,
+			listenC <- http.ListenAndServe(listen,
 				handlers.CORS(origins, methods, headers)(d.router))
+			// listenC <- http.ListenAndServeTLS(listen,
+			// 	loadedCfg.HTTPSCert, loadedCfg.HTTPSKey,
+			// 	handlers.CORS(origins, methods, headers)(d.router))
 		}()
 	}
 
