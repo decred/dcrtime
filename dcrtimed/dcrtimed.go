@@ -288,11 +288,26 @@ func (d *DcrtimeStore) proxyVerifyV2(w http.ResponseWriter, r *http.Request) {
 		r.RemoteAddr, len(v.Timestamps), len(v.Digests))
 }
 
-// version returns the current API version running on the server.
+// version returns the supported API versions running on the server.
 // Handles /version
 func (d *DcrtimeStore) version(w http.ResponseWriter, r *http.Request) {
+	var versions []uint
+	var prefixes []string
+	vs, _ := parseAPIVersionsConfig(d.cfg.APIVersions)
+	for _, v := range vs {
+		switch v {
+		case 1:
+			versions = append(versions, v1.APIVersion)
+			prefixes = append(prefixes, v1.RoutePrefix)
+		case 2:
+			versions = append(versions, v2.APIVersion)
+			prefixes = append(prefixes, v2.RoutePrefix)
+		}
+
+	}
 	versionReply := v2.VersionReply{
-		Version: v2.APIVersion,
+		Versions:      versions,
+		RoutePrefixes: prefixes,
 	}
 
 	// Log for audit trail and reuse loop to translate MultiError to JSON

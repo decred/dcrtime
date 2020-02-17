@@ -13,17 +13,21 @@ import (
 // XXX add a clamp to all batches
 
 const (
+	APIVersion = 1
+
+	RoutePrefix = "/v1/"
+
 	// StatusRoute defines the API route for retrieving
 	// the server status.
-	StatusRoute = "/v1/status/"
+	StatusRoute = RoutePrefix + "status/"
 
 	// TimestampRoute defines the API route for submitting
 	// both timestamps and digests.
-	TimestampRoute = "/v1/timestamp/"
+	TimestampRoute = RoutePrefix + "timestamp/"
 
 	// VerifyRoute defines the API route for both timestamp
 	// and digest verification.
-	VerifyRoute = "/v1/verify/" // Multi verify ingest
+	VerifyRoute = RoutePrefix + "verify/" // Multi verify ingest
 
 	// WalletBalanceRoute defines the API route for retrieving
 	// the account balance from dcrtimed's wallet instance

@@ -15,24 +15,26 @@ type ResultT int
 const (
 	APIVersion = 2
 
+	RoutePrefix = "/v2/"
+
 	// VersionRoute defines a top-level API route for retrieving latest version
 	VersionRoute = "/version/"
 
 	// StatusRoute defines the API route for retrieving
 	// the server status.
-	StatusRoute = "/v2/status/"
+	StatusRoute = RoutePrefix + "status/"
 
 	// TimestampRoute defines the API route for submitting
 	// a single string digest.
-	TimestampRoute = "/v2/timestamp/" // Single digest timestamping
+	TimestampRoute = RoutePrefix + "timestamp/" // Single digest timestamping
 
 	// TimestampsRoute defines the API route for submitting
 	// a batch of timestamps or digests.
-	TimestampsRoute = "/v2/timestamps/" // Multi digest timestamping
+	TimestampsRoute = RoutePrefix + "timestamps/" // Multi digest timestamping
 
 	// VerifyRoute defines the API route for both timestamp
 	// and digest verification.
-	VerifyRoute = "/v2/verify/" // Multi verify digests
+	VerifyRoute = RoutePrefix + "verify/" // Multi verify digests
 
 	// ResultInvalid indicates the operation on the backend was invalid.
 	ResultInvalid ResultT = 0
@@ -85,11 +87,6 @@ var (
 	RegexpTimestamp = regexp.MustCompile("^[0-9]{10}$")
 )
 
-// VersionReply returns the version the server is currently running
-type VersionReply struct {
-	Version uint `json:"version"` // dcrtime API version
-}
-
 // Status is used to ask the server if everything is running properly.
 // ID is user settable and can be used as a unique identifier by the client.
 type Status struct {
@@ -99,6 +96,12 @@ type Status struct {
 // StatusReply is returned by the server if everything is running properly.
 type StatusReply struct {
 	ID string `json:"id"`
+}
+
+// VersionReply returns the version the server is currently running.
+type VersionReply struct {
+	Versions      []uint   `json:"versions"` // dcrtime API supported versions.
+	RoutePrefixes []string `json:"routeprefixes"`
 }
 
 // Timestamp is used to ask the timestamp server to store a single digest.
