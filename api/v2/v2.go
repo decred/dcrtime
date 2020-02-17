@@ -5,6 +5,7 @@
 package v2
 
 import (
+	"fmt"
 	"regexp"
 
 	"github.com/decred/dcrtime/merkle"
@@ -13,28 +14,8 @@ import (
 type ResultT int
 
 const (
+	// APIVersion defines the version number for this code.
 	APIVersion = 2
-
-	RoutePrefix = "/v2/"
-
-	// VersionRoute defines a top-level API route for retrieving latest version
-	VersionRoute = "/version/"
-
-	// StatusRoute defines the API route for retrieving
-	// the server status.
-	StatusRoute = RoutePrefix + "status/"
-
-	// TimestampRoute defines the API route for submitting
-	// a single string digest.
-	TimestampRoute = RoutePrefix + "timestamp/" // Single digest timestamping
-
-	// TimestampsRoute defines the API route for submitting
-	// a batch of timestamps or digests.
-	TimestampsRoute = RoutePrefix + "timestamps/" // Multi digest timestamping
-
-	// VerifyRoute defines the API route for both timestamp
-	// and digest verification.
-	VerifyRoute = RoutePrefix + "verify/" // Multi verify digests
 
 	// ResultInvalid indicates the operation on the backend was invalid.
 	ResultInvalid ResultT = 0
@@ -71,7 +52,30 @@ const (
 )
 
 var (
-	// Result is a map of possible http results
+	// RoutePrefix is the route url prefix for this version.
+	RoutePrefix = fmt.Sprintf("/v%v", APIVersion)
+
+	// VersionRoute defines a top-level API route for retrieving latest version
+	VersionRoute = "/version"
+
+	// StatusRoute defines the API route for retrieving
+	// the server status.
+	StatusRoute = RoutePrefix + "/status"
+
+	// TimestampRoute defines the API route for submitting
+	// a single string digest.
+	TimestampRoute = RoutePrefix + "/timestamp" // Single digest timestamping
+
+	// TimestampsRoute defines the API route for submitting
+	// a batch of timestamps or digests.
+	TimestampsRoute = RoutePrefix + "/timestamps" // Multi digest timestamping
+
+	// VerifyRoute defines the API route for both timestamp
+	// and digest verification.
+	VerifyRoute = RoutePrefix + "/verify" // Multi verify digests
+
+	// Result defines legible string messages to a timestamping/query
+	// result code.
 	Result = map[ResultT]string{
 		ResultInvalid:          "Invalid",
 		ResultOK:               "OK",

@@ -16,6 +16,8 @@ import (
 	"strings"
 
 	"github.com/decred/dcrd/dcrutil/v2"
+	v1 "github.com/decred/dcrtime/api/v1"
+	v2 "github.com/decred/dcrtime/api/v2"
 	flags "github.com/jessevdk/go-flags"
 )
 
@@ -37,7 +39,7 @@ var (
 	defaultHTTPSKeyFile  = filepath.Join(defaultHomeDir, "https.key")
 	defaultHTTPSCertFile = filepath.Join(defaultHomeDir, "https.cert")
 	defaultLogDir        = filepath.Join(defaultHomeDir, defaultLogDirname)
-	defaultAPIVersions   = "1,2"
+	defaultAPIVersions   = fmt.Sprintf("%v,%v", v1.APIVersion, v2.APIVersion)
 )
 
 // runServiceCommand is only set to a real function on Windows.  It is used
@@ -448,7 +450,7 @@ func loadConfig() (*config, []string, error) {
 	var apiVersionsError bool
 	apiVersions, err := parseAPIVersionsConfig(cfg.APIVersions)
 	for _, v := range apiVersions {
-		if v != 1 && v != 2 {
+		if v != v1.APIVersion && v != v2.APIVersion {
 			apiVersionsError = true
 		}
 	}

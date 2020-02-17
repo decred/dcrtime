@@ -5,6 +5,7 @@
 package v1
 
 import (
+	"fmt"
 	"regexp"
 
 	"github.com/decred/dcrtime/merkle"
@@ -13,6 +14,7 @@ import (
 // XXX add a clamp to all batches
 
 const (
+	// APIVersion defines the version number for this code.
 	APIVersion = 1
 
 	RoutePrefix = "/v1/"
@@ -65,6 +67,23 @@ const (
 )
 
 var (
+	// RoutePrefix is the route url prefix for this version.
+	RoutePrefix = fmt.Sprintf("/v%v", APIVersion)
+
+	// StatusRoute defines the API route for retrieving
+	// the server status.
+	StatusRoute = RoutePrefix + "/status/"
+
+	// TimestampRoute defines the API route for submitting
+	// both timestamps and digests.
+	TimestampRoute = RoutePrefix + "/timestamp/"
+
+	// VerifyRoute defines the API route for both timestamp
+	// and digest verification.
+	VerifyRoute = RoutePrefix + "/verify/" // Multi verify digest
+
+	// Result defines legible string messages to a timestamping/query
+	// result code.
 	Result = map[int]string{
 		ResultOK:               "OK",
 		ResultExistsError:      "Exists",
