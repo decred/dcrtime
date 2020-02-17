@@ -1199,11 +1199,9 @@ func _main() error {
 			headers := handlers.AllowedHeaders([]string{"Content-Type"})
 
 			log.Infof("Listen: %v", listen)
-			listenC <- http.ListenAndServe(listen,
+			listenC <- http.ListenAndServeTLS(listen,
+				loadedCfg.HTTPSCert, loadedCfg.HTTPSKey,
 				handlers.CORS(origins, methods, headers)(d.router))
-			// listenC <- http.ListenAndServeTLS(listen,
-			// 	loadedCfg.HTTPSCert, loadedCfg.HTTPSKey,
-			// 	handlers.CORS(origins, methods, headers)(d.router))
 		}()
 	}
 
