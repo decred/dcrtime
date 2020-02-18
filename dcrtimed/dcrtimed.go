@@ -296,10 +296,10 @@ func (d *DcrtimeStore) version(w http.ResponseWriter, r *http.Request) {
 	vs, _ := parseAPIVersionsConfig(d.cfg.APIVersions)
 	for _, v := range vs {
 		switch v {
-		case 1:
+		case v1.APIVersion:
 			versions = append(versions, v1.APIVersion)
 			prefixes = append(prefixes, v1.RoutePrefix)
-		case 2:
+		case v2.APIVersion:
 			versions = append(versions, v2.APIVersion)
 			prefixes = append(prefixes, v2.RoutePrefix)
 		}
@@ -1164,13 +1164,13 @@ func _main() error {
 	// Add handlers according to supported API versions in cfg
 	for _, v := range versions {
 		switch v {
-		case 1:
+		case v1.APIVersion:
 			// API v1 handlers
 			d.router.HandleFunc(v1.StatusRoute, statusV1Route).Methods("POST")
 			d.router.HandleFunc(v1.TimestampRoute, timestampV1Route).Methods("POST")
 			d.router.HandleFunc(v1.VerifyRoute, verifyV1Route).Methods("POST")
 			d.addRoute("GET", v1.WalletBalanceRoute, walletBalanceRoute)
-		case 2:
+		case v2.APIVersion:
 			// API v2 handlers
 			d.router.HandleFunc(v2.StatusRoute, statusV2Route).Methods("POST")
 			d.router.HandleFunc(v2.TimestampRoute, timestampV2Route).Methods("POST")
