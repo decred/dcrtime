@@ -91,7 +91,7 @@ func _main() error {
 
 	// Verify result of matching digest
 	if _, ok := v2.Result[v.Result]; !ok {
-		return fmt.Errorf("%v invalid error code %v\n", v.Digest,
+		return fmt.Errorf("%v invalid error code %v", v.Digest,
 			v.Result)
 	}
 
