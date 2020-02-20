@@ -19,7 +19,6 @@ import (
 	"os"
 	"os/signal"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/decred/dcrtime/api/v1"
@@ -34,6 +33,10 @@ const (
 	fStr = "20060102.150405"
 
 	forward = "X-Forwarded-For"
+)
+
+var (
+	interruptSignals = []os.Signal{os.Interrupt}
 )
 
 // DcrtimeStore application context.
@@ -599,8 +602,7 @@ func _main() error {
 
 	// Setup OS signals
 	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGINT)
+	signal.Notify(sigs, interruptSignals...)
 	for {
 		select {
 		case sig := <-sigs:

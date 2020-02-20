@@ -155,7 +155,7 @@ func TestGetDigests(t *testing.T) {
 	// Flush and repeat mixed success and failure
 
 	// Flush current container to global database.
-	_, err = fs.flush(timestamp)
+	err = fs.flush(timestamp)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -185,7 +185,6 @@ func TestGetDigests(t *testing.T) {
 				gr.ErrorCode, backend.ErrorNotFound)
 		}
 	}
-
 }
 
 func TestGetTimestamp(t *testing.T) {
@@ -290,7 +289,7 @@ func TestGetTimestamp(t *testing.T) {
 	}
 
 	// Flush current container to global database.
-	_, err = fs.flush(timestamp)
+	err = fs.flush(timestamp)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -319,7 +318,6 @@ func TestGetTimestamp(t *testing.T) {
 	if len(exists) != count {
 		t.Fatalf("expected %v exists got %v", count, len(exists))
 	}
-
 }
 
 func TestPut(t *testing.T) {
@@ -388,7 +386,7 @@ func TestPut(t *testing.T) {
 	}
 
 	// Flush current container to global database.
-	_, err = fs.flush(timestamp)
+	err = fs.flush(timestamp)
 	if err != nil {
 		t.Fatal(err)
 	}

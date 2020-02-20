@@ -1,4 +1,4 @@
-// Copyright (c) 2017 The Decred developers
+// Copyright (c) 2017-2020 The Decred developers
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
 
@@ -86,7 +86,6 @@ func dumpDigestTimestamp(f *os.File, verbose bool, recordType string, dr backend
 }
 
 func (fs *FileSystem) dumpGlobal(f *os.File, verbose bool) error {
-
 	i := fs.db.NewIterator(nil, nil)
 	defer i.Release()
 	for i.Next() {
@@ -268,7 +267,7 @@ func (fs *FileSystem) restoreFlushRecord(verbose bool, fr backend.FlushRecordJSO
 	return db.Put([]byte(flushedKey), payload, nil)
 }
 
-func (fs *FileSystem) restoreDigestReceived(verbose bool, dr backend.DigestReceived) error {
+func (fs *FileSystem) restoreDigestReceived(dr backend.DigestReceived) error {
 	// Despite being expensive and slow we open and close the db in order
 	// to keep the code simple and not deal with open files later.
 	db, err := fs.restoreOpen(false, dr.Timestamp)
@@ -287,7 +286,7 @@ func (fs *FileSystem) restoreDigestReceived(verbose bool, dr backend.DigestRecei
 	return db.Put(hash, timestamp, nil)
 }
 
-func (fs *FileSystem) restoreDigestReceivedGlobal(verbose bool, dr backend.DigestReceived) error {
+func (fs *FileSystem) restoreDigestReceivedGlobal(dr backend.DigestReceived) error {
 	timestamp := make([]byte, 8)
 	binary.LittleEndian.PutUint64(timestamp, uint64(dr.Timestamp))
 	hash, err := hex.DecodeString(dr.Digest)
@@ -338,7 +337,7 @@ func (fs *FileSystem) Restore(f *os.File, verbose bool, location string) error {
 			if err != nil {
 				return err
 			}
-			err = fs.restoreDigestReceived(verbose, dr)
+			err = fs.restoreDigestReceived(dr)
 			if err != nil {
 				return err
 			}
@@ -362,7 +361,7 @@ func (fs *FileSystem) Restore(f *os.File, verbose bool, location string) error {
 			if err != nil {
 				return err
 			}
-			err = fs.restoreDigestReceivedGlobal(verbose, dr)
+			err = fs.restoreDigestReceivedGlobal(dr)
 			if err != nil {
 				return err
 			}

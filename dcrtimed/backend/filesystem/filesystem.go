@@ -113,7 +113,7 @@ func (fs *FileSystem) truncate(t time.Time, d time.Duration) time.Time {
 }
 
 // openRead tries to open the database associated with the provided timestamp.
-// This function explicitely checks for a container directory in order to not
+// This function explicitly checks for a container directory in order to not
 // create a database for a non existing timestamp.  The caller is responsible
 // for closing the database.
 func (fs *FileSystem) openRead(ts int64) (*leveldb.DB, error) {
@@ -184,17 +184,17 @@ func (fs *FileSystem) isFlushed(ts int64) bool {
 // flush moves provided timestamp container into global database.
 //
 // This function must be called with the WRITE lock held.
-func (fs *FileSystem) flush(ts int64) ([]*[sha256.Size]byte, error) {
+func (fs *FileSystem) flush(ts int64) error {
 	// Open timestamp container.
 	db, err := fs.openWrite(ts, false)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer db.Close()
 
 	// Error if we are already flushed
 	if isFlushed(db) {
-		return nil, errAlreadyFlushed
+		return errAlreadyFlushed
 	}
 
 	hashes := make([]*[sha256.Size]byte, 0, 4096)
@@ -217,12 +217,12 @@ func (fs *FileSystem) flush(ts int64) ([]*[sha256.Size]byte, error) {
 	iter.Release()
 	err = iter.Error()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if len(hashes) == 0 {
 		// this really should not happen.
-		return nil, errEmptySet
+		return errEmptySet
 	}
 
 	// Create merkle root and send to wallet
@@ -237,7 +237,7 @@ func (fs *FileSystem) flush(ts int64) ([]*[sha256.Size]byte, error) {
 		tx, err := fs.wallet.Construct(root)
 		if err != nil {
 			// XXX do something with unsufficient funds here.
-			return nil, fmt.Errorf("flush Construct tx: %v", err)
+			return fmt.Errorf("flush Construct tx: %v", err)
 		}
 		log.Infof("Flush timestamp: %v digests %v merkle: %x tx: %v",
 			ts2dirname(ts), files, root, tx.String())
@@ -248,25 +248,25 @@ func (fs *FileSystem) flush(ts int64) ([]*[sha256.Size]byte, error) {
 	// Sorry!
 	payload, err := EncodeFlushRecord(fr)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// Commit to global database.
 	err = fs.db.Write(batch, nil)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// Mark timestamp container as flushed.
 	err = db.Put([]byte(flushedKey), payload, nil)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// Update commit.
 	fs.commit++
 
-	return hashes, nil
+	return nil
 }
 
 // doFlush walks timestamp directories backwards and flushes them to the
@@ -324,7 +324,7 @@ func (fs *FileSystem) doFlush() (int, error) {
 		}
 
 		// Flush timestamp container
-		_, err = fs.flush(ts)
+		err = fs.flush(ts)
 		if err != nil {
 			e := fmt.Sprintf("flush %v: %v", ts2dirname(ts), err)
 			if fs.testing {
@@ -801,7 +801,7 @@ func internalNew(root string) (*FileSystem, error) {
 		root:     root,
 		db:       db,
 		duration: duration,
-		myNow:    func() time.Time { return time.Now() },
+		myNow:    time.Now,
 	}
 
 	return fs, nil
@@ -823,7 +823,7 @@ func New(root, cert, host string, enableCollections bool, passphrase []byte) (*F
 		return nil, err
 	}
 
-	// Flushing backend reconciles uncommited work to the global database.
+	// Flushing backend reconciles uncommitted work to the global database.
 	start := time.Now()
 	flushed, err := fs.doFlush()
 	end := time.Since(start)

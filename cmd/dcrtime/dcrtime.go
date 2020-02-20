@@ -1,4 +1,4 @@
-// Copyright (c) 2017 The Decred developers
+// Copyright (c) 2017-2020 The Decred developers
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
 
@@ -87,11 +87,11 @@ func getError(r io.Reader) (string, error) {
 	}
 	m, ok := e.(map[string]interface{})
 	if !ok {
-		return "", fmt.Errorf("Could not decode response")
+		return "", fmt.Errorf("could not decode response")
 	}
 	rError, ok := m["error"]
 	if !ok {
-		return "", fmt.Errorf("No error response")
+		return "", fmt.Errorf("no error response")
 	}
 	return fmt.Sprintf("%v", rError), nil
 }
@@ -194,7 +194,7 @@ func download(questions []string) error {
 	var vr v1.VerifyReply
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&vr); err != nil {
-		return fmt.Errorf("Could node decode VerifyReply: %v", err)
+		return fmt.Errorf("could node decode VerifyReply: %v", err)
 	}
 
 	for _, v := range vr.Timestamps {

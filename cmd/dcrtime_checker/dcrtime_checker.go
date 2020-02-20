@@ -91,7 +91,7 @@ func _main() error {
 
 	// Verify result of matching digest
 	if _, ok := v1.Result[v.Result]; !ok {
-		return fmt.Errorf("%v invalid error code %v\n", v.Digest,
+		return fmt.Errorf("%v invalid error code %v", v.Digest,
 			v.Result)
 	}
 
@@ -99,7 +99,7 @@ func _main() error {
 	root, err := merkle.VerifyAuthPath(&v.ChainInformation.MerklePath)
 	if err != nil {
 		if err != merkle.ErrEmpty {
-			return fmt.Errorf("%v invalid auth path %v\n",
+			return fmt.Errorf("%v invalid auth path %v",
 				v.Digest, err)
 		}
 		return fmt.Errorf("%v Not anchored\n", v.Digest)
@@ -112,7 +112,7 @@ func _main() error {
 	}
 	// This is silly since we check against returned root.
 	if !bytes.Equal(root[:], merkleRoot) {
-		return fmt.Errorf("%v invalid merkle root\n", v.Digest)
+		return fmt.Errorf("%v invalid merkle root", v.Digest)
 	}
 
 	// If we made it here we have a valid proof
