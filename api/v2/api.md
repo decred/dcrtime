@@ -11,9 +11,11 @@ showing and validating their inclusion in the Decred blockchain.
 
 **Methods**
 
-- [`Timestamp`](#timestamp)
 - [`Timestamps`](#timestamps)
 - [`Verify`](#verify)
+
+- [`Timestamp`](#timestamp)
+
 
 **Return Codes**
 
@@ -25,81 +27,6 @@ showing and validating their inclusion in the Decred blockchain.
 
 ### Methods
 
-#### `Timestamp`
-
-Upload one digest to the time server. The server will then add this digest to
-a collection and eventually to a transaction that goes in a Decred block. 
-This method returns immediately with the collection the digest has been added 
-to.You must use the verify call to find out when it has been anchored to a 
-block (which is done in batches at a set time interval that is not related 
-to the api calls).
-
-* **URL**
-
-  `/v2/timestamp/`
-
-* **HTTP Method:**
-
-  `POST`
-
-*  *Params*
-
-	**Required**
-
-   `digest={hash}`
-
-    Digest is a digest (SHA256 hash) to send to the server.
-
-	**Optional**
-
-   `id=[string]`
-
-	ID is a user provided identifier that may be used in case the client 
-	requires a unique identifier.
-
-* **Results**
-
-	`id`
-
-	id is copied from the original call for the client to use to match calls
-	 and responses.
-
-	`servertimestamp`
-
-	servertimestamp is the collection the digests belong to.
-
-	`digest`
-
-	digest is the digest processed by the server.
-
-	`result`
-
-	result is a integer representing the result for the digest. See #Result
-	 for details on return codes.
-
-* **Example**
-
-Request:
-
-```json
-{
-    "id":"dcrtime cli",
-    "digest": 
-		"d412ba345bc44fb6fbbaf2db9419b648752ecfcda6fd1aec213b45a5584d1b13"
-}
-```
-
-Reply:
-
-```json
-{
-    "id":"dcrtime cli",
-	"servertimestamp":1497376800,
-	"digest": 
-		"d412ba345bc44fb6fbbaf2db9419b648752ecfcda6fd1aec213b45a5584d1b13",
-	"result": 1
-}
-```
 
 #### `Timestamps`
 
@@ -349,6 +276,83 @@ Reply:
 			]
 		}
 	}]
+}
+```
+
+#### `Timestamp`
+
+Upload one digest to the time server from a pure HTML form data on the client 
+side. This route exists to serve JS-disabled clients. The server adds this 
+digest to a collection and eventually to a transaction that goes in a Decred 
+block. This method returns immediately with the collection the digest has been 
+added to. You must use the verify call to find out when it has been anchored to 
+a block (which is done in batches at a set time interval that is not related to 
+the api calls).
+
+* **URL**
+
+  `/v2/timestamp/`
+
+* **HTTP Method:**
+
+  `POST`
+
+*  *Params*
+
+	**Required**
+
+   `digest={hash}`
+
+    Digest is a digest (SHA256 hash) to send to the server.
+
+	**Optional**
+
+   `id=[string]`
+
+	ID is a user provided identifier that may be used in case the client 
+	requires a unique identifier.
+
+* **Results**
+
+	`id`
+
+	id is copied from the original call for the client to use to match calls
+	 and responses.
+
+	`servertimestamp`
+
+	servertimestamp is the collection the digests belong to.
+
+	`digest`
+
+	digest is the digest processed by the server.
+
+	`result`
+
+	result is a integer representing the result for the digest. See #Result
+	 for details on return codes.
+
+* **Example**
+
+Request:
+
+```json
+{
+    "id":"dcrtime cli",
+    "digest": 
+		"d412ba345bc44fb6fbbaf2db9419b648752ecfcda6fd1aec213b45a5584d1b13"
+}
+```
+
+Reply:
+
+```json
+{
+    "id":"dcrtime cli",
+	"servertimestamp":1497376800,
+	"digest": 
+		"d412ba345bc44fb6fbbaf2db9419b648752ecfcda6fd1aec213b45a5584d1b13",
+	"result": 1
 }
 ```
 

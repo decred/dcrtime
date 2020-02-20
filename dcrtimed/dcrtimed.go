@@ -1173,7 +1173,7 @@ func _main() error {
 		case v2.APIVersion:
 			// API v2 handlers
 			d.router.HandleFunc(v2.StatusRoute, statusV2Route).Methods("POST")
-			d.router.HandleFunc(v2.TimestampRoute, timestampV2Route).Methods("POST")
+			d.router.HandleFunc(v2.TimestampRoute, timestampV2Route).Methods("POST", "GET")
 			d.router.HandleFunc(v2.TimestampsRoute, timestampsV2Route).Methods("POST")
 			d.router.HandleFunc(v2.VerifyRoute, verifyV2Route).Methods("POST")
 		}
