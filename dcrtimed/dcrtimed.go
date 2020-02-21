@@ -455,18 +455,7 @@ func (d *DcrtimeStore) verify(w http.ResponseWriter, r *http.Request) {
 // isAuthorized returns true if the first api token query parameter
 // matches any APIToken configuration value. Otherwise, it returns false.
 func (d *DcrtimeStore) isAuthorized(r *http.Request) bool {
-	// Extract api token from query parameters.
-	queryTokens := r.URL.Query()["apitoken"]
-
-	var apiToken string
-	if len(queryTokens) > 0 {
-		// If the request has multiple apitoken
-		// values, only consider the first one.
-		apiToken = queryTokens[0]
-	} else {
-		return false
-	}
-
+	apiToken := r.URL.Query().Get("apitoken")
 	if _, exist := d.apiTokens[apiToken]; exist {
 		return true
 	}
