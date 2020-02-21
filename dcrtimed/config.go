@@ -1,5 +1,5 @@
 // Copyright (c) 2013-2014 The btcsuite developers
-// Copyright (c) 2015-2019 The Decred developers
+// Copyright (c) 2015-2020 The Decred developers
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
 
@@ -478,29 +478,25 @@ func loadConfig() (*config, []string, error) {
 		cfg.WalletCert = path
 	}
 
-	if len(cfg.APITokens) > 0 {
+	if len(cfg.StoreHost) == 0 {
+		if len(cfg.APITokens) == 0 {
+			err := fmt.Errorf("%s: At least one apitoken is required when "+
+				"running in backend mode", funcName)
+			return nil, nil, err
+		}
+
 		var validTokens []string
 		for _, token := range cfg.APITokens {
 			token = strings.TrimSpace(token)
-
-			// Aggregate non-empty tokens.
-			if token != "" {
+			if len(token) > 0 {
 				validTokens = append(validTokens, token)
 				continue
 			}
 
-			// If one of the tokens is an empty value, fail fast.
-			var strErr string
-			if len(validTokens) == 0 {
-				strErr = "%s: required apitoken config value was not provided"
-			} else {
-				strErr = "%s: all apitoken config values must not be blank"
-			}
-
-			err := fmt.Errorf(strErr, funcName)
+			err := fmt.Errorf("%s: Blank apitoken found -- ensure all "+
+				"apitoken values are not blank", funcName)
 			return nil, nil, err
 		}
-
 		cfg.APITokens = validTokens
 	}
 

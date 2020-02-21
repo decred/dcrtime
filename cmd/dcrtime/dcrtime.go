@@ -456,7 +456,7 @@ func credentialsRequired() bool {
 	return *balance
 }
 
-// loadCredentialsIfRequired checks if a username/password is expected
+// loadCredentialsIfRequired checks if an apitoken is expected
 // based on the provided command line flags.
 func loadCredentialsIfRequired() error {
 	if !credentialsRequired() {

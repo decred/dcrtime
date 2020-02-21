@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2019 The Decred developers
+// Copyright (c) 2017-2020 The Decred developers
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
 
@@ -102,7 +102,6 @@ func (d *DcrtimeStore) sendToBackend(w http.ResponseWriter, method, route, conte
 			bodyBuf.String())
 		return
 	}
-
 	err = util.RespondWithCopy(w, resp.StatusCode,
 		resp.Header.Get("Content-Type"), bodyBuf.Bytes())
 	if err != nil {
@@ -197,13 +196,7 @@ func convertDigests(d []string) ([][sha256.Size]byte, error) {
 }
 
 func (d *DcrtimeStore) proxyWalletBalance(w http.ResponseWriter, r *http.Request) {
-	var apiToken string
-	queryTokens := r.URL.Query()["apitoken"]
-	if len(queryTokens) > 0 {
-		apiToken = queryTokens[0]
-	}
-
-	// Only forward the first apitoken query string parameter
+	apiToken := r.URL.Query().Get("apitoken")
 	route := v1.WalletBalanceRoute + "?apitoken=" + apiToken
 	d.sendToBackend(w, r.Method, route, r.Header.Get("Content-Type"),
 		r.RemoteAddr, bytes.NewReader([]byte{}))
