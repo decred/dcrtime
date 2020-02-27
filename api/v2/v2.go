@@ -63,16 +63,20 @@ var (
 	StatusRoute = RoutePrefix + "/status"
 
 	// TimestampRoute defines the API route for submitting
-	// a single string digest.
+	// a single string digest, used by no-js clients.
 	TimestampRoute = RoutePrefix + "/timestamp" // Single digest timestamping
 
-	// TimestampsRoute defines the API route for submitting
-	// a batch of timestamps or digests.
-	TimestampsRoute = RoutePrefix + "/timestamps" // Multi digest timestamping
+	// VerifyRoute defines the API route for verifying
+	// a single digest and timestamp, used by no-js clients.
+	VerifyRoute = RoutePrefix + "/verify" // Single verify digest
 
-	// VerifyRoute defines the API route for both timestamp
-	// and digest verification.
-	VerifyRoute = RoutePrefix + "/verify" // Multi verify digests
+	// TimestampBatchRoute defines the API route for submitting
+	// a batch of timestamps or digests.
+	TimestampBatchRoute = RoutePrefix + "/timestamp/batch" // Multi digest timestamping
+
+	// VerifyBatchRoute defines the API route for both timestamp
+	// and digest batch verification.
+	VerifyBatchRoute = RoutePrefix + "/verify/batch" // Multi verify digests
 
 	// Result defines legible string messages to a timestamping/query
 	// result code.
@@ -111,8 +115,8 @@ type VersionReply struct {
 // Timestamp is used to ask the timestamp server to store a single digest.
 // ID is user settable and can be used as a unique identifier by the client.
 type Timestamp struct {
-	ID     string `json:"id"`
-	Digest string `json:"digest"`
+	ID     string `form:"id"`
+	Digest string `form:"digest"`
 }
 
 // TimestampReply is returned by the timestamp server after storing a single
@@ -126,31 +130,20 @@ type TimestampReply struct {
 	Result          ResultT `json:"result"`
 }
 
-// Timestamps is used to ask the timestamp server to store a batch of digests.
-// ID is user settable and can be used as a unique identifier by the client.
-type Timestamps struct {
-	ID      string   `json:"id"`
-	Digests []string `json:"digests"`
-}
-
-// TimestampsReply is returned by the timestamp server after storing the batch
-// of digests. ID is copied from the originating Timestamp call and can be
-// used by the client as a unique identifier. The ServerTimestamp indicates
-// what collection the Digests belong to. Results contains individual result
-// codes for each digest.
-type TimestampsReply struct {
-	ID              string    `json:"id"`
-	ServerTimestamp int64     `json:"servertimestamp"`
-	Digests         []string  `json:"digests"`
-	Results         []ResultT `json:"results"`
-}
-
-// Verify is used to ask the server about the status of a batch of digests or
-// timestamps
+// Verify is used to ask the server about the status of a single digest and/or
+// timestamp.
 type Verify struct {
-	ID         string   `json:"id"`
-	Digests    []string `json:"digests"`
-	Timestamps []int64  `json:"timestamps"`
+	ID        string `form:"id"`
+	Digest    string `form:"digest"`
+	Timestamp int64  `form:"timestamp"`
+}
+
+// VerifyReply is returned by the server with the status results for the requested
+// digest and/or timestamp.
+type VerifyReply struct {
+	ID        string          `json:"id"`
+	Digest    VerifyDigest    `json:"digest"`
+	Timestamp VerifyTimestamp `json:"timestamp"`
 }
 
 // VerifyDigest is returned by the server after verifying the status of a
@@ -170,9 +163,36 @@ type VerifyTimestamp struct {
 	CollectionInformation CollectionInformation `json:"collectioninformation"`
 }
 
-// VerifyReply is returned by the server with the status results for the requested
+// TimestampBatch is used to ask the timestamp server to store a batch of digests.
+// ID is user settable and can be used as a unique identifier by the client.
+type TimestampBatch struct {
+	ID      string   `json:"id"`
+	Digests []string `json:"digests"`
+}
+
+// TimestampBatchReply is returned by the timestamp server after storing the batch
+// of digests. ID is copied from the originating Timestamp call and can be
+// used by the client as a unique identifier. The ServerTimestamp indicates
+// what collection the Digests belong to. Results contains individual result
+// codes for each digest.
+type TimestampBatchReply struct {
+	ID              string    `json:"id"`
+	ServerTimestamp int64     `json:"servertimestamp"`
+	Digests         []string  `json:"digests"`
+	Results         []ResultT `json:"results"`
+}
+
+// VerifyBatch is used to ask the server about the status of a batch of digests or
+// timestamps
+type VerifyBatch struct {
+	ID         string   `json:"id"`
+	Digests    []string `json:"digests"`
+	Timestamps []int64  `json:"timestamps"`
+}
+
+// VerifyBatchReply is returned by the server with the status results for the requested
 // digests and timestamps.
-type VerifyReply struct {
+type VerifyBatchReply struct {
 	ID         string            `json:"id"`
 	Digests    []VerifyDigest    `json:"digests"`
 	Timestamps []VerifyTimestamp `json:"timestamps"`

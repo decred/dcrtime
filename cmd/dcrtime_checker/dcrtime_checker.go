@@ -45,7 +45,7 @@ func _main() error {
 	if err != nil {
 		return err
 	}
-	var vr v2.VerifyReply
+	var vr v2.VerifyBatchReply
 	decoder := json.NewDecoder(fProof)
 	if err := decoder.Decode(&vr); err != nil {
 		return fmt.Errorf("Could node decode VerifyReply: %v", err)

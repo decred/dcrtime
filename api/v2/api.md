@@ -11,11 +11,11 @@ showing and validating their inclusion in the Decred blockchain.
 
 **Methods**
 
-- [`Timestamps`](#timestamps)
-- [`Verify`](#verify)
+- [`Timestamp Batch`](#timestampBatch)
+- [`Verify Batch`](#verifyBatch)
 
 - [`Timestamp`](#timestamp)
-
+- [`Verify`](#verify)
 
 **Return Codes**
 
@@ -28,14 +28,18 @@ showing and validating their inclusion in the Decred blockchain.
 ### Methods
 
 
-#### `Timestamps`
+#### `Timestamp Batch`
 
-Upload multiple digests to the time server. Behaves the same as /v2/timestamp, 
-except for the ability to send multiple digests in a single request.
+Upload multiple digests to the time server. The server adds this 
+digest to a collection and eventually to a transaction that goes in a Decred 
+block. This method returns immediately with the collection the digest has been 
+added to. You must use the verify call to find out when it has been anchored to
+a block (which is done in batches at a set time interval that is not related to
+the api calls).
 
 * **URL**
 
-  `/v2/timestamps/`
+  `/v2/timestamp/batch`
 
 * **HTTP Method:**
 
@@ -104,7 +108,7 @@ Reply:
 }
 ```
 
-#### `Verify`
+#### `Verify Batch`
 
 Verifies the status of a batch of digests or timestamps on the server. If 
 verifying digests, it'll return the chain information relative to that digest, 
@@ -115,7 +119,7 @@ it returns zero. Digests and timestamps can be verified on the same request.
 
 * **URL**
 
-  `/v2/verify/`
+  `/v2/verify/batch`
 
 * **HTTP Method:**
 
@@ -282,16 +286,12 @@ Reply:
 #### `Timestamp`
 
 Upload one digest to the time server from a pure HTML form data on the client 
-side. This route exists to serve JS-disabled clients. The server adds this 
-digest to a collection and eventually to a transaction that goes in a Decred 
-block. This method returns immediately with the collection the digest has been 
-added to. You must use the verify call to find out when it has been anchored to 
-a block (which is done in batches at a set time interval that is not related to 
-the api calls).
+side. This route exists to serve no-JS clients. Anchors the digest to the
+server the same way as batched ones.
 
 * **URL**
 
-  `/v2/timestamp/`
+  `/v2/timestamp`
 
 * **HTTP Method:**
 
@@ -334,15 +334,12 @@ the api calls).
 
 * **Example**
 
-Request:
+Request form data:
 
-```json
-{
-    "id":"dcrtime cli",
-    "digest": 
-		"d412ba345bc44fb6fbbaf2db9419b648752ecfcda6fd1aec213b45a5584d1b13"
-}
-```
+| Key  |  Value  |
+| ------------------- | ------------------- |
+|  id |  dcrtime cli |
+|  digest |  d412ba345bc44fb6fbbaf2db9419b648752ecfcda6fd1aec213b45a5584d1b13 |
 
 Reply:
 
@@ -389,3 +386,168 @@ relevant for the `Verify` call.
 	`4`
 
 Querying is disabled.
+
+#### `Verify`
+
+Verifies the status of a digest or timestamp on the server. Verifies through
+the same process as batched ones.
+
+* **URL**
+
+  `/v2/verify`
+
+* **HTTP Method:**
+
+  `POST`
+
+*  *Params*
+
+	**Required**
+
+	`digest={hash}`
+
+	Digest is a digest (SHA256 hash) to be confirmed by the server.
+
+	or
+
+	`timestamp={timestamp}`
+
+
+	Timestamp is a int64 timestamp to be confirmed by the server.
+
+	**Optional**
+
+   `id=[string]`
+
+	ID is a user provided identifier that may be used in case the client 
+	requires a unique identifier.
+
+* **Results**
+
+	`id`
+
+	id is copied from the original call for the client to use to match calls
+	and responses.
+
+	`digest`
+
+	The batch of digests requested by the client. Each digest will return the
+	following fields:
+
+	`digest`
+
+	The digest processed by the server.
+
+	`servertimestamp`
+
+	The collection the digest belongs to (if anchored).
+
+	`result`
+
+	Return code, see #Results.
+
+	`chaininformation`
+
+	A JSON object with the information about the onchain timestamp.
+
+	`chaintimestamp`
+
+	Timestamp from the server.
+
+	`transaction`
+
+	Transaction hash that includes the digest.
+
+	`merkleroot`
+
+	MerkleRoot of the block containing the transaction (if mined).
+
+	`merklepath`
+
+	Merklepath contains additional information for the mined transaction 
+	(if available).
+
+	`timestamp`
+
+	The batch of timestamps requested by the client. Each timestamp will return
+	 the following fields:
+
+	`servertimestamp`
+
+	The timestamp itself.
+
+	`result`
+
+	Return code, see #Results.
+
+	`collectioninformation`	
+
+	A JSON object with the information about that timestamp collection.
+
+	`chaintimestamp`
+
+	Timestamp from the server.
+
+	`transaction` 
+
+	Transaction hash that includes the digest.
+
+	`merkleroot`
+
+	MerkleRoot of the block containing the transaction (if mined).
+
+	`digests`	
+
+	Digests contains all digests grouped and anchored on that timestamp 
+	collection.
+
+
+* **Example**
+
+Request form data:
+
+| Key  |  Value  |
+| ------------------- | ------------------- |
+|  id |  dcrtime cli |
+|  digest |  d412ba345bc44fb6fbbaf2db9419b648752ecfcda6fd1aec213b45a5584d1b13 |
+|  timestamp |  1497376800 |
+
+Reply:
+
+```json
+{
+    "id":"dcrtime cli",
+	"digest": {
+	    "digest":
+			"d412ba345bc44fb6fbbaf2db9419b648752ecfcda6fd1aec213b45a5584d1b13",
+	    "servertimestamp":1497376800,
+	    "result":0,
+	    "chaininformation":{
+	        "chaintimestamp":0,
+	        "transaction":
+			"0000000000000000000000000000000000000000000000000000000000000000",
+	        "merkleroot":
+			"0000000000000000000000000000000000000000000000000000000000000000",
+	        "merklepath":{
+	            "NumLeaves":0,
+	            "Hashes":null,
+	            "Flags":null
+	        }
+	    }
+	},
+	"timestamp": {
+		"servertimestamp":1497376800,
+		"result":0,
+		"collectioninformation":{
+			"chaintimestamp":0,
+			"transaction":
+			"0000000000000000000000000000000000000000000000000000000000000000",
+			"merkleroot":
+			"0000000000000000000000000000000000000000000000000000000000000000",
+			"digests":[
+			"d412ba345bc44fb6fbbaf2db9419b648752ecfcda6fd1aec213b45a5584d1b13"
+			]
+		}
+	}
+}
+```

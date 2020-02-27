@@ -139,7 +139,7 @@ func newClient(skipVerify bool) *http.Client {
 }
 
 func download(questions []string) error {
-	ver := v2.Verify{
+	ver := v2.VerifyBatch{
 		ID: dcrtimeClientID,
 	}
 
@@ -195,7 +195,7 @@ func download(questions []string) error {
 	}
 
 	// Decode response.
-	var vr v2.VerifyReply
+	var vr v2.VerifyBatchReply
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&vr); err != nil {
 		return fmt.Errorf("could node decode VerifyReply: %v", err)
@@ -311,7 +311,7 @@ func download(questions []string) error {
 
 func upload(digests []string, exists map[string]string) error {
 	// batch uploads
-	ts := v2.Timestamps{
+	ts := v2.TimestampBatch{
 		ID:      dcrtimeClientID,
 		Digests: digests,
 	}
@@ -330,7 +330,7 @@ func upload(digests []string, exists map[string]string) error {
 	}
 
 	c := newClient(false)
-	r, err := c.Post(*host+v2.TimestampsRoute, "application/json",
+	r, err := c.Post(*host+v2.TimestampBatchRoute, "application/json",
 		bytes.NewReader(b))
 	if err != nil {
 		return err
@@ -352,7 +352,7 @@ func upload(digests []string, exists map[string]string) error {
 	}
 
 	// Decode response.
-	var tsReply v2.TimestampsReply
+	var tsReply v2.TimestampBatchReply
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&tsReply); err != nil {
 		return fmt.Errorf("Could node decode TimestampReply: %v", err)
