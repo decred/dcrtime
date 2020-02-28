@@ -213,21 +213,8 @@ func (d *DcrtimeStore) proxyTimestampV2(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	var t v2.Timestamp
-	decoder := json.NewDecoder(bytes.NewReader(b))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&t); err != nil {
-		util.RespondWithError(w, http.StatusBadRequest,
-			"Invalid request payload")
-		return
-	}
-
 	d.sendToBackend(w, r.Method, v2.TimestampRoute, r.Header.Get("Content-Type"),
 		r.RemoteAddr, bytes.NewReader(b))
-
-	for _, v := range t.Digest {
-		log.Infof("Timestamp %v: %v", r.RemoteAddr, v)
-	}
 }
 
 func (d *DcrtimeStore) proxyWalletBalance(w http.ResponseWriter, r *http.Request) {
@@ -248,19 +235,8 @@ func (d *DcrtimeStore) proxyVerifyV2(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var v v2.Verify
-	decoder := json.NewDecoder(bytes.NewReader(b))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&v); err != nil {
-		util.RespondWithError(w, http.StatusBadRequest,
-			"Invalid request payload")
-		return
-	}
-
 	d.sendToBackend(w, r.Method, v2.VerifyRoute, r.Header.Get("Content-Type"),
 		r.RemoteAddr, bytes.NewReader(b))
-	log.Infof("Verify %v: Timestamp %v Digest %v",
-		r.RemoteAddr, v.Timestamp, v.Digest)
 }
 
 func (d *DcrtimeStore) proxyTimestampBatchV2(w http.ResponseWriter, r *http.Request) {
