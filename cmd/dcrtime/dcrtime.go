@@ -625,6 +625,13 @@ func hasAPIVersionFlag() bool {
 	return apiVersion != nil && *apiVersion != 0
 }
 
+func isValidAPIVersionFlag(v int) bool {
+	if v == v1.APIVersion || v == v2.APIVersion {
+		return true
+	}
+	return false
+}
+
 // Ensures that there are no conflicting flags
 func ensureFlagCompatibility() error {
 	if *fileOnly && hasDigestFlag() {
@@ -743,22 +750,29 @@ func _main() error {
 	var upload func([]string, map[string]string) error
 	var download func([]string) error
 
-	// Check if API version flag is set to v1. If not, default
-	// to v2.
-	if hasAPIVersionFlag() && *apiVersion == v1.APIVersion {
-		mainnetHost = v1.DefaultMainnetTimeHost
-		testnetHost = v1.DefaultTestnetTimeHost
-		mainnetPort = v1.DefaultMainnetTimePort
-		testnetPort = v1.DefaultTestnetTimePort
-		upload = uploadV1
-		download = downloadV1
-	} else {
-		mainnetHost = v2.DefaultMainnetTimeHost
-		testnetHost = v2.DefaultTestnetTimeHost
-		mainnetPort = v2.DefaultMainnetTimePort
-		testnetPort = v2.DefaultTestnetTimePort
-		upload = uploadV2
-		download = downloadV2
+	// Validate API version flag and set appropriate values
+	// according to selected version. Default is v2.
+	if hasAPIVersionFlag() {
+		if !isValidAPIVersionFlag(*apiVersion) {
+			return fmt.Errorf("%v is not a valid API version,"+
+				"use version 1 or 2", *apiVersion)
+		}
+		switch *apiVersion {
+		case v1.APIVersion:
+			mainnetHost = v1.DefaultMainnetTimeHost
+			testnetHost = v1.DefaultTestnetTimeHost
+			mainnetPort = v1.DefaultMainnetTimePort
+			testnetPort = v1.DefaultTestnetTimePort
+			upload = uploadV1
+			download = downloadV1
+		case v2.APIVersion:
+			mainnetHost = v2.DefaultMainnetTimeHost
+			testnetHost = v2.DefaultTestnetTimeHost
+			mainnetPort = v2.DefaultMainnetTimePort
+			testnetPort = v2.DefaultTestnetTimePort
+			upload = uploadV2
+			download = downloadV2
+		}
 	}
 
 	if *host == "" {
