@@ -1,4 +1,4 @@
-// Copyright (c) 2017 The Decred developers
+// Copyright (c) 2017-2019 The Decred developers
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
 
@@ -18,6 +18,8 @@ import (
 )
 
 type DcrtimeWallet struct {
+	account    uint32
+	minconf    int32
 	conn       *grpc.ClientConn
 	wallet     pb.WalletServiceClient
 	ctx        context.Context
@@ -28,6 +30,14 @@ type Result struct {
 	Block         chainhash.Hash
 	Timestamp     int64
 	Confirmations int32
+}
+
+// BalanceResult contains information about the backing dcrwallet
+// account balance connected to by dcrtimed.
+type BalanceResult struct {
+	Total       int64
+	Spendable   int64
+	Unconfirmed int64
 }
 
 // Lookup looks up the provided TX hash and returns a Result structure.
@@ -103,8 +113,8 @@ func (d *DcrtimeWallet) Construct(merkleRoot [sha256.Size]byte) (*chainhash.Hash
 
 	// Create transaction request.
 	constructRequest := &pb.ConstructTransactionRequest{
-		SourceAccount:            0,
-		RequiredConfirmations:    2,
+		SourceAccount:            d.account,
+		RequiredConfirmations:    d.minconf,
 		FeePerKb:                 0, // let wallet decide the fee
 		OutputSelectionAlgorithm: pb.ConstructTransactionRequest_UNSPECIFIED,
 		NonChangeOutputs: []*pb.ConstructTransactionRequest_Output{
@@ -151,6 +161,28 @@ func (d *DcrtimeWallet) Construct(merkleRoot [sha256.Size]byte) (*chainhash.Hash
 	return txHash, nil
 }
 
+// GetWalletBalance returns balance information from the
+// wallet account.
+func (d *DcrtimeWallet) GetWalletBalance() (*BalanceResult, error) {
+	balanceRequest := &pb.BalanceRequest{
+		AccountNumber:         d.account,
+		RequiredConfirmations: d.minconf,
+	}
+
+	balanceResponse, err := d.wallet.Balance(d.ctx, balanceRequest)
+	if err != nil {
+		return nil, err
+	}
+
+	accountBalance := &BalanceResult{
+		Total:       balanceResponse.Total,
+		Spendable:   balanceResponse.Spendable,
+		Unconfirmed: balanceResponse.Unconfirmed,
+	}
+
+	return accountBalance, nil
+}
+
 // Close shuts down the gRPC connection to the wallet.
 func (d *DcrtimeWallet) Close() {
 	d.conn.Close()
@@ -159,6 +191,8 @@ func (d *DcrtimeWallet) Close() {
 // New returns a DcrtimeWallet context.
 func New(cert, host string, passphrase []byte) (*DcrtimeWallet, error) {
 	d := &DcrtimeWallet{
+		account:    0,
+		minconf:    2,
 		ctx:        context.Background(),
 		passphrase: passphrase,
 	}

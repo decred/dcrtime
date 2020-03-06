@@ -1,4 +1,4 @@
-// Copyright (c) 2017 The Decred developers
+// Copyright (c) 2017-2020 The Decred developers
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
 
@@ -21,7 +21,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/decred/dcrtime/api/v1"
+	v1 "github.com/decred/dcrtime/api/v1"
 	"github.com/decred/dcrtime/dcrtimed/backend"
 	"github.com/decred/dcrtime/dcrtimed/backend/filesystem"
 	"github.com/decred/dcrtime/util"
@@ -46,6 +46,7 @@ type DcrtimeStore struct {
 	router     *mux.Router
 	ctx        context.Context
 	httpClient *http.Client
+	apiTokens  map[string]struct{}
 }
 
 func (d *DcrtimeStore) sendToBackend(w http.ResponseWriter, method, route, contentType, remoteAddr string, body *bytes.Reader) {
@@ -69,6 +70,7 @@ func (d *DcrtimeStore) sendToBackend(w http.ResponseWriter, method, route, conte
 			"Server busy, please try again later.")
 		return
 	}
+
 	defer resp.Body.Close()
 
 	bodyBuf := new(bytes.Buffer)
@@ -81,6 +83,12 @@ func (d *DcrtimeStore) sendToBackend(w http.ResponseWriter, method, route, conte
 	}
 
 	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusUnauthorized {
+			util.RespondWithCopy(w, http.StatusUnauthorized, "application/json",
+				bodyBuf.Bytes())
+			return
+		}
+
 		e, err := getError(resp.Body)
 		if err != nil {
 			log.Errorf("Bad status posting to %v: %v", storeHost,
@@ -89,11 +97,11 @@ func (d *DcrtimeStore) sendToBackend(w http.ResponseWriter, method, route, conte
 			log.Errorf("Bad status posting to %v: %v\n%v",
 				storeHost, resp.Status, e)
 		}
+
 		util.RespondWithError(w, http.StatusInternalServerError,
 			bodyBuf.String())
 		return
 	}
-
 	err = util.RespondWithCopy(w, resp.StatusCode,
 		resp.Header.Get("Content-Type"), bodyBuf.Bytes())
 	if err != nil {
@@ -103,7 +111,6 @@ func (d *DcrtimeStore) sendToBackend(w http.ResponseWriter, method, route, conte
 
 func (d *DcrtimeStore) proxyStatus(w http.ResponseWriter, r *http.Request) {
 	b, err := ioutil.ReadAll(r.Body)
-	r.Body.Close()
 	if err != nil {
 		util.RespondWithError(w, http.StatusBadRequest,
 			"Unable to read request")
@@ -125,7 +132,6 @@ func (d *DcrtimeStore) proxyStatus(w http.ResponseWriter, r *http.Request) {
 
 func (d *DcrtimeStore) proxyTimestamp(w http.ResponseWriter, r *http.Request) {
 	b, err := ioutil.ReadAll(r.Body)
-	r.Body.Close()
 	if err != nil {
 		util.RespondWithError(w, http.StatusBadRequest,
 			"Unable to read request")
@@ -150,7 +156,6 @@ func (d *DcrtimeStore) proxyTimestamp(w http.ResponseWriter, r *http.Request) {
 
 func (d *DcrtimeStore) proxyVerify(w http.ResponseWriter, r *http.Request) {
 	b, err := ioutil.ReadAll(r.Body)
-	r.Body.Close()
 	if err != nil {
 		util.RespondWithError(w, http.StatusBadRequest,
 			"Unable to read request")
@@ -190,10 +195,17 @@ func convertDigests(d []string) ([][sha256.Size]byte, error) {
 	return result, nil
 }
 
+func (d *DcrtimeStore) proxyWalletBalance(w http.ResponseWriter, r *http.Request) {
+	apiToken := r.URL.Query().Get("apitoken")
+	route := v1.WalletBalanceRoute + "?apitoken=" + apiToken
+	d.sendToBackend(w, r.Method, route, r.Header.Get("Content-Type"),
+		r.RemoteAddr, bytes.NewReader([]byte{}))
+
+	log.Infof("WalletBalance %v", r.RemoteAddr)
+}
+
 // status returns server status information
 func (d *DcrtimeStore) status(w http.ResponseWriter, r *http.Request) {
-	defer r.Body.Close()
-
 	var s v1.Status
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&s); err != nil {
@@ -217,8 +229,6 @@ func (d *DcrtimeStore) status(w http.ResponseWriter, r *http.Request) {
 
 // timestamp takes a frontend timestamp and sends it off to the backend.
 func (d *DcrtimeStore) timestamp(w http.ResponseWriter, r *http.Request) {
-	defer r.Body.Close()
-
 	var t v1.Timestamp
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&t); err != nil {
@@ -295,8 +305,6 @@ func (d *DcrtimeStore) timestamp(w http.ResponseWriter, r *http.Request) {
 }
 
 func (d *DcrtimeStore) verify(w http.ResponseWriter, r *http.Request) {
-	defer r.Body.Close()
-
 	var v v1.Verify
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&v); err != nil {
@@ -444,6 +452,46 @@ func (d *DcrtimeStore) verify(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// isAuthorized returns true if the first api token query parameter
+// matches any APIToken configuration value. Otherwise, it returns false.
+func (d *DcrtimeStore) isAuthorized(r *http.Request) bool {
+	apiToken := r.URL.Query().Get("apitoken")
+	if _, exist := d.apiTokens[apiToken]; exist {
+		return true
+	}
+
+	log.Errorf("isAuthorized %v: authentication failed", r.RemoteAddr)
+	return false
+}
+
+func (d *DcrtimeStore) walletBalance(w http.ResponseWriter, r *http.Request) {
+	if !d.isAuthorized(r) {
+		util.RespondWithError(w, http.StatusUnauthorized, "not authorized")
+		return
+	}
+
+	log.Infof("WalletBalance %v", r.RemoteAddr)
+
+	balanceResult, err := d.backend.GetBalance()
+	if err != nil {
+		errorCode := time.Now().Unix()
+
+		log.Errorf("%v walletBalance error code %v: %v",
+			r.RemoteAddr, errorCode, err)
+		util.RespondWithError(w, http.StatusInternalServerError,
+			fmt.Sprintf("failed to retrieve wallet balance, "+
+				"contact administrator and provide "+
+				"the following error code: %v", errorCode))
+		return
+	}
+
+	util.RespondWithJSON(w, http.StatusOK, v1.WalletBalanceReply{
+		Total:       balanceResult.Total,
+		Spendable:   balanceResult.Spendable,
+		Unconfirmed: balanceResult.Unconfirmed,
+	})
+}
+
 // getError returns the error that is embedded in a JSON reply.
 func getError(r io.Reader) (string, error) {
 	var e interface{}
@@ -460,6 +508,32 @@ func getError(r io.Reader) (string, error) {
 		return "", fmt.Errorf("No error response")
 	}
 	return fmt.Sprintf("%v", rError), nil
+}
+
+// apiTokenMap converts the APITokens config values to a map
+func apiTokenMap(cfg *config) map[string]struct{} {
+	lookup := make(map[string]struct{})
+	for _, token := range cfg.APITokens {
+		lookup[token] = struct{}{}
+	}
+	return lookup
+}
+
+// closeBody wraps the provided function as a closure and returns a new
+// function that ensures the request body is closed. This is done to avoid
+// resource leaks.
+func closeBody(f http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		f(w, r)
+		r.Body.Close()
+	}
+}
+
+// addRoute adds the route on the provided DcrtimeStore's router and ensures
+// that the request body is closed after handling the request, to avoid leaks.
+func (d *DcrtimeStore) addRoute(method string, route string, handler http.HandlerFunc) {
+	closedHandler := closeBody(handler)
+	d.router.HandleFunc(route, closedHandler).Methods(method)
 }
 
 func _main() error {
@@ -510,8 +584,9 @@ func _main() error {
 
 	// Setup application context
 	d := &DcrtimeStore{
-		cfg: loadedCfg,
-		ctx: context.Background(),
+		cfg:       loadedCfg,
+		ctx:       context.Background(),
+		apiTokens: apiTokenMap(loadedCfg),
 	}
 
 	var certPool *x509.CertPool
@@ -531,23 +606,26 @@ func _main() error {
 		}
 	} else {
 		// Setup backend.
-		filesystem.UseLogger(fsbeLog)
 		b, err := filesystem.New(loadedCfg.DataDir,
-			loadedCfg.WalletCert, loadedCfg.WalletHost,
+			loadedCfg.WalletCert,
+			loadedCfg.WalletHost,
 			loadedCfg.EnableCollections,
 			[]byte(loadedCfg.WalletPassphrase))
+
 		if err != nil {
 			return err
 		}
+
 		d.backend = b
 	}
 
 	// Setup mux
 	d.router = mux.NewRouter()
 
-	var statusRoute func(http.ResponseWriter, *http.Request)
-	var timestampRoute func(http.ResponseWriter, *http.Request)
-	var verifyRoute func(http.ResponseWriter, *http.Request)
+	var statusRoute http.HandlerFunc
+	var timestampRoute http.HandlerFunc
+	var verifyRoute http.HandlerFunc
+	var walletBalanceRoute http.HandlerFunc
 
 	if certPool != nil {
 		// PROXY ENABLED
@@ -562,18 +640,22 @@ func _main() error {
 		statusRoute = d.proxyStatus
 		timestampRoute = d.proxyTimestamp
 		verifyRoute = d.proxyVerify
+		walletBalanceRoute = d.proxyWalletBalance
 	} else {
 		statusRoute = d.status
 		timestampRoute = d.timestamp
 		verifyRoute = d.verify
+		walletBalanceRoute = d.walletBalance
 	}
-	d.router.HandleFunc(v1.StatusRoute, statusRoute).Methods("POST")
-	d.router.HandleFunc(v1.TimestampRoute, timestampRoute).Methods("POST")
-	d.router.HandleFunc(v1.VerifyRoute, verifyRoute).Methods("POST")
+
+	d.addRoute("POST", v1.StatusRoute, statusRoute)
+	d.addRoute("POST", v1.TimestampRoute, timestampRoute)
+	d.addRoute("POST", v1.VerifyRoute, verifyRoute)
+	d.addRoute("GET", v1.WalletBalanceRoute, walletBalanceRoute)
 
 	// Handle non-api /status as well
 	if trimmed := strings.TrimSuffix(v1.StatusRoute, "/"); trimmed != v1.StatusRoute {
-		d.router.HandleFunc(trimmed, statusRoute).Methods("POST")
+		d.addRoute("POST", trimmed, statusRoute)
 	}
 
 	// Pretty print web page for individual digest/timestamp

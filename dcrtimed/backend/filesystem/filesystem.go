@@ -1,4 +1,4 @@
-// Copyright (c) 2017 The Decred developers
+// Copyright (c) 2017-2019 The Decred developers
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
 
@@ -786,6 +786,20 @@ func (fs *FileSystem) Close() {
 		fs.wallet.Close()
 	}
 	fs.db.Close()
+}
+
+// GetBalance provides the balance of the wallet and satisfies the
+// backend interface.
+func (fs *FileSystem) GetBalance() (*backend.GetBalanceResult, error) {
+	result, err := fs.wallet.GetWalletBalance()
+	if err != nil {
+		return nil, err
+	}
+	return &backend.GetBalanceResult{
+		Total:       result.Total,
+		Spendable:   result.Spendable,
+		Unconfirmed: result.Unconfirmed,
+	}, nil
 }
 
 // internalNew creates the FileSystem context but does not launch background
