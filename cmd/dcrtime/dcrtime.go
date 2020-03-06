@@ -175,7 +175,7 @@ func downloadV1(questions []string) error {
 		return nil
 	}
 
-	c := newClient(false)
+	c := newClient(*skipVerify)
 	r, err := c.Post(*host+v1.VerifyRoute, "application/json",
 		bytes.NewReader(b))
 	if err != nil {
@@ -346,7 +346,7 @@ func downloadV2(questions []string) error {
 		return nil
 	}
 
-	c := newClient(false)
+	c := newClient(*skipVerify)
 	r, err := c.Post(*host+v2.VerifyRoute, "application/json",
 		bytes.NewReader(b))
 	if err != nil {
@@ -503,7 +503,7 @@ func uploadV1(digests []string, exists map[string]string) error {
 		return nil
 	}
 
-	c := newClient(false)
+	c := newClient(*skipVerify)
 	r, err := c.Post(*host+v1.TimestampRoute, "application/json",
 		bytes.NewReader(b))
 	if err != nil {
@@ -570,7 +570,7 @@ func uploadV2(digests []string, exists map[string]string) error {
 		return nil
 	}
 
-	c := newClient(false)
+	c := newClient(*skipVerify)
 	r, err := c.Post(*host+v2.TimestampBatchRoute, "application/json",
 		bytes.NewReader(b))
 	if err != nil {
