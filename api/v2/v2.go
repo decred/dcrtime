@@ -78,6 +78,10 @@ var (
 	// and digest batch verification.
 	VerifyBatchRoute = RoutePrefix + "/verify/batch" // Multi verify digests
 
+	// WalletBalanceRoute defines the API route for retrieving
+	// the account balance from dcrtimed's wallet instance
+	WalletBalanceRoute = RoutePrefix + "/balance"
+
 	// Result defines legible string messages to a timestamping/query
 	// result code.
 	Result = map[ResultT]string{
@@ -214,4 +218,11 @@ type CollectionInformation struct {
 	Transaction    string   `json:"transaction"`
 	MerkleRoot     string   `json:"merkleroot"`
 	Digests        []string `json:"digests"`
+}
+
+// WalletBalanceReply returns balance information of the decred wallet.
+type WalletBalanceReply struct {
+	Total       int64 `json:"total"`
+	Spendable   int64 `json:"spendable"`
+	Unconfirmed int64 `json:"unconfirmed"`
 }

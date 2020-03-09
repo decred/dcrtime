@@ -43,8 +43,10 @@ var (
 		` for accessing privileged API resources"`)
 	balance = flag.Bool("balance", false, `long:"balance" description:"Display`+
 		` the connected server's wallet balance. An API Token is required"`)
-	apiVersion = flag.Int("api", 0,
+	apiVersion = flag.Int("api", 2,
 		"Inform the API version to be used by the cli (1 or 2)")
+	skipVerify = flag.Bool("skipverify", false, "Skip TLS certificates"+
+		"verification (not recommended)")
 )
 
 // normalizeAddress returns addr with the passed default port appended if
@@ -642,9 +644,9 @@ func ensureFlagCompatibility() error {
 	return nil
 }
 
-// getWalletBalance returns the total balance of the primary dcrtimed wallet,
+// getWalletBalanceV1 returns the total balance of the primary dcrtimed wallet,
 // in atoms.
-func showWalletBalance() error {
+func showWalletBalanceV1() error {
 	c := newClient(false)
 
 	route := *host + v1.WalletBalanceRoute
@@ -679,6 +681,62 @@ func showWalletBalance() error {
 
 	// Decode the response from dcrtimed
 	var balance v1.WalletBalanceReply
+	jsonDecoder := json.NewDecoder(response.Body)
+	if err := jsonDecoder.Decode(&balance); err != nil {
+		return fmt.Errorf("Could not decode WalletBalanceReply: %v", err)
+	}
+
+	if *verbose {
+		fmt.Printf(
+			"Wallet balance (atoms)\n"+
+				"Spendable:   %v\n"+
+				"Total:       %v\n"+
+				"Unconfirmed: %v\n",
+			balance.Spendable, balance.Total, balance.Unconfirmed)
+	} else {
+		fmt.Printf("Spendable wallet balance (atoms): %v\n", balance.Spendable)
+	}
+
+	return nil
+}
+
+// getWalletBalanceV1 returns the total balance of the primary dcrtimed wallet,
+// in atoms.
+func showWalletBalanceV2() error {
+	c := newClient(false)
+
+	route := *host + v2.WalletBalanceRoute
+	url := fmt.Sprintf("%s?apitoken=%s", route, *apiToken)
+	request, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+
+	response, err := c.Do(request)
+	if err != nil {
+		return err
+	}
+
+	defer response.Body.Close()
+
+	if *printJson {
+		io.Copy(os.Stdout, response.Body)
+		fmt.Printf("\n")
+		return nil
+	}
+
+	if response.StatusCode != http.StatusOK {
+		e, err := getError(response.Body)
+		if err != nil {
+			return fmt.Errorf("Retrieve wallet balance failed: %v",
+				response.Status)
+		}
+		return fmt.Errorf("Retrieve wallet balance failed - %v: %v",
+			response.Status, e)
+	}
+
+	// Decode the response from dcrtimed
+	var balance v2.WalletBalanceReply
 	jsonDecoder := json.NewDecoder(response.Body)
 	if err := jsonDecoder.Decode(&balance); err != nil {
 		return fmt.Errorf("Could not decode WalletBalanceReply: %v", err)
@@ -749,6 +807,7 @@ func _main() error {
 	var testnetPort string
 	var upload func([]string, map[string]string) error
 	var download func([]string) error
+	var showWalletBalance func() error
 
 	// Validate API version flag and set appropriate values
 	// according to selected version. Default is v2.
@@ -765,6 +824,7 @@ func _main() error {
 			testnetPort = v1.DefaultTestnetTimePort
 			upload = uploadV1
 			download = downloadV1
+			showWalletBalance = showWalletBalanceV1
 		case v2.APIVersion:
 			mainnetHost = v2.DefaultMainnetTimeHost
 			testnetHost = v2.DefaultTestnetTimeHost
@@ -772,6 +832,7 @@ func _main() error {
 			testnetPort = v2.DefaultTestnetTimePort
 			upload = uploadV2
 			download = downloadV2
+			showWalletBalance = showWalletBalanceV2
 		}
 	}
 

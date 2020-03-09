@@ -17,24 +17,6 @@ const (
 	// APIVersion defines the version number for this code.
 	APIVersion = 1
 
-	RoutePrefix = "/v1/"
-
-	// StatusRoute defines the API route for retrieving
-	// the server status.
-	StatusRoute = RoutePrefix + "status/"
-
-	// TimestampRoute defines the API route for submitting
-	// both timestamps and digests.
-	TimestampRoute = RoutePrefix + "timestamp/"
-
-	// VerifyRoute defines the API route for both timestamp
-	// and digest verification.
-	VerifyRoute = RoutePrefix + "verify/" // Multi verify ingest
-
-	// WalletBalanceRoute defines the API route for retrieving
-	// the account balance from dcrtimed's wallet instance
-	WalletBalanceRoute = "/v1/balance"
-
 	// ResultOK indicates the operation completed successfully.
 	ResultOK = 0
 
@@ -81,6 +63,10 @@ var (
 	// VerifyRoute defines the API route for both timestamp
 	// and digest verification.
 	VerifyRoute = RoutePrefix + "/verify/" // Multi verify digest
+
+	// WalletBalanceRoute defines the API route for retrieving
+	// the account balance from dcrtimed's wallet instance
+	WalletBalanceRoute = RoutePrefix + "/balance"
 
 	// Result defines legible string messages to a timestamping/query
 	// result code.
