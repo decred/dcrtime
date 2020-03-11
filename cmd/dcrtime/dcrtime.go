@@ -36,6 +36,7 @@ var (
 	fileOnly  = flag.Bool("file", false, "Treat digests and timestamps "+
 		"as file names")
 	host     = flag.String("h", "", "Timestamping host")
+	port     = flag.String("p", "", "Timestamping host port")
 	trial    = flag.Bool("t", false, "Trial run, don't contact server")
 	verbose  = flag.Bool("v", false, "Verbose")
 	digest   = flag.String("digest", "", "Submit a raw 256 bit digest to anchor")
@@ -619,35 +620,10 @@ func uploadV2(digests []string, exists map[string]string) error {
 	return nil
 }
 
-func hasDigestFlag() bool {
-	return digest != nil && *digest != ""
-}
-
-func hasAPIVersionFlag() bool {
-	return apiVersion != nil && *apiVersion != 0
-}
-
-func isValidAPIVersionFlag(v int) bool {
-	if v == v1.APIVersion || v == v2.APIVersion {
-		return true
-	}
-	return false
-}
-
-// Ensures that there are no conflicting flags
-func ensureFlagCompatibility() error {
-	if *fileOnly && hasDigestFlag() {
-		return fmt.Errorf(
-			"-digest and -file flags cannot be used simultaneously")
-	}
-
-	return nil
-}
-
-// getWalletBalanceV1 returns the total balance of the primary dcrtimed wallet,
+// showWalletBalanceV1 returns the total balance of the primary dcrtimed wallet,
 // in atoms.
 func showWalletBalanceV1() error {
-	c := newClient(false)
+	c := newClient(*skipVerify)
 
 	route := *host + v1.WalletBalanceRoute
 	url := fmt.Sprintf("%s?apitoken=%s", route, *apiToken)
@@ -700,13 +676,14 @@ func showWalletBalanceV1() error {
 	return nil
 }
 
-// getWalletBalanceV1 returns the total balance of the primary dcrtimed wallet,
+// showWalletBalanceV2 returns the total balance of the primary dcrtimed wallet,
 // in atoms.
 func showWalletBalanceV2() error {
-	c := newClient(false)
+	c := newClient(*skipVerify)
 
 	route := *host + v2.WalletBalanceRoute
 	url := fmt.Sprintf("%s?apitoken=%s", route, *apiToken)
+	fmt.Println(url)
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return err
@@ -751,6 +728,31 @@ func showWalletBalanceV2() error {
 			balance.Spendable, balance.Total, balance.Unconfirmed)
 	} else {
 		fmt.Printf("Spendable wallet balance (atoms): %v\n", balance.Spendable)
+	}
+
+	return nil
+}
+
+func hasDigestFlag() bool {
+	return digest != nil && *digest != ""
+}
+
+func hasAPIVersionFlag() bool {
+	return apiVersion != nil && *apiVersion != 0
+}
+
+func isValidAPIVersionFlag(v int) bool {
+	if v == v1.APIVersion || v == v2.APIVersion {
+		return true
+	}
+	return false
+}
+
+// Ensures that there are no conflicting flags
+func ensureFlagCompatibility() error {
+	if *fileOnly && hasDigestFlag() {
+		return fmt.Errorf(
+			"-digest and -file flags cannot be used simultaneously")
 	}
 
 	return nil
@@ -844,12 +846,15 @@ func _main() error {
 		}
 	}
 
-	port := mainnetPort
-	if *testnet {
-		port = testnetPort
+	if *port == "" {
+		if *testnet {
+			*port = testnetPort
+		} else {
+			*port = mainnetPort
+		}
 	}
 
-	*host = normalizeAddress(*host, port)
+	*host = normalizeAddress(*host, *port)
 
 	// Set port if not specified.
 	u, err := url.Parse("https://" + *host)
