@@ -21,7 +21,7 @@ var (
 	dcrdataHost = flag.String("h", "", "dcrdata host")
 	testnet     = flag.Bool("testnet", false, "Use testnet port")
 	verbose     = flag.Bool("v", false, "Verbose")
-	apiVersion  = flag.Int("api", 0,
+	apiVersion  = flag.Int("api", v2.APIVersion,
 		"Inform the API version to be used by the cli (1 or 2)")
 )
 
@@ -161,10 +161,6 @@ func verifyV1(digest string, fProof *os.File) error {
 	return nil
 }
 
-func hasAPIVersionFlag() bool {
-	return apiVersion != nil && *apiVersion != 0
-}
-
 func _main() error {
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "dcrtime_checker [-h {dcrdatahost}|"+
@@ -175,12 +171,14 @@ func _main() error {
 
 	var verify func(string, *os.File) error
 
-	// Check if API version flag is set to v1. If not, default
-	// to v2.
-	if hasAPIVersionFlag() && *apiVersion == v1.APIVersion {
+	// Set values according to selected api version.
+	switch *apiVersion {
+	case v1.APIVersion:
 		verify = verifyV1
-	} else {
+	case v2.APIVersion:
 		verify = verifyV2
+	default:
+		return fmt.Errorf("Invalid API version %v", *apiVersion)
 	}
 
 	// require -f

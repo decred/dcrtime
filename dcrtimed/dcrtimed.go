@@ -303,7 +303,7 @@ func (d *DcrtimeStore) proxyWalletBalanceV2(w http.ResponseWriter, r *http.Reque
 func (d *DcrtimeStore) version(w http.ResponseWriter, r *http.Request) {
 	var versions []uint
 	var prefixes []string
-	vs, _ := parseAPIVersionsConfig(d.cfg.APIVersions)
+	vs, _ := parseAndValidateAPIVersions(d.cfg.APIVersions)
 	for _, v := range vs {
 		switch v {
 		case v1.APIVersion:
@@ -1373,7 +1373,7 @@ func _main() error {
 	// Top-level route handler
 	d.addRoute("GET", v2.VersionRoute, d.version)
 
-	versions, _ := parseAPIVersionsConfig(loadedCfg.APIVersions)
+	versions, _ := parseAndValidateAPIVersions(loadedCfg.APIVersions)
 
 	// Add handlers according to supported API versions in cfg
 	for _, v := range versions {

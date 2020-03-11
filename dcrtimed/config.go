@@ -222,16 +222,35 @@ func newConfigParser(cfg *config, so *serviceOptions, options flags.Options) *fl
 	return parser
 }
 
-func parseAPIVersionsConfig(vs string) ([]uint, error) {
+// parseAndValidateAPIVersions parses a string containing comma-separated API
+// versions, validates them and returns a slice of integer versions.
+func parseAndValidateAPIVersions(vs string) ([]uint, error) {
 	versions := strings.Split(vs, ",")
 	parsed := make([]uint, 0, len(versions))
+
+	// Validate out of bounds config
+	if len(versions) == 0 || len(versions) > 2 {
+		return nil, fmt.Errorf("Invalid API versions config," +
+			"must have at least one and at most two")
+	}
+
 	for _, v := range versions {
+		// Convert to integer
 		conv, err := strconv.Atoi(v)
 		if err != nil {
 			return nil, err
 		}
+		// Validate that version exists
+		switch conv {
+		case v1.APIVersion:
+		case v2.APIVersion:
+		default:
+			return nil, fmt.Errorf("%s is an invalid API version,"+
+				"must be 1, 2 or both", v)
+		}
 		parsed = append(parsed, uint(conv))
 	}
+
 	return parsed, nil
 }
 
@@ -447,20 +466,8 @@ func loadConfig() (*config, []string, error) {
 	}
 
 	// Validate API versions from config
-	var apiVersionsError bool
-	apiVersions, err := parseAPIVersionsConfig(cfg.APIVersions)
-	for _, v := range apiVersions {
-		if v != v1.APIVersion && v != v2.APIVersion {
-			apiVersionsError = true
-		}
-	}
-	if len(apiVersions) == 0 || len(apiVersions) > 2 {
-		apiVersionsError = true
-	}
-	if apiVersionsError || err != nil {
-		str := "%s: The API versions must be 1, 2 or both"
-		err := fmt.Errorf(str, funcName)
-		fmt.Fprintln(os.Stderr, err)
+	_, err = parseAndValidateAPIVersions(cfg.APIVersions)
+	if err != nil {
 		return nil, nil, err
 	}
 

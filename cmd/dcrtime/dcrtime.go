@@ -44,7 +44,7 @@ var (
 		` for accessing privileged API resources"`)
 	balance = flag.Bool("balance", false, `long:"balance" description:"Display`+
 		` the connected server's wallet balance. An API Token is required"`)
-	apiVersion = flag.Int("api", 2,
+	apiVersion = flag.Int("api", v2.APIVersion,
 		"Inform the API version to be used by the cli (1 or 2)")
 	skipVerify = flag.Bool("skipverify", false, "Skip TLS certificates"+
 		"verification (not recommended)")
@@ -737,17 +737,6 @@ func hasDigestFlag() bool {
 	return digest != nil && *digest != ""
 }
 
-func hasAPIVersionFlag() bool {
-	return apiVersion != nil && *apiVersion != 0
-}
-
-func isValidAPIVersionFlag(v int) bool {
-	if v == v1.APIVersion || v == v2.APIVersion {
-		return true
-	}
-	return false
-}
-
 // Ensures that there are no conflicting flags
 func ensureFlagCompatibility() error {
 	if *fileOnly && hasDigestFlag() {
@@ -811,31 +800,26 @@ func _main() error {
 	var download func([]string) error
 	var showWalletBalance func() error
 
-	// Validate API version flag and set appropriate values
-	// according to selected version. Default is v2.
-	if hasAPIVersionFlag() {
-		if !isValidAPIVersionFlag(*apiVersion) {
-			return fmt.Errorf("%v is not a valid API version,"+
-				"use version 1 or 2", *apiVersion)
-		}
-		switch *apiVersion {
-		case v1.APIVersion:
-			mainnetHost = v1.DefaultMainnetTimeHost
-			testnetHost = v1.DefaultTestnetTimeHost
-			mainnetPort = v1.DefaultMainnetTimePort
-			testnetPort = v1.DefaultTestnetTimePort
-			upload = uploadV1
-			download = downloadV1
-			showWalletBalance = showWalletBalanceV1
-		case v2.APIVersion:
-			mainnetHost = v2.DefaultMainnetTimeHost
-			testnetHost = v2.DefaultTestnetTimeHost
-			mainnetPort = v2.DefaultMainnetTimePort
-			testnetPort = v2.DefaultTestnetTimePort
-			upload = uploadV2
-			download = downloadV2
-			showWalletBalance = showWalletBalanceV2
-		}
+	// Set values according to selected API version. Default is v2.
+	switch *apiVersion {
+	case v1.APIVersion:
+		mainnetHost = v1.DefaultMainnetTimeHost
+		testnetHost = v1.DefaultTestnetTimeHost
+		mainnetPort = v1.DefaultMainnetTimePort
+		testnetPort = v1.DefaultTestnetTimePort
+		upload = uploadV1
+		download = downloadV1
+		showWalletBalance = showWalletBalanceV1
+	case v2.APIVersion:
+		mainnetHost = v2.DefaultMainnetTimeHost
+		testnetHost = v2.DefaultTestnetTimeHost
+		mainnetPort = v2.DefaultMainnetTimePort
+		testnetPort = v2.DefaultTestnetTimePort
+		upload = uploadV2
+		download = downloadV2
+		showWalletBalance = showWalletBalanceV2
+	default:
+		return fmt.Errorf("Invalid API version %v", *apiVersion)
 	}
 
 	if *host == "" {
