@@ -130,6 +130,7 @@ func (d *DcrtimeStore) proxyStatusV1(w http.ResponseWriter, r *http.Request) {
 
 	d.sendToBackend(w, r.Method, v1.StatusRoute, r.Header.Get("Content-Type"),
 		r.RemoteAddr, bytes.NewReader(b))
+
 	log.Infof("Status %v", r.RemoteAddr)
 }
 
@@ -214,29 +215,27 @@ func (d *DcrtimeStore) proxyStatusV2(w http.ResponseWriter, r *http.Request) {
 }
 
 func (d *DcrtimeStore) proxyTimestampV2(w http.ResponseWriter, r *http.Request) {
-	b, err := ioutil.ReadAll(r.Body)
+	r.ParseForm()
+	dig := r.Form.Get("digest")
+	route := v2.TimestampRoute + "?digest=" + dig
 	r.Body.Close()
-	if err != nil {
-		util.RespondWithError(w, http.StatusBadRequest,
-			"Unable to read request")
-		return
-	}
 
-	d.sendToBackend(w, r.Method, v2.TimestampRoute, r.Header.Get("Content-Type"),
-		r.RemoteAddr, bytes.NewReader(b))
+	d.sendToBackend(w, "GET", route, r.Header.Get("Content-Type"),
+		r.RemoteAddr, bytes.NewReader([]byte{}))
+
+	log.Infof("Timestamp %v", r.RemoteAddr)
 }
 
 func (d *DcrtimeStore) proxyVerifyV2(w http.ResponseWriter, r *http.Request) {
-	b, err := ioutil.ReadAll(r.Body)
+	r.ParseForm()
+	dig := r.Form.Get("digest")
+	route := v2.VerifyRoute + "?digest=" + dig
 	r.Body.Close()
-	if err != nil {
-		util.RespondWithError(w, http.StatusBadRequest,
-			"Unable to read request")
-		return
-	}
 
-	d.sendToBackend(w, r.Method, v2.VerifyRoute, r.Header.Get("Content-Type"),
-		r.RemoteAddr, bytes.NewReader(b))
+	d.sendToBackend(w, r.Method, route, r.Header.Get("Content-Type"),
+		r.RemoteAddr, bytes.NewReader([]byte{}))
+
+	log.Infof("Verify %v", r.RemoteAddr)
 }
 
 func (d *DcrtimeStore) proxyTimestampBatchV2(w http.ResponseWriter, r *http.Request) {
@@ -263,6 +262,8 @@ func (d *DcrtimeStore) proxyTimestampBatchV2(w http.ResponseWriter, r *http.Requ
 	for _, v := range t.Digests {
 		log.Infof("Timestamp %v: %v", r.RemoteAddr, v)
 	}
+
+	log.Infof("TimestampBatch %v", r.RemoteAddr)
 }
 
 func (d *DcrtimeStore) proxyVerifyBatchV2(w http.ResponseWriter, r *http.Request) {
@@ -285,6 +286,7 @@ func (d *DcrtimeStore) proxyVerifyBatchV2(w http.ResponseWriter, r *http.Request
 
 	d.sendToBackend(w, r.Method, v2.VerifyBatchRoute, r.Header.Get("Content-Type"),
 		r.RemoteAddr, bytes.NewReader(b))
+
 	log.Infof("Verify %v: Timestamps %v Digests %v",
 		r.RemoteAddr, len(v.Timestamps), len(v.Digests))
 }
