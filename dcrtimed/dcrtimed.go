@@ -131,7 +131,7 @@ func (d *DcrtimeStore) proxyStatusV1(w http.ResponseWriter, r *http.Request) {
 	d.sendToBackend(w, r.Method, v1.StatusRoute, r.Header.Get("Content-Type"),
 		r.RemoteAddr, bytes.NewReader(b))
 
-	log.Infof("Status to %v from %v", r.URL.Path, r.RemoteAddr)
+	log.Infof("%v Status %v", r.URL.Path, r.RemoteAddr)
 }
 
 func (d *DcrtimeStore) proxyTimestampV1(w http.ResponseWriter, r *http.Request) {
@@ -155,7 +155,7 @@ func (d *DcrtimeStore) proxyTimestampV1(w http.ResponseWriter, r *http.Request) 
 		r.RemoteAddr, bytes.NewReader(b))
 
 	for _, v := range t.Digests {
-		log.Infof("Timestamp to %v from %v: %v", r.URL.Path, r.RemoteAddr, v)
+		log.Infof("%v Timestamp %v: %v", r.URL.Path, r.RemoteAddr, v)
 	}
 }
 
@@ -178,7 +178,7 @@ func (d *DcrtimeStore) proxyVerifyV1(w http.ResponseWriter, r *http.Request) {
 
 	d.sendToBackend(w, r.Method, v1.VerifyRoute, r.Header.Get("Content-Type"),
 		r.RemoteAddr, bytes.NewReader(b))
-	log.Infof("Verify to %v from %v: Timestamps %v Digests %v",
+	log.Infof("%v Verify %v: Timestamps %v Digests %v",
 		r.URL.Path, r.RemoteAddr, len(v.Timestamps), len(v.Digests))
 }
 
@@ -188,7 +188,7 @@ func (d *DcrtimeStore) proxyWalletBalanceV1(w http.ResponseWriter, r *http.Reque
 	d.sendToBackend(w, r.Method, route, r.Header.Get("Content-Type"),
 		r.RemoteAddr, bytes.NewReader([]byte{}))
 
-	log.Infof("WalletBalance to %v from %v", r.URL.Path, r.RemoteAddr)
+	log.Infof("%v WalletBalance %v", r.URL.Path, r.RemoteAddr)
 }
 
 func (d *DcrtimeStore) proxyStatusV2(w http.ResponseWriter, r *http.Request) {
@@ -211,7 +211,7 @@ func (d *DcrtimeStore) proxyStatusV2(w http.ResponseWriter, r *http.Request) {
 
 	d.sendToBackend(w, r.Method, v2.StatusRoute, r.Header.Get("Content-Type"),
 		r.RemoteAddr, bytes.NewReader(b))
-	log.Infof("Status to %v from %v", r.URL.Path, r.RemoteAddr)
+	log.Infof("%v Status %v", r.URL.Path, r.RemoteAddr)
 }
 
 func (d *DcrtimeStore) proxyTimestampV2(w http.ResponseWriter, r *http.Request) {
@@ -223,7 +223,7 @@ func (d *DcrtimeStore) proxyTimestampV2(w http.ResponseWriter, r *http.Request) 
 	d.sendToBackend(w, "GET", route, r.Header.Get("Content-Type"),
 		r.RemoteAddr, bytes.NewReader([]byte{}))
 
-	log.Infof("Timestamp to %v from %v", r.URL.Path, r.RemoteAddr)
+	log.Infof("%v Timestamp %v", r.URL.Path, r.RemoteAddr)
 }
 
 func (d *DcrtimeStore) proxyVerifyV2(w http.ResponseWriter, r *http.Request) {
@@ -235,7 +235,7 @@ func (d *DcrtimeStore) proxyVerifyV2(w http.ResponseWriter, r *http.Request) {
 	d.sendToBackend(w, r.Method, route, r.Header.Get("Content-Type"),
 		r.RemoteAddr, bytes.NewReader([]byte{}))
 
-	log.Infof("Verify to %v from %v", r.URL.Path, r.RemoteAddr)
+	log.Infof("%v Verify %v", r.URL.Path, r.RemoteAddr)
 }
 
 func (d *DcrtimeStore) proxyTimestampBatchV2(w http.ResponseWriter, r *http.Request) {
@@ -263,7 +263,7 @@ func (d *DcrtimeStore) proxyTimestampBatchV2(w http.ResponseWriter, r *http.Requ
 		log.Infof("Timestamp %v: %v", r.RemoteAddr, v)
 	}
 
-	log.Infof("TimestampBatch to %v from %v", r.URL.Path, r.RemoteAddr)
+	log.Infof("%v TimestampBatch %v", r.URL.Path, r.RemoteAddr)
 }
 
 func (d *DcrtimeStore) proxyVerifyBatchV2(w http.ResponseWriter, r *http.Request) {
@@ -287,7 +287,7 @@ func (d *DcrtimeStore) proxyVerifyBatchV2(w http.ResponseWriter, r *http.Request
 	d.sendToBackend(w, r.Method, v2.VerifyBatchRoute, r.Header.Get("Content-Type"),
 		r.RemoteAddr, bytes.NewReader(b))
 
-	log.Infof("VerifyBatch to %v from %v: Timestamps %v Digests %v",
+	log.Infof("%v VerifyBatch %v: Timestamps %v Digests %v",
 		r.URL.Path, r.RemoteAddr, len(v.Timestamps), len(v.Digests))
 }
 
@@ -297,7 +297,7 @@ func (d *DcrtimeStore) proxyWalletBalanceV2(w http.ResponseWriter, r *http.Reque
 	d.sendToBackend(w, r.Method, route, r.Header.Get("Content-Type"),
 		r.RemoteAddr, bytes.NewReader([]byte{}))
 
-	log.Infof("WalletBalance to %v from %v", r.URL.Path, r.RemoteAddr)
+	log.Infof("%v WalletBalance %v", r.URL.Path, r.RemoteAddr)
 }
 
 // version returns the supported API versions running on the server.
@@ -329,7 +329,7 @@ func (d *DcrtimeStore) version(w http.ResponseWriter, r *http.Request) {
 	if xff != "" {
 		via = fmt.Sprintf("%v via %v", xff, r.RemoteAddr)
 	}
-	log.Infof("Version to %v from %v", r.URL.Path, via)
+	log.Infof("%v Version %v", r.URL.Path, via)
 
 	util.RespondWithJSON(w, http.StatusOK, versionReply)
 }
@@ -356,7 +356,7 @@ func (d *DcrtimeStore) statusV1(w http.ResponseWriter, r *http.Request) {
 	if xff != "" {
 		via = fmt.Sprintf("%v via %v", xff, r.RemoteAddr)
 	}
-	log.Infof("Status to %v from %v", r.URL.Path, via)
+	log.Infof("%v Status %v", r.URL.Path, via)
 
 	// Tell client the good news.
 	util.RespondWithJSON(w, http.StatusOK, v1.StatusReply(s))
@@ -431,7 +431,7 @@ func (d *DcrtimeStore) timestampV1(w http.ResponseWriter, r *http.Request) {
 			result = v1.ResultExistsError
 		}
 		results = append(results, result)
-		log.Infof("Timestamp to %v from %v: %v %v %x",
+		log.Infof("%v Timestamp %v: %v %v %x",
 			r.URL.Path, via, verb, tsS, v.Digest)
 	}
 
@@ -472,7 +472,7 @@ func (d *DcrtimeStore) verifyV1(w http.ResponseWriter, r *http.Request) {
 	if xff != "" {
 		via = fmt.Sprintf("%v via %v", r.RemoteAddr, xff)
 	}
-	log.Infof("Verify to %v from %v: Timestamps %v Digests %v",
+	log.Infof("%v Verify %v: Timestamps %v Digests %v",
 		r.URL.Path, via, len(v.Timestamps), len(digests))
 
 	// Collect all timestamps.
@@ -616,7 +616,7 @@ func (d *DcrtimeStore) walletBalanceV1(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Infof("WalletBalance to %v from %v", r.URL.Path, r.RemoteAddr)
+	log.Infof("%v WalletBalance %v", r.URL.Path, r.RemoteAddr)
 
 	util.RespondWithJSON(w, http.StatusOK, v1.WalletBalanceReply{
 		Total:       balanceResult.Total,
@@ -647,7 +647,7 @@ func (d *DcrtimeStore) statusV2(w http.ResponseWriter, r *http.Request) {
 	if xff != "" {
 		via = fmt.Sprintf("%v via %v", xff, r.RemoteAddr)
 	}
-	log.Infof("Status to %v from %v", r.URL.Path, via)
+	log.Infof("%v Status %v", r.URL.Path, via)
 
 	// Tell client the good news.
 	util.RespondWithJSON(w, http.StatusOK, v2.StatusReply(s))
@@ -722,7 +722,7 @@ func (d *DcrtimeStore) timestampBatchV2(w http.ResponseWriter, r *http.Request) 
 			result = v2.ResultExistsError
 		}
 		results = append(results, result)
-		log.Infof("TimestampBatch to %v from %v: %v %v %x",
+		log.Infof("%v TimestampBatch %v: %v %v %x",
 			r.URL.Path, via, verb, tsS, v.Digest)
 	}
 
@@ -763,7 +763,7 @@ func (d *DcrtimeStore) verifyBatchV2(w http.ResponseWriter, r *http.Request) {
 	if xff != "" {
 		via = fmt.Sprintf("%v via %v", r.RemoteAddr, xff)
 	}
-	log.Infof("VerifyBatch to %v from %v: Timestamps %v Digests %v",
+	log.Infof("%v VerifyBatch %v: Timestamps %v Digests %v",
 		r.URL.Path, via, len(v.Timestamps), len(digests))
 
 	// Collect all timestamps.
@@ -954,7 +954,7 @@ func (d *DcrtimeStore) timestampV2(w http.ResponseWriter, r *http.Request) {
 		verb = "rejected"
 		result = v2.ResultExistsError
 	}
-	log.Infof("Timestamp to %v from %v: %v %v %x",
+	log.Infof("%v Timestamp %v: %v %v %x",
 		r.URL.Path, via, verb, tsS, pr.Digest)
 
 	util.RespondWithJSON(w, http.StatusOK, v2.TimestampReply{
@@ -1007,7 +1007,7 @@ func (d *DcrtimeStore) verifyV2(w http.ResponseWriter, r *http.Request) {
 	if xff != "" {
 		via = fmt.Sprintf("%v via %v", r.RemoteAddr, xff)
 	}
-	log.Infof("Verify to %v from %v: Timestamp %v Digest %v",
+	log.Infof("%v Verify %v: Timestamp %v Digest %v",
 		r.URL.Path, via, v.Timestamp, digest)
 
 	// Collect timestamp.
@@ -1141,7 +1141,7 @@ func (d *DcrtimeStore) walletBalanceV2(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Infof("WalletBalance to %v from %v", r.URL.Path, r.RemoteAddr)
+	log.Infof("%v WalletBalance %v", r.URL.Path, r.RemoteAddr)
 
 	balanceResult, err := d.backend.GetBalance()
 	if err != nil {
