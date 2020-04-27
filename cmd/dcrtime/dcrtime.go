@@ -169,22 +169,24 @@ func downloadV1(questions []string) error {
 		return err
 	}
 
-	if *debug {
-		fmt.Println(string(b))
-	}
-
 	// If this is a trial run return.
 	if *trial {
 		return nil
 	}
 
+	route := *host + v1.VerifyRoute
 	c := newClient(*skipVerify)
-	r, err := c.Post(*host+v1.VerifyRoute, "application/json",
+	r, err := c.Post(route, "application/json",
 		bytes.NewReader(b))
 	if err != nil {
 		return err
 	}
 	defer r.Body.Close()
+
+	if *debug {
+		fmt.Println(string(b))
+		fmt.Println(route)
+	}
 
 	if r.StatusCode != http.StatusOK {
 		e, err := getError(r.Body)
@@ -340,22 +342,23 @@ func downloadV2(questions []string) error {
 		return err
 	}
 
-	if *debug {
-		fmt.Println(string(b))
-	}
-
 	// If this is a trial run return.
 	if *trial {
 		return nil
 	}
-
+	route := *host + v2.VerifyBatchRoute
 	c := newClient(*skipVerify)
-	r, err := c.Post(*host+v2.VerifyBatchRoute, "application/json",
+	r, err := c.Post(route, "application/json",
 		bytes.NewReader(b))
 	if err != nil {
 		return err
 	}
 	defer r.Body.Close()
+
+	if *debug {
+		fmt.Println(string(b))
+		fmt.Println(route)
+	}
 
 	if r.StatusCode != http.StatusOK {
 		e, err := getError(r.Body)
@@ -497,22 +500,24 @@ func uploadV1(digests []string, exists map[string]string) error {
 		return err
 	}
 
-	if *debug {
-		fmt.Println(string(b))
-	}
-
 	// If this is a trial run return.
 	if *trial {
 		return nil
 	}
 
+	route := *host + v1.TimestampRoute
 	c := newClient(*skipVerify)
-	r, err := c.Post(*host+v1.TimestampRoute, "application/json",
+	r, err := c.Post(route, "application/json",
 		bytes.NewReader(b))
 	if err != nil {
 		return err
 	}
 	defer r.Body.Close()
+
+	if *debug {
+		fmt.Println(string(b))
+		fmt.Println(route)
+	}
 
 	if r.StatusCode != http.StatusOK {
 		e, err := getError(r.Body)
@@ -564,22 +569,24 @@ func uploadV2(digests []string, exists map[string]string) error {
 		return err
 	}
 
-	if *debug {
-		fmt.Println(string(b))
-	}
-
 	// If this is a trial run return.
 	if *trial {
 		return nil
 	}
 
+	route := *host + v2.TimestampBatchRoute
 	c := newClient(*skipVerify)
-	r, err := c.Post(*host+v2.TimestampBatchRoute, "application/json",
+	r, err := c.Post(route, "application/json",
 		bytes.NewReader(b))
 	if err != nil {
 		return err
 	}
 	defer r.Body.Close()
+
+	if *debug {
+		fmt.Println(string(b))
+		fmt.Println(route)
+	}
 
 	if r.StatusCode != http.StatusOK {
 		e, err := getError(r.Body)
@@ -630,6 +637,10 @@ func showWalletBalanceV1() error {
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return err
+	}
+
+	if *debug {
+		fmt.Println(route)
 	}
 
 	response, err := c.Do(request)
@@ -687,6 +698,10 @@ func showWalletBalanceV2() error {
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return err
+	}
+
+	if *debug {
+		fmt.Println(route)
 	}
 
 	response, err := c.Do(request)
