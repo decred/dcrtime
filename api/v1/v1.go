@@ -5,6 +5,7 @@
 package v1
 
 import (
+	"fmt"
 	"regexp"
 
 	"github.com/decred/dcrtime/merkle"
@@ -13,21 +14,8 @@ import (
 // XXX add a clamp to all batches
 
 const (
-	// StatusRoute defines the API route for retrieving
-	// the server status.
-	StatusRoute = "/v1/status/"
-
-	// TimestampRoute defines the API route for submitting
-	// both timestamps and digests.
-	TimestampRoute = "/v1/timestamp/"
-
-	// VerifyRoute defines the API route for both timestamp
-	// and digest verification.
-	VerifyRoute = "/v1/verify/" // Multi verify ingest
-
-	// WalletBalanceRoute defines the API route for retrieving
-	// the account balance from dcrtimed's wallet instance
-	WalletBalanceRoute = "/v1/balance"
+	// APIVersion defines the version number for this code.
+	APIVersion = 1
 
 	// ResultOK indicates the operation completed successfully.
 	ResultOK = 0
@@ -61,6 +49,27 @@ const (
 )
 
 var (
+	// RoutePrefix is the route url prefix for this version.
+	RoutePrefix = fmt.Sprintf("/v%v", APIVersion)
+
+	// StatusRoute defines the API route for retrieving
+	// the server status.
+	StatusRoute = RoutePrefix + "/status/"
+
+	// TimestampRoute defines the API route for submitting
+	// both timestamps and digests.
+	TimestampRoute = RoutePrefix + "/timestamp/"
+
+	// VerifyRoute defines the API route for both timestamp
+	// and digest verification.
+	VerifyRoute = RoutePrefix + "/verify/" // Multi verify digest
+
+	// WalletBalanceRoute defines the API route for retrieving
+	// the account balance from dcrtimed's wallet instance
+	WalletBalanceRoute = RoutePrefix + "/balance"
+
+	// Result defines legible string messages to a timestamping/query
+	// result code.
 	Result = map[int]string{
 		ResultOK:               "OK",
 		ResultExistsError:      "Exists",

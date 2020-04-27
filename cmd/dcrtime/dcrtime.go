@@ -20,6 +20,7 @@ import (
 	"strconv"
 
 	v1 "github.com/decred/dcrtime/api/v1"
+	v2 "github.com/decred/dcrtime/api/v2"
 	"github.com/decred/dcrtime/merkle"
 	"github.com/decred/dcrtime/util"
 )
@@ -35,6 +36,7 @@ var (
 	fileOnly  = flag.Bool("file", false, "Treat digests and timestamps "+
 		"as file names")
 	host     = flag.String("h", "", "Timestamping host")
+	port     = flag.String("p", "", "Timestamping host port")
 	trial    = flag.Bool("t", false, "Trial run, don't contact server")
 	verbose  = flag.Bool("v", false, "Verbose")
 	digest   = flag.String("digest", "", "Submit a raw 256 bit digest to anchor")
@@ -42,6 +44,10 @@ var (
 		` for accessing privileged API resources"`)
 	balance = flag.Bool("balance", false, `long:"balance" description:"Display`+
 		` the connected server's wallet balance. An API Token is required"`)
+	apiVersion = flag.Int("api", v2.APIVersion,
+		"Inform the API version to be used by the cli (1 or 2)")
+	skipVerify = flag.Bool("skipverify", false, "Skip TLS certificates"+
+		"verification (not recommended)")
 )
 
 // normalizeAddress returns addr with the passed default port appended if
@@ -74,12 +80,12 @@ func isFile(filename string) bool {
 
 // isDigest determines if a string is a valid SHA256 digest.
 func isDigest(digest string) bool {
-	return v1.RegexpSHA256.MatchString(digest)
+	return v2.RegexpSHA256.MatchString(digest)
 }
 
 // isTimestamp determines if a string is a valid UNIX timestamp.
 func isTimestamp(timestamp string) bool {
-	return v1.RegexpTimestamp.MatchString(timestamp)
+	return v2.RegexpTimestamp.MatchString(timestamp)
 }
 
 // getError returns the error that is embedded in a JSON reply.
@@ -138,7 +144,7 @@ func newClient(skipVerify bool) *http.Client {
 	return &http.Client{Transport: tr}
 }
 
-func download(questions []string) error {
+func downloadV1(questions []string) error {
 	ver := v1.Verify{
 		ID: dcrtimeClientID,
 	}
@@ -172,7 +178,7 @@ func download(questions []string) error {
 		return nil
 	}
 
-	c := newClient(false)
+	c := newClient(*skipVerify)
 	r, err := c.Post(*host+v1.VerifyRoute, "application/json",
 		bytes.NewReader(b))
 	if err != nil {
@@ -309,7 +315,178 @@ func download(questions []string) error {
 	return nil
 }
 
-func upload(digests []string, exists map[string]string) error {
+func downloadV2(questions []string) error {
+	ver := v2.VerifyBatch{
+		ID: dcrtimeClientID,
+	}
+
+	for _, question := range questions {
+		if ts, ok := convertTimestamp(question); ok {
+			ver.Timestamps = append(ver.Timestamps, ts)
+			continue
+		}
+
+		if isDigest(question) {
+			ver.Digests = append(ver.Digests, question)
+			continue
+		}
+
+		return fmt.Errorf("not a digest or timestamp: %v", question)
+	}
+
+	// Convert Verify to JSON
+	b, err := json.Marshal(ver)
+	if err != nil {
+		return err
+	}
+
+	if *debug {
+		fmt.Println(string(b))
+	}
+
+	// If this is a trial run return.
+	if *trial {
+		return nil
+	}
+
+	c := newClient(*skipVerify)
+	r, err := c.Post(*host+v2.VerifyRoute, "application/json",
+		bytes.NewReader(b))
+	if err != nil {
+		return err
+	}
+	defer r.Body.Close()
+
+	if r.StatusCode != http.StatusOK {
+		e, err := getError(r.Body)
+		if err != nil {
+			return fmt.Errorf("%v", r.Status)
+		}
+		return fmt.Errorf("%v: %v", r.Status, e)
+	}
+
+	if *printJson {
+		io.Copy(os.Stdout, r.Body)
+		fmt.Printf("\n")
+		return nil
+	}
+
+	// Decode response.
+	var vr v2.VerifyBatchReply
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&vr); err != nil {
+		return fmt.Errorf("could node decode VerifyReply: %v", err)
+	}
+
+	for _, v := range vr.Timestamps {
+		result, ok := v2.Result[v.Result]
+		if !ok {
+			fmt.Printf("%v invalid error code %v\n", v.ServerTimestamp,
+				v.Result)
+			continue
+		}
+
+		// Verify results if the collection is anchored.
+		if v.CollectionInformation.ChainTimestamp != 0 {
+			// Calculate merkle root of all digests.
+			digests := make([]*[sha256.Size]byte, 0,
+				len(v.CollectionInformation.Digests))
+			for _, digest := range v.CollectionInformation.Digests {
+				d, ok := convertDigest(digest)
+				if !ok {
+					return fmt.Errorf("Invalid digest "+
+						"server response for "+
+						"timestamp: %v",
+						v.ServerTimestamp)
+				}
+				digests = append(digests, &d)
+			}
+			root := merkle.Root(digests)
+			if hex.EncodeToString(root[:]) !=
+				v.CollectionInformation.MerkleRoot {
+				fmt.Printf("invalid merkle root: %v\n", err)
+			}
+		}
+
+		// Print the good news.
+		if v.CollectionInformation.ChainTimestamp == 0 &&
+			v.Result == v2.ResultOK {
+			result = "Not anchored"
+		}
+		fmt.Printf("%v %v\n", v.ServerTimestamp, result)
+
+		if !*verbose {
+			continue
+		}
+
+		prefix := "Digests"
+		for _, digest := range v.CollectionInformation.Digests {
+			fmt.Printf("  %-15v: %v\n", prefix, digest)
+			prefix = ""
+		}
+
+		// Only print additional info if we are anchored
+		if v.CollectionInformation.ChainTimestamp == 0 {
+			continue
+		}
+		fmt.Printf("  %-15v: %v\n", "Chain Timestamp",
+			v.CollectionInformation.ChainTimestamp)
+		fmt.Printf("  %-15v: %v\n", "Merkle Root",
+			v.CollectionInformation.MerkleRoot)
+		fmt.Printf("  %-15v: %v\n", "TxID",
+			v.CollectionInformation.Transaction)
+	}
+
+	for _, v := range vr.Digests {
+		result, ok := v2.Result[v.Result]
+		if !ok {
+			fmt.Printf("%v invalid error code %v\n", v.Digest,
+				v.Result)
+			continue
+		}
+
+		// Verify merkle path.
+		root, err := merkle.VerifyAuthPath(&v.ChainInformation.MerklePath)
+		if err != nil {
+			if err != merkle.ErrEmpty {
+				fmt.Printf("%v invalid auth path %v\n",
+					v.Digest, err)
+				continue
+			}
+			fmt.Printf("%v Not anchored\n", v.Digest)
+			continue
+		}
+
+		// Verify merkle root.
+		merkleRoot, err := hex.DecodeString(v.ChainInformation.MerkleRoot)
+		if err != nil {
+			fmt.Printf("invalid merkle root: %v\n", err)
+			continue
+		}
+		// This is silly since we check against returned root.
+		if !bytes.Equal(root[:], merkleRoot) {
+			fmt.Printf("%v invalid merkle root\n", v.Digest)
+			continue
+		}
+
+		// Print the good news.
+		fmt.Printf("%v %v\n", v.Digest, result)
+
+		if !*verbose {
+			continue
+		}
+		fmt.Printf("  %-15v: %v\n", "Chain Timestamp",
+			v.ChainInformation.ChainTimestamp)
+		fmt.Printf("  %-15v: %v\n", "Merkle Root",
+			v.ChainInformation.MerkleRoot)
+		fmt.Printf("  %-15v: %v\n", "TxID",
+			v.ChainInformation.Transaction)
+	}
+
+	return nil
+}
+
+func uploadV1(digests []string, exists map[string]string) error {
 	// batch uploads
 	ts := v1.Timestamp{
 		ID:      dcrtimeClientID,
@@ -329,7 +506,7 @@ func upload(digests []string, exists map[string]string) error {
 		return nil
 	}
 
-	c := newClient(false)
+	c := newClient(*skipVerify)
 	r, err := c.Post(*host+v1.TimestampRoute, "application/json",
 		bytes.NewReader(b))
 	if err != nil {
@@ -362,7 +539,7 @@ func upload(digests []string, exists map[string]string) error {
 	for k, v := range tsReply.Results {
 		filename := exists[tsReply.Digests[k]]
 		if v == v1.ResultOK {
-			fmt.Printf("%v OK     %v\n", tsReply.Digests[k], filename)
+			fmt.Printf("%v OK %v\n", tsReply.Digests[k], filename)
 			continue
 		}
 		fmt.Printf("%v Exists %v\n", tsReply.Digests[k], filename)
@@ -376,28 +553,77 @@ func upload(digests []string, exists map[string]string) error {
 	return nil
 }
 
-func hasDigestFlag() bool {
-	return digest != nil && *digest != ""
-}
+func uploadV2(digests []string, exists map[string]string) error {
+	// batch uploads
+	ts := v2.TimestampBatch{
+		ID:      dcrtimeClientID,
+		Digests: digests,
+	}
+	b, err := json.Marshal(ts)
+	if err != nil {
+		return err
+	}
 
-func uploadDigest(digest string) error {
-	return upload([]string{digest}, make(map[string]string))
-}
+	if *debug {
+		fmt.Println(string(b))
+	}
 
-// Ensures that there are no conflicting flags
-func ensureFlagCompatibility() error {
-	if *fileOnly && hasDigestFlag() {
-		return fmt.Errorf(
-			"-digest and -file flags cannot be used simultaneously")
+	// If this is a trial run return.
+	if *trial {
+		return nil
+	}
+
+	c := newClient(*skipVerify)
+	r, err := c.Post(*host+v2.TimestampBatchRoute, "application/json",
+		bytes.NewReader(b))
+	if err != nil {
+		return err
+	}
+	defer r.Body.Close()
+
+	if r.StatusCode != http.StatusOK {
+		e, err := getError(r.Body)
+		if err != nil {
+			return fmt.Errorf("%v", r.Status)
+		}
+		return fmt.Errorf("%v: %v", r.Status, e)
+	}
+
+	if *printJson {
+		io.Copy(os.Stdout, r.Body)
+		fmt.Printf("\n")
+		return nil
+	}
+
+	// Decode response.
+	var tsReply v2.TimestampBatchReply
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&tsReply); err != nil {
+		return fmt.Errorf("Could node decode TimestampReply: %v", err)
+	}
+
+	// Print human readable results.
+	for k, v := range tsReply.Results {
+		filename := exists[tsReply.Digests[k]]
+		if v == v2.ResultOK {
+			fmt.Printf("%v OK %v\n", tsReply.Digests[k], filename)
+			continue
+		}
+		fmt.Printf("%v Exists %v\n", tsReply.Digests[k], filename)
+	}
+
+	if *verbose {
+		// Print server timestamp.
+		fmt.Printf("Collection timestamp: %v\n", tsReply.ServerTimestamp)
 	}
 
 	return nil
 }
 
-// getWalletBalance returns the total balance of the primary dcrtimed wallet,
+// showWalletBalanceV1 returns the total balance of the primary dcrtimed wallet,
 // in atoms.
-func showWalletBalance() error {
-	c := newClient(false)
+func showWalletBalanceV1() error {
+	c := newClient(*skipVerify)
 
 	route := *host + v1.WalletBalanceRoute
 	url := fmt.Sprintf("%s?apitoken=%s", route, *apiToken)
@@ -450,6 +676,77 @@ func showWalletBalance() error {
 	return nil
 }
 
+// showWalletBalanceV2 returns the total balance of the primary dcrtimed wallet,
+// in atoms.
+func showWalletBalanceV2() error {
+	c := newClient(*skipVerify)
+
+	route := *host + v2.WalletBalanceRoute
+	url := fmt.Sprintf("%s?apitoken=%s", route, *apiToken)
+	fmt.Println(url)
+	request, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+
+	response, err := c.Do(request)
+	if err != nil {
+		return err
+	}
+
+	defer response.Body.Close()
+
+	if *printJson {
+		io.Copy(os.Stdout, response.Body)
+		fmt.Printf("\n")
+		return nil
+	}
+
+	if response.StatusCode != http.StatusOK {
+		e, err := getError(response.Body)
+		if err != nil {
+			return fmt.Errorf("Retrieve wallet balance failed: %v",
+				response.Status)
+		}
+		return fmt.Errorf("Retrieve wallet balance failed - %v: %v",
+			response.Status, e)
+	}
+
+	// Decode the response from dcrtimed
+	var balance v2.WalletBalanceReply
+	jsonDecoder := json.NewDecoder(response.Body)
+	if err := jsonDecoder.Decode(&balance); err != nil {
+		return fmt.Errorf("Could not decode WalletBalanceReply: %v", err)
+	}
+
+	if *verbose {
+		fmt.Printf(
+			"Wallet balance (atoms)\n"+
+				"Spendable:   %v\n"+
+				"Total:       %v\n"+
+				"Unconfirmed: %v\n",
+			balance.Spendable, balance.Total, balance.Unconfirmed)
+	} else {
+		fmt.Printf("Spendable wallet balance (atoms): %v\n", balance.Spendable)
+	}
+
+	return nil
+}
+
+func hasDigestFlag() bool {
+	return digest != nil && *digest != ""
+}
+
+// Ensures that there are no conflicting flags
+func ensureFlagCompatibility() error {
+	if *fileOnly && hasDigestFlag() {
+		return fmt.Errorf(
+			"-digest and -file flags cannot be used simultaneously")
+	}
+
+	return nil
+}
+
 // credentialsRequired determines if any of the flags
 // require credentials to be provided.
 func credentialsRequired() bool {
@@ -495,20 +792,53 @@ func _main() error {
 		return flagError
 	}
 
+	var mainnetHost string
+	var testnetHost string
+	var mainnetPort string
+	var testnetPort string
+	var upload func([]string, map[string]string) error
+	var download func([]string) error
+	var showWalletBalance func() error
+
+	// Set values according to selected API version. Default is v2.
+	switch *apiVersion {
+	case v1.APIVersion:
+		mainnetHost = v1.DefaultMainnetTimeHost
+		testnetHost = v1.DefaultTestnetTimeHost
+		mainnetPort = v1.DefaultMainnetTimePort
+		testnetPort = v1.DefaultTestnetTimePort
+		upload = uploadV1
+		download = downloadV1
+		showWalletBalance = showWalletBalanceV1
+	case v2.APIVersion:
+		mainnetHost = v2.DefaultMainnetTimeHost
+		testnetHost = v2.DefaultTestnetTimeHost
+		mainnetPort = v2.DefaultMainnetTimePort
+		testnetPort = v2.DefaultTestnetTimePort
+		upload = uploadV2
+		download = downloadV2
+		showWalletBalance = showWalletBalanceV2
+	default:
+		return fmt.Errorf("Invalid API version %v", *apiVersion)
+	}
+
 	if *host == "" {
 		if *testnet {
-			*host = v1.DefaultTestnetTimeHost
+			*host = testnetHost
 		} else {
-			*host = v1.DefaultMainnetTimeHost
+			*host = mainnetHost
 		}
 	}
 
-	port := v1.DefaultMainnetTimePort
-	if *testnet {
-		port = v1.DefaultTestnetTimePort
+	if *port == "" {
+		if *testnet {
+			*port = testnetPort
+		} else {
+			*port = mainnetPort
+		}
 	}
 
-	*host = normalizeAddress(*host, port)
+	*host = normalizeAddress(*host, *port)
 
 	// Set port if not specified.
 	u, err := url.Parse("https://" + *host)
@@ -520,7 +850,7 @@ func _main() error {
 	// Allow submitting a pre-calculated 256 bit digest from the command line,
 	// rather than needing to hash a payload.
 	if hasDigestFlag() {
-		return uploadDigest(*digest)
+		return upload([]string{*digest}, make(map[string]string))
 	}
 
 	// Print the wallet balance via privileged endpoint.
@@ -536,8 +866,8 @@ func _main() error {
 	// We attempt to open files first; if that doesn't work we treat the
 	// args as digests or timestamps.  Digests and timestamps are sent to
 	// the server for lookup.  Use fileOnly to override this behavior.
-	var uploads []string
-	var downloads []string
+	var uploadArr []string
+	var downloadArr []string
 	exists := make(map[string]string) // [digest]filename
 	for _, a := range flag.Args() {
 		// Try to see if argument is a valid file.
@@ -555,7 +885,7 @@ func _main() error {
 			}
 			exists[d] = a
 
-			uploads = append(uploads, d)
+			uploadArr = append(uploadArr, d)
 			if *verbose {
 				fmt.Printf("%v Upload %v\n", d, a)
 			}
@@ -565,7 +895,7 @@ func _main() error {
 		// Argument was not a file, try to see if it is a digest or
 		// timestamp instead.
 		if isDigest(a) || isTimestamp(a) {
-			downloads = append(downloads, a)
+			downloadArr = append(downloadArr, a)
 			if *verbose {
 				fmt.Printf("%-64v Verify\n", a)
 			}
@@ -580,19 +910,19 @@ func _main() error {
 			a)
 	}
 
-	if len(uploads) == 0 && len(downloads) == 0 && !didRunCommand {
+	if len(uploadArr) == 0 && len(downloadArr) == 0 && !didRunCommand {
 		return fmt.Errorf("nothing to do")
 	}
 
-	if len(uploads) != 0 {
-		err := upload(uploads, exists)
+	if len(uploadArr) != 0 {
+		err := upload(uploadArr, exists)
 		if err != nil {
 			return err
 		}
 	}
 
-	if len(downloads) != 0 {
-		err := download(downloads)
+	if len(downloadArr) != 0 {
+		err := download(downloadArr)
 		if err != nil {
 			return err
 		}

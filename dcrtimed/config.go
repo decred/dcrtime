@@ -16,6 +16,8 @@ import (
 	"strings"
 
 	"github.com/decred/dcrd/dcrutil/v2"
+	v1 "github.com/decred/dcrtime/api/v1"
+	v2 "github.com/decred/dcrtime/api/v2"
 	flags "github.com/jessevdk/go-flags"
 )
 
@@ -37,6 +39,7 @@ var (
 	defaultHTTPSKeyFile  = filepath.Join(defaultHomeDir, "https.key")
 	defaultHTTPSCertFile = filepath.Join(defaultHomeDir, "https.cert")
 	defaultLogDir        = filepath.Join(defaultHomeDir, defaultLogDirname)
+	defaultAPIVersions   = fmt.Sprintf("%v,%v", v1.APIVersion, v2.APIVersion)
 )
 
 // runServiceCommand is only set to a real function on Windows.  It is used
@@ -69,6 +72,7 @@ type config struct {
 	StoreCert         string   `long:"storecert" description:"File containing the https certificate file for storehost"`
 	EnableCollections bool     `long:"enablecollections" description:"Allow clients to query collection timestamps."`
 	APITokens         []string `long:"apitoken" description:"Token used to grant access to privileged API resources"`
+	APIVersions       string   `long:"apiversions" description:"Enables API versions on the daemon"`
 }
 
 // serviceOptions defines the configuration options for the daemon as a service
@@ -218,6 +222,38 @@ func newConfigParser(cfg *config, so *serviceOptions, options flags.Options) *fl
 	return parser
 }
 
+// parseAndValidateAPIVersions parses a string containing comma-separated API
+// versions, validates them and returns a slice of integer versions.
+func parseAndValidateAPIVersions(vs string) ([]uint, error) {
+	versions := strings.Split(vs, ",")
+	parsed := make([]uint, 0, len(versions))
+
+	// Validate out of bounds config
+	if len(versions) == 0 || len(versions) > 2 {
+		return nil, fmt.Errorf("Invalid API versions config," +
+			"must have at least one and at most two")
+	}
+
+	for _, v := range versions {
+		// Convert to integer
+		conv, err := strconv.Atoi(v)
+		if err != nil {
+			return nil, err
+		}
+		// Validate that version exists
+		switch conv {
+		case v1.APIVersion:
+		case v2.APIVersion:
+		default:
+			return nil, fmt.Errorf("%s is an invalid API version,"+
+				"must be 1, 2 or both", v)
+		}
+		parsed = append(parsed, uint(conv))
+	}
+
+	return parsed, nil
+}
+
 // loadConfig initializes and parses the config using a config file and command
 // line options.
 //
@@ -233,14 +269,15 @@ func newConfigParser(cfg *config, so *serviceOptions, options flags.Options) *fl
 func loadConfig() (*config, []string, error) {
 	// Default config.
 	cfg := config{
-		HomeDir:    defaultHomeDir,
-		ConfigFile: defaultConfigFile,
-		DebugLevel: defaultLogLevel,
-		DataDir:    defaultDataDir,
-		LogDir:     defaultLogDir,
-		HTTPSKey:   defaultHTTPSKeyFile,
-		HTTPSCert:  defaultHTTPSCertFile,
-		Version:    version(),
+		HomeDir:     defaultHomeDir,
+		ConfigFile:  defaultConfigFile,
+		DebugLevel:  defaultLogLevel,
+		DataDir:     defaultDataDir,
+		LogDir:      defaultLogDir,
+		HTTPSKey:    defaultHTTPSKeyFile,
+		HTTPSCert:   defaultHTTPSCertFile,
+		Version:     version(),
+		APIVersions: defaultAPIVersions,
 	}
 
 	// Service options which are only added on Windows.
@@ -426,6 +463,12 @@ func loadConfig() (*config, []string, error) {
 			fmt.Fprintln(os.Stderr, usageMessage)
 			return nil, nil, err
 		}
+	}
+
+	// Validate API versions from config
+	_, err = parseAndValidateAPIVersions(cfg.APIVersions)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	// Add the default listener if none were specified. The default

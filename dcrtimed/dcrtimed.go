@@ -18,10 +18,12 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"time"
 
 	v1 "github.com/decred/dcrtime/api/v1"
+	v2 "github.com/decred/dcrtime/api/v2"
 	"github.com/decred/dcrtime/dcrtimed/backend"
 	"github.com/decred/dcrtime/dcrtimed/backend/filesystem"
 	"github.com/decred/dcrtime/util"
@@ -109,7 +111,7 @@ func (d *DcrtimeStore) sendToBackend(w http.ResponseWriter, method, route, conte
 	}
 }
 
-func (d *DcrtimeStore) proxyStatus(w http.ResponseWriter, r *http.Request) {
+func (d *DcrtimeStore) proxyStatusV1(w http.ResponseWriter, r *http.Request) {
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		util.RespondWithError(w, http.StatusBadRequest,
@@ -119,6 +121,7 @@ func (d *DcrtimeStore) proxyStatus(w http.ResponseWriter, r *http.Request) {
 
 	var s v1.Status
 	decoder := json.NewDecoder(bytes.NewReader(b))
+	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&s); err != nil {
 		util.RespondWithError(w, http.StatusBadRequest,
 			"Invalid request payload")
@@ -127,10 +130,11 @@ func (d *DcrtimeStore) proxyStatus(w http.ResponseWriter, r *http.Request) {
 
 	d.sendToBackend(w, r.Method, v1.StatusRoute, r.Header.Get("Content-Type"),
 		r.RemoteAddr, bytes.NewReader(b))
-	log.Infof("Status %v", r.RemoteAddr)
+
+	log.Infof("%v Status %v", r.URL.Path, r.RemoteAddr)
 }
 
-func (d *DcrtimeStore) proxyTimestamp(w http.ResponseWriter, r *http.Request) {
+func (d *DcrtimeStore) proxyTimestampV1(w http.ResponseWriter, r *http.Request) {
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		util.RespondWithError(w, http.StatusBadRequest,
@@ -140,6 +144,7 @@ func (d *DcrtimeStore) proxyTimestamp(w http.ResponseWriter, r *http.Request) {
 
 	var t v1.Timestamp
 	decoder := json.NewDecoder(bytes.NewReader(b))
+	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&t); err != nil {
 		util.RespondWithError(w, http.StatusBadRequest,
 			"Invalid request payload")
@@ -150,11 +155,11 @@ func (d *DcrtimeStore) proxyTimestamp(w http.ResponseWriter, r *http.Request) {
 		r.RemoteAddr, bytes.NewReader(b))
 
 	for _, v := range t.Digests {
-		log.Infof("Timestamp %v: %v", r.RemoteAddr, v)
+		log.Infof("%v Timestamp %v: %v", r.URL.Path, r.RemoteAddr, v)
 	}
 }
 
-func (d *DcrtimeStore) proxyVerify(w http.ResponseWriter, r *http.Request) {
+func (d *DcrtimeStore) proxyVerifyV1(w http.ResponseWriter, r *http.Request) {
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		util.RespondWithError(w, http.StatusBadRequest,
@@ -164,6 +169,7 @@ func (d *DcrtimeStore) proxyVerify(w http.ResponseWriter, r *http.Request) {
 
 	var v v1.Verify
 	decoder := json.NewDecoder(bytes.NewReader(b))
+	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&v); err != nil {
 		util.RespondWithError(w, http.StatusBadRequest,
 			"Invalid request payload")
@@ -172,40 +178,169 @@ func (d *DcrtimeStore) proxyVerify(w http.ResponseWriter, r *http.Request) {
 
 	d.sendToBackend(w, r.Method, v1.VerifyRoute, r.Header.Get("Content-Type"),
 		r.RemoteAddr, bytes.NewReader(b))
-	log.Infof("Verify %v: Timestamps %v Digests %v",
-		r.RemoteAddr, len(v.Timestamps), len(v.Digests))
+	log.Infof("%v Verify %v: Timestamps %v Digests %v",
+		r.URL.Path, r.RemoteAddr, len(v.Timestamps), len(v.Digests))
 }
 
-func convertDigests(d []string) ([][sha256.Size]byte, error) {
-	result := make([][sha256.Size]byte, 0, len(d))
-
-	for _, digest := range d {
-		hash, err := hex.DecodeString(digest)
-		if err != nil {
-			return nil, err
-		}
-		if len(hash) != sha256.Size {
-			return nil, fmt.Errorf("invalid length")
-		}
-		var h [sha256.Size]byte
-		copy(h[:], hash)
-		result = append(result, h)
-	}
-
-	return result, nil
-}
-
-func (d *DcrtimeStore) proxyWalletBalance(w http.ResponseWriter, r *http.Request) {
+func (d *DcrtimeStore) proxyWalletBalanceV1(w http.ResponseWriter, r *http.Request) {
 	apiToken := r.URL.Query().Get("apitoken")
 	route := v1.WalletBalanceRoute + "?apitoken=" + apiToken
 	d.sendToBackend(w, r.Method, route, r.Header.Get("Content-Type"),
 		r.RemoteAddr, bytes.NewReader([]byte{}))
 
-	log.Infof("WalletBalance %v", r.RemoteAddr)
+	log.Infof("%v WalletBalance %v", r.URL.Path, r.RemoteAddr)
 }
 
-// status returns server status information
-func (d *DcrtimeStore) status(w http.ResponseWriter, r *http.Request) {
+func (d *DcrtimeStore) proxyStatusV2(w http.ResponseWriter, r *http.Request) {
+	b, err := ioutil.ReadAll(r.Body)
+	r.Body.Close()
+	if err != nil {
+		util.RespondWithError(w, http.StatusBadRequest,
+			"Unable to read request")
+		return
+	}
+
+	var s v2.Status
+	decoder := json.NewDecoder(bytes.NewReader(b))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&s); err != nil {
+		util.RespondWithError(w, http.StatusBadRequest,
+			"Invalid request payload")
+		return
+	}
+
+	d.sendToBackend(w, r.Method, v2.StatusRoute, r.Header.Get("Content-Type"),
+		r.RemoteAddr, bytes.NewReader(b))
+	log.Infof("%v Status %v", r.URL.Path, r.RemoteAddr)
+}
+
+func (d *DcrtimeStore) proxyTimestampV2(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	dig := r.Form.Get("digest")
+	route := v2.TimestampRoute + "?digest=" + dig
+	r.Body.Close()
+
+	d.sendToBackend(w, "GET", route, r.Header.Get("Content-Type"),
+		r.RemoteAddr, bytes.NewReader([]byte{}))
+
+	log.Infof("%v Timestamp %v", r.URL.Path, r.RemoteAddr)
+}
+
+func (d *DcrtimeStore) proxyVerifyV2(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	dig := r.Form.Get("digest")
+	route := v2.VerifyRoute + "?digest=" + dig
+	r.Body.Close()
+
+	d.sendToBackend(w, r.Method, route, r.Header.Get("Content-Type"),
+		r.RemoteAddr, bytes.NewReader([]byte{}))
+
+	log.Infof("%v Verify %v", r.URL.Path, r.RemoteAddr)
+}
+
+func (d *DcrtimeStore) proxyTimestampBatchV2(w http.ResponseWriter, r *http.Request) {
+	b, err := ioutil.ReadAll(r.Body)
+	r.Body.Close()
+	if err != nil {
+		util.RespondWithError(w, http.StatusBadRequest,
+			"Unable to read request")
+		return
+	}
+
+	var t v2.TimestampBatch
+	decoder := json.NewDecoder(bytes.NewReader(b))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&t); err != nil {
+		util.RespondWithError(w, http.StatusBadRequest,
+			"Invalid request payload")
+		return
+	}
+
+	d.sendToBackend(w, r.Method, v2.TimestampBatchRoute, r.Header.Get("Content-Type"),
+		r.RemoteAddr, bytes.NewReader(b))
+
+	for _, v := range t.Digests {
+		log.Infof("Timestamp %v: %v", r.RemoteAddr, v)
+	}
+
+	log.Infof("%v TimestampBatch %v", r.URL.Path, r.RemoteAddr)
+}
+
+func (d *DcrtimeStore) proxyVerifyBatchV2(w http.ResponseWriter, r *http.Request) {
+	b, err := ioutil.ReadAll(r.Body)
+	r.Body.Close()
+	if err != nil {
+		util.RespondWithError(w, http.StatusBadRequest,
+			"Unable to read request")
+		return
+	}
+
+	var v v2.VerifyBatch
+	decoder := json.NewDecoder(bytes.NewReader(b))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&v); err != nil {
+		util.RespondWithError(w, http.StatusBadRequest,
+			"Invalid request payload")
+		return
+	}
+
+	d.sendToBackend(w, r.Method, v2.VerifyBatchRoute, r.Header.Get("Content-Type"),
+		r.RemoteAddr, bytes.NewReader(b))
+
+	log.Infof("%v VerifyBatch %v: Timestamps %v Digests %v",
+		r.URL.Path, r.RemoteAddr, len(v.Timestamps), len(v.Digests))
+}
+
+func (d *DcrtimeStore) proxyWalletBalanceV2(w http.ResponseWriter, r *http.Request) {
+	apiToken := r.URL.Query().Get("apitoken")
+	route := v2.WalletBalanceRoute + "?apitoken=" + apiToken
+	d.sendToBackend(w, r.Method, route, r.Header.Get("Content-Type"),
+		r.RemoteAddr, bytes.NewReader([]byte{}))
+
+	log.Infof("%v WalletBalance %v", r.URL.Path, r.RemoteAddr)
+}
+
+// version returns the supported API versions running on the server.
+// Handles /version
+func (d *DcrtimeStore) version(w http.ResponseWriter, r *http.Request) {
+	var versions []uint
+	var prefixes []string
+	vs, _ := parseAndValidateAPIVersions(d.cfg.APIVersions)
+	for _, v := range vs {
+		switch v {
+		case v1.APIVersion:
+			versions = append(versions, v1.APIVersion)
+			prefixes = append(prefixes, v1.RoutePrefix)
+		case v2.APIVersion:
+			versions = append(versions, v2.APIVersion)
+			prefixes = append(prefixes, v2.RoutePrefix)
+		}
+
+	}
+	versionReply := v2.VersionReply{
+		Versions:      versions,
+		RoutePrefixes: prefixes,
+	}
+
+	// Log for audit trail and reuse loop to translate MultiError to JSON
+	// Results.
+	via := r.RemoteAddr
+	xff := r.Header.Get(forward)
+	if xff != "" {
+		via = fmt.Sprintf("%v via %v", xff, r.RemoteAddr)
+	}
+	log.Infof("%v Version %v", r.URL.Path, via)
+
+	util.RespondWithJSON(w, http.StatusOK, versionReply)
+}
+
+// API v1 Handlers
+
+// statusV1 returns server status information.
+// Handles /v1/status.
+func (d *DcrtimeStore) statusV1(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
 	var s v1.Status
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&s); err != nil {
@@ -221,16 +356,20 @@ func (d *DcrtimeStore) status(w http.ResponseWriter, r *http.Request) {
 	if xff != "" {
 		via = fmt.Sprintf("%v via %v", xff, r.RemoteAddr)
 	}
-	log.Infof("Status %v", via)
+	log.Infof("%v Status %v", r.URL.Path, via)
 
 	// Tell client the good news.
 	util.RespondWithJSON(w, http.StatusOK, v1.StatusReply(s))
 }
 
-// timestamp takes a frontend timestamp and sends it off to the backend.
-func (d *DcrtimeStore) timestamp(w http.ResponseWriter, r *http.Request) {
+// timestampV1 takes multiple digests from a client and sends it to the backend.
+// Handles /v1/timestamp.
+func (d *DcrtimeStore) timestampV1(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
 	var t v1.Timestamp
 	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&t); err != nil {
 		util.RespondWithError(w, http.StatusBadRequest,
 			"Invalid request payload")
@@ -292,7 +431,8 @@ func (d *DcrtimeStore) timestamp(w http.ResponseWriter, r *http.Request) {
 			result = v1.ResultExistsError
 		}
 		results = append(results, result)
-		log.Infof("Timestamp %v: %v %v %x", via, verb, tsS, v.Digest)
+		log.Infof("%v Timestamp %v: %v %v %x",
+			r.URL.Path, via, verb, tsS, v.Digest)
 	}
 
 	// We don't set ChainTimestamp until it is included on the chain.
@@ -304,9 +444,15 @@ func (d *DcrtimeStore) timestamp(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (d *DcrtimeStore) verify(w http.ResponseWriter, r *http.Request) {
+// verifyV1 takes multiple digests from a client and checks its status on the
+// backend.
+// Handles /v1/verify.
+func (d *DcrtimeStore) verifyV1(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
 	var v v1.Verify
 	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&v); err != nil {
 		util.RespondWithError(w, http.StatusBadRequest,
 			"Invalid request payload")
@@ -326,8 +472,8 @@ func (d *DcrtimeStore) verify(w http.ResponseWriter, r *http.Request) {
 	if xff != "" {
 		via = fmt.Sprintf("%v via %v", r.RemoteAddr, xff)
 	}
-	log.Infof("Verify %v: Timestamps %v Digests %v",
-		via, len(v.Timestamps), len(digests))
+	log.Infof("%v Verify %v: Timestamps %v Digests %v",
+		r.URL.Path, via, len(v.Timestamps), len(digests))
 
 	// Collect all timestamps.
 	tsr, err := d.backend.GetTimestamps(v.Timestamps)
@@ -444,11 +590,576 @@ func (d *DcrtimeStore) verify(w http.ResponseWriter, r *http.Request) {
 		dReply = append(dReply, vd)
 	}
 
-	// Tell client the good news.
 	util.RespondWithJSON(w, http.StatusOK, v1.VerifyReply{
 		ID:         v.ID,
 		Timestamps: tsReply,
 		Digests:    dReply,
+	})
+}
+
+func (d *DcrtimeStore) walletBalanceV1(w http.ResponseWriter, r *http.Request) {
+	if !d.isAuthorized(r) {
+		util.RespondWithError(w, http.StatusUnauthorized, "not authorized")
+		return
+	}
+
+	balanceResult, err := d.backend.GetBalance()
+	if err != nil {
+		errorCode := time.Now().Unix()
+
+		log.Errorf("%v walletBalance error code %v: %v",
+			r.RemoteAddr, errorCode, err)
+		util.RespondWithError(w, http.StatusInternalServerError,
+			fmt.Sprintf("failed to retrieve wallet balance, "+
+				"contact administrator and provide "+
+				"the following error code: %v", errorCode))
+		return
+	}
+
+	log.Infof("%v WalletBalance %v", r.URL.Path, r.RemoteAddr)
+
+	util.RespondWithJSON(w, http.StatusOK, v1.WalletBalanceReply{
+		Total:       balanceResult.Total,
+		Spendable:   balanceResult.Spendable,
+		Unconfirmed: balanceResult.Unconfirmed,
+	})
+}
+
+// API v2 Handlers
+
+// statusV2 returns server status information.
+// Handles /v2/status
+func (d *DcrtimeStore) statusV2(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
+	var s v2.Status
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&s); err != nil {
+		util.RespondWithError(w, http.StatusBadRequest,
+			"Invalid request payload")
+		return
+	}
+
+	// Log for audit trail and reuse loop to translate MultiError to JSON
+	// Results.
+	via := r.RemoteAddr
+	xff := r.Header.Get(forward)
+	if xff != "" {
+		via = fmt.Sprintf("%v via %v", xff, r.RemoteAddr)
+	}
+	log.Infof("%v Status %v", r.URL.Path, via)
+
+	// Tell client the good news.
+	util.RespondWithJSON(w, http.StatusOK, v2.StatusReply(s))
+}
+
+// timestampBatchV2 takes multiple digests from a client and sends it to the backend.
+// Handles /v2/timestamp/batch
+func (d *DcrtimeStore) timestampBatchV2(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
+	var t v2.TimestampBatch
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&t); err != nil {
+		util.RespondWithError(w, http.StatusBadRequest,
+			"Invalid request payload")
+		return
+	}
+
+	// Validate all digests.  If one is invalid return failure.
+	digests, err := convertDigests(t.Digests)
+	if err != nil {
+		util.RespondWithError(w, http.StatusBadRequest,
+			"Invalid Digests array")
+		return
+	}
+
+	// Push to backend
+	ts, me, err := d.backend.Put(digests)
+	if err != nil {
+		// Generic internal error.
+		errorCode := time.Now().Unix()
+		log.Errorf("%v timestamp error code %v: %v", r.RemoteAddr,
+			errorCode, err)
+
+		// Tell client there is a transient error.
+		if err == backend.ErrTryAgainLater {
+			util.RespondWithError(w, http.StatusServiceUnavailable,
+				"Server busy, please try again later.")
+			return
+		}
+
+		// Log what went wrong
+		log.Errorf("%v timestamp error code %v: %v", r.RemoteAddr,
+			errorCode, err)
+		util.RespondWithError(w, http.StatusInternalServerError,
+			fmt.Sprintf("Could not store payload, contact "+
+				"administrator and provide the following "+
+				"error code: %v", errorCode))
+		return
+	}
+
+	// Log for audit trail and reuse loop to translate MultiError to JSON
+	// Results.
+	via := r.RemoteAddr
+	xff := r.Header.Get(forward)
+	if xff != "" {
+		via = fmt.Sprintf("%v via %v", xff, r.RemoteAddr)
+	}
+	var (
+		result v2.ResultT
+		verb   string
+	)
+	results := make([]v2.ResultT, 0, len(me))
+	tsS := time.Unix(ts, 0).UTC().Format(fStr)
+	for _, v := range me {
+		if v.ErrorCode == backend.ErrorOK {
+			verb = "accepted"
+			result = v2.ResultOK
+		} else {
+			verb = "rejected"
+			result = v2.ResultExistsError
+		}
+		results = append(results, result)
+		log.Infof("%v TimestampBatch %v: %v %v %x",
+			r.URL.Path, via, verb, tsS, v.Digest)
+	}
+
+	// We don't set ChainTimestamp until it is included on the chain.
+	util.RespondWithJSON(w, http.StatusOK, v2.TimestampBatchReply{
+		ID:              t.ID,
+		Digests:         t.Digests,
+		ServerTimestamp: ts,
+		Results:         results,
+	})
+}
+
+// verifyBatchV2 takes multiple digests from a client and checks its status on the
+// backend.
+// Handles /v2/verify/batch
+func (d *DcrtimeStore) verifyBatchV2(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
+	var v v2.VerifyBatch
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&v); err != nil {
+		util.RespondWithError(w, http.StatusBadRequest,
+			"Invalid request payload")
+		return
+	}
+
+	// Validate all digests.  If one is invalid return failure.
+	digests, err := convertDigests(v.Digests)
+	if err != nil {
+		util.RespondWithError(w, http.StatusBadRequest,
+			"Invalid Digests array")
+		return
+	}
+
+	via := r.RemoteAddr
+	xff := r.Header.Get(forward)
+	if xff != "" {
+		via = fmt.Sprintf("%v via %v", r.RemoteAddr, xff)
+	}
+	log.Infof("%v VerifyBatch %v: Timestamps %v Digests %v",
+		r.URL.Path, via, len(v.Timestamps), len(digests))
+
+	// Collect all timestamps.
+	tsr, err := d.backend.GetTimestamps(v.Timestamps)
+	if err != nil {
+		// Generic internal error.
+		errorCode := time.Now().Unix()
+		log.Errorf("%v verify error code %v: %v", r.RemoteAddr,
+			errorCode, err)
+
+		util.RespondWithError(w, http.StatusInternalServerError,
+			fmt.Sprintf("Could not retrieve timestamps, "+
+				"contact administrator and provide the"+
+				" following error code: %v", errorCode))
+		return
+	}
+
+	// Translate timestamp results.
+	tsReply := make([]v2.VerifyTimestamp, 0, len(tsr))
+	for _, ts := range tsr {
+		vt := v2.VerifyTimestamp{
+			ServerTimestamp: ts.Timestamp,
+			CollectionInformation: v2.CollectionInformation{
+				ChainTimestamp: ts.AnchoredTimestamp,
+				Transaction:    ts.Tx.String(),
+				MerkleRoot:     hex.EncodeToString(ts.MerkleRoot[:]),
+			},
+			Result: -1,
+		}
+
+		switch ts.ErrorCode {
+		case backend.ErrorOK:
+			vt.Result = v2.ResultOK
+		case backend.ErrorNotFound:
+			vt.Result = v2.ResultDoesntExistError
+		case backend.ErrorNotAllowed:
+			vt.Result = v2.ResultDisabled
+		}
+		if vt.Result == -1 {
+			// Generic internal error.
+			errorCode := time.Now().Unix()
+			log.Errorf("%v timestamp ErrorCode translation error "+
+				"code %v: %v", r.RemoteAddr, errorCode, err)
+
+			util.RespondWithError(w, http.StatusInternalServerError,
+				fmt.Sprintf("Could not retrieve timestamps, "+
+					"contact administrator and provide "+
+					"the following error code: %v",
+					errorCode))
+			return
+		}
+
+		// Convert all digests.
+		vt.CollectionInformation.Digests = make([]string, 0,
+			len(ts.Digests))
+		for _, digest := range ts.Digests {
+			vt.CollectionInformation.Digests =
+				append(vt.CollectionInformation.Digests,
+					hex.EncodeToString(digest[:]))
+		}
+
+		tsReply = append(tsReply, vt)
+	}
+
+	// Digests.
+	drs, err := d.backend.Get(digests)
+	if err != nil {
+		// Generic internal error.
+		errorCode := time.Now().Unix()
+		log.Errorf("%v verify error code %v: %v", r.RemoteAddr,
+			errorCode, err)
+
+		util.RespondWithError(w, http.StatusInternalServerError,
+			fmt.Sprintf("Could not retrieve digests, contact "+
+				"administrator and provide the following "+
+				"error code: %v", errorCode))
+		return
+	}
+
+	// Translate digest results.
+	dReply := make([]v2.VerifyDigest, 0, len(drs))
+	for _, dr := range drs {
+		vd := v2.VerifyDigest{
+			Digest:          hex.EncodeToString(dr.Digest[:]),
+			ServerTimestamp: dr.Timestamp,
+			ChainInformation: v2.ChainInformation{
+				ChainTimestamp: dr.AnchoredTimestamp,
+				Transaction:    dr.Tx.String(),
+				MerkleRoot:     hex.EncodeToString(dr.MerkleRoot[:]),
+				MerklePath:     dr.MerklePath,
+			},
+			Result: -1,
+		}
+		switch dr.ErrorCode {
+		case backend.ErrorOK:
+			vd.Result = v2.ResultOK
+		case backend.ErrorNotFound:
+			vd.Result = v2.ResultDoesntExistError
+		}
+
+		if vd.Result == -1 {
+			// Generic internal error.
+			errorCode := time.Now().Unix()
+			log.Errorf("%v digest ErrorCode translation error "+
+				"code %v: %v", r.RemoteAddr, errorCode, err)
+
+			util.RespondWithError(w, http.StatusInternalServerError,
+				fmt.Sprintf("Could not retrieve digests, "+
+					"contact administrator and provide "+
+					"the following error code: %v",
+					errorCode))
+			return
+		}
+		dReply = append(dReply, vd)
+	}
+
+	util.RespondWithJSON(w, http.StatusOK, v2.VerifyBatchReply{
+		ID:         v.ID,
+		Timestamps: tsReply,
+		Digests:    dReply,
+	})
+}
+
+// timestampV2 takes a single digest from a client and sends it to the backend.
+// Receives pure form data in non-json format.
+// Handles /v2/timestamp
+func (d *DcrtimeStore) timestampV2(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
+	r.ParseForm()
+	id := r.Form.Get("id")
+	dig := r.Form.Get("digest")
+	t := v2.Timestamp{
+		ID:     id,
+		Digest: dig,
+	}
+
+	// Validate digest. If it is invalid return failure.
+	digest, err := convertDigests([]string{t.Digest})
+	if err != nil {
+		util.RespondWithError(w, http.StatusBadRequest,
+			"Invalid Digest")
+		return
+	}
+
+	// Push to backend
+	ts, me, err := d.backend.Put(digest)
+	if err != nil {
+		// Generic internal error.
+		errorCode := time.Now().Unix()
+		log.Errorf("%v timestamp error code %v: %v", r.RemoteAddr,
+			errorCode, err)
+
+		// Tell client there is a transient error.
+		if err == backend.ErrTryAgainLater {
+			util.RespondWithError(w, http.StatusServiceUnavailable,
+				"Server busy, please try again later.")
+			return
+		}
+
+		// Log what went wrong
+		log.Errorf("%v timestamp error code %v: %v", r.RemoteAddr,
+			errorCode, err)
+		util.RespondWithError(w, http.StatusInternalServerError,
+			fmt.Sprintf("Could not store payload, contact "+
+				"administrator and provide the following "+
+				"error code: %v", errorCode))
+		return
+	}
+
+	// Log for audit trail and reuse loop to translate MultiError to JSON
+	// Results.
+	via := r.RemoteAddr
+	xff := r.Header.Get(forward)
+	if xff != "" {
+		via = fmt.Sprintf("%v via %v", xff, r.RemoteAddr)
+	}
+	var (
+		result v2.ResultT
+		verb   string
+	)
+	pr := me[len(me)-1] // Digest from PutResult
+	tsS := time.Unix(ts, 0).UTC().Format(fStr)
+	if pr.ErrorCode == backend.ErrorOK {
+		verb = "accepted"
+		result = v2.ResultOK
+	} else {
+		verb = "rejected"
+		result = v2.ResultExistsError
+	}
+	log.Infof("%v Timestamp %v: %v %v %x",
+		r.URL.Path, via, verb, tsS, pr.Digest)
+
+	util.RespondWithJSON(w, http.StatusOK, v2.TimestampReply{
+		ID:              t.ID,
+		Digest:          t.Digest,
+		ServerTimestamp: ts,
+		Result:          result,
+	})
+}
+
+// verifyV2 takes a single digest from a client and checks its status on the
+// backend. Receives pure form data in non-json format.
+// Handles /v2/verify
+func (d *DcrtimeStore) verifyV2(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
+	r.ParseForm()
+	id := r.Form.Get("id")
+	dig := r.Form.Get("digest")
+	timestamp := r.Form.Get("timestamp")
+	tsint, _ := strconv.ParseInt(timestamp, 10, 64)
+	v := v2.Verify{
+		ID:        id,
+		Digest:    dig,
+		Timestamp: tsint,
+	}
+
+	// Validate request parameters.
+	if v.Digest == "" && v.Timestamp == 0 {
+		util.RespondWithError(w, http.StatusBadRequest,
+			"Invalid Request parameters")
+	}
+
+	// Validate digest.
+	var digs []string
+	// If digest parameter was set in the request, convert it.
+	// Otherwise, pass empty array to convertDigest so it doesn't
+	// error out.
+	if v.Digest != "" {
+		digs = append(digs, v.Digest)
+	}
+	digest, err := convertDigests(digs)
+	if err != nil {
+		util.RespondWithError(w, http.StatusBadRequest, "Invalid Digest")
+		return
+	}
+
+	via := r.RemoteAddr
+	xff := r.Header.Get(forward)
+	if xff != "" {
+		via = fmt.Sprintf("%v via %v", r.RemoteAddr, xff)
+	}
+	log.Infof("%v Verify %v: Timestamp %v Digest %v",
+		r.URL.Path, via, v.Timestamp, digest)
+
+	// Collect timestamp.
+	tsr, err := d.backend.GetTimestamps([]int64{v.Timestamp})
+	if err != nil {
+		// Generic internal error.
+		errorCode := time.Now().Unix()
+		log.Errorf("%v verify error code %v: %v", r.RemoteAddr,
+			errorCode, err)
+
+		util.RespondWithError(w, http.StatusInternalServerError,
+			fmt.Sprintf("Could not retrieve timestamp, "+
+				"contact administrator and provide the"+
+				" following error code: %v", errorCode))
+		return
+	}
+
+	// Translate timestamp result.
+	var tsReply v2.VerifyTimestamp
+	if len(tsr) != 0 {
+		ts := tsr[len(tsr)-1]
+		vt := v2.VerifyTimestamp{
+			ServerTimestamp: ts.Timestamp,
+			CollectionInformation: v2.CollectionInformation{
+				ChainTimestamp: ts.AnchoredTimestamp,
+				Transaction:    ts.Tx.String(),
+				MerkleRoot:     hex.EncodeToString(ts.MerkleRoot[:]),
+			},
+			Result: -1,
+		}
+
+		switch ts.ErrorCode {
+		case backend.ErrorOK:
+			vt.Result = v2.ResultOK
+		case backend.ErrorNotFound:
+			vt.Result = v2.ResultDoesntExistError
+		case backend.ErrorNotAllowed:
+			vt.Result = v2.ResultDisabled
+		}
+		if vt.Result == -1 {
+			// Generic internal error.
+			errorCode := time.Now().Unix()
+			log.Errorf("%v timestamp ErrorCode translation error "+
+				"code %v: %v", r.RemoteAddr, errorCode, err)
+
+			util.RespondWithError(w, http.StatusInternalServerError,
+				fmt.Sprintf("Could not retrieve timestamps, "+
+					"contact administrator and provide "+
+					"the following error code: %v",
+					errorCode))
+			return
+		}
+
+		// Convert all digests.
+		vt.CollectionInformation.Digests = make([]string, 0,
+			len(ts.Digests))
+		for _, digest := range ts.Digests {
+			vt.CollectionInformation.Digests =
+				append(vt.CollectionInformation.Digests,
+					hex.EncodeToString(digest[:]))
+		}
+
+		tsReply = vt
+	}
+
+	// Digest.
+	drs, err := d.backend.Get(digest)
+	if err != nil {
+		// Generic internal error.
+		errorCode := time.Now().Unix()
+		log.Errorf("%v verify error code %v: %v", r.RemoteAddr,
+			errorCode, err)
+
+		util.RespondWithError(w, http.StatusInternalServerError,
+			fmt.Sprintf("Could not retrieve digests, contact "+
+				"administrator and provide the following "+
+				"error code: %v", errorCode))
+		return
+	}
+
+	// Translate digest results.
+	var dReply v2.VerifyDigest
+	if len(drs) != 0 {
+		dr := drs[len(drs)-1]
+		vd := v2.VerifyDigest{
+			Digest:          hex.EncodeToString(dr.Digest[:]),
+			ServerTimestamp: dr.Timestamp,
+			ChainInformation: v2.ChainInformation{
+				ChainTimestamp: dr.AnchoredTimestamp,
+				Transaction:    dr.Tx.String(),
+				MerkleRoot:     hex.EncodeToString(dr.MerkleRoot[:]),
+				MerklePath:     dr.MerklePath,
+			},
+			Result: -1,
+		}
+		switch dr.ErrorCode {
+		case backend.ErrorOK:
+			vd.Result = v2.ResultOK
+		case backend.ErrorNotFound:
+			vd.Result = v2.ResultDoesntExistError
+		}
+
+		if vd.Result == -1 {
+			// Generic internal error.
+			errorCode := time.Now().Unix()
+			log.Errorf("%v digest ErrorCode translation error "+
+				"code %v: %v", r.RemoteAddr, errorCode, err)
+
+			util.RespondWithError(w, http.StatusInternalServerError,
+				fmt.Sprintf("Could not retrieve digests, "+
+					"contact administrator and provide "+
+					"the following error code: %v",
+					errorCode))
+			return
+		}
+		dReply = vd
+	}
+
+	util.RespondWithJSON(w, http.StatusOK, v2.VerifyReply{
+		ID:        v.ID,
+		Timestamp: tsReply,
+		Digest:    dReply,
+	})
+}
+
+// walletBalanceV2 takes an apitoken get param and returns balance information
+// of the wallet.
+func (d *DcrtimeStore) walletBalanceV2(w http.ResponseWriter, r *http.Request) {
+	if !d.isAuthorized(r) {
+		util.RespondWithError(w, http.StatusUnauthorized, "not authorized")
+		return
+	}
+
+	log.Infof("%v WalletBalance %v", r.URL.Path, r.RemoteAddr)
+
+	balanceResult, err := d.backend.GetBalance()
+	if err != nil {
+		errorCode := time.Now().Unix()
+
+		log.Errorf("%v walletBalance error code %v: %v",
+			r.RemoteAddr, errorCode, err)
+		util.RespondWithError(w, http.StatusInternalServerError,
+			fmt.Sprintf("failed to retrieve wallet balance, "+
+				"contact administrator and provide "+
+				"the following error code: %v", errorCode))
+		return
+	}
+
+	util.RespondWithJSON(w, http.StatusOK, v2.WalletBalanceReply{
+		Total:       balanceResult.Total,
+		Spendable:   balanceResult.Spendable,
+		Unconfirmed: balanceResult.Unconfirmed,
 	})
 }
 
@@ -464,32 +1175,25 @@ func (d *DcrtimeStore) isAuthorized(r *http.Request) bool {
 	return false
 }
 
-func (d *DcrtimeStore) walletBalance(w http.ResponseWriter, r *http.Request) {
-	if !d.isAuthorized(r) {
-		util.RespondWithError(w, http.StatusUnauthorized, "not authorized")
-		return
+// convertDigests receives an array of string digests and converts it to
+// sha256, format currently being used throughout the code.
+func convertDigests(d []string) ([][sha256.Size]byte, error) {
+	result := make([][sha256.Size]byte, 0, len(d))
+
+	for _, digest := range d {
+		hash, err := hex.DecodeString(digest)
+		if err != nil {
+			return nil, err
+		}
+		if len(hash) != sha256.Size {
+			return nil, fmt.Errorf("invalid length")
+		}
+		var h [sha256.Size]byte
+		copy(h[:], hash)
+		result = append(result, h)
 	}
 
-	log.Infof("WalletBalance %v", r.RemoteAddr)
-
-	balanceResult, err := d.backend.GetBalance()
-	if err != nil {
-		errorCode := time.Now().Unix()
-
-		log.Errorf("%v walletBalance error code %v: %v",
-			r.RemoteAddr, errorCode, err)
-		util.RespondWithError(w, http.StatusInternalServerError,
-			fmt.Sprintf("failed to retrieve wallet balance, "+
-				"contact administrator and provide "+
-				"the following error code: %v", errorCode))
-		return
-	}
-
-	util.RespondWithJSON(w, http.StatusOK, v1.WalletBalanceReply{
-		Total:       balanceResult.Total,
-		Spendable:   balanceResult.Spendable,
-		Unconfirmed: balanceResult.Unconfirmed,
-	})
+	return result, nil
 }
 
 // getError returns the error that is embedded in a JSON reply.
@@ -622,10 +1326,19 @@ func _main() error {
 	// Setup mux
 	d.router = mux.NewRouter()
 
-	var statusRoute http.HandlerFunc
-	var timestampRoute http.HandlerFunc
-	var verifyRoute http.HandlerFunc
-	var walletBalanceRoute http.HandlerFunc
+	// API v1 routes
+	var statusV1Route func(http.ResponseWriter, *http.Request)
+	var timestampV1Route func(http.ResponseWriter, *http.Request)
+	var verifyV1Route func(http.ResponseWriter, *http.Request)
+	var walletBalanceV1Route http.HandlerFunc
+
+	// API v2 routes
+	var statusV2Route func(http.ResponseWriter, *http.Request)
+	var timestampBatchV2Route func(http.ResponseWriter, *http.Request)
+	var verifyBatchV2Route func(http.ResponseWriter, *http.Request)
+	var timestampV2Route func(http.ResponseWriter, *http.Request)
+	var verifyV2Route func(http.ResponseWriter, *http.Request)
+	var walletBalanceV2Route http.HandlerFunc
 
 	if certPool != nil {
 		// PROXY ENABLED
@@ -637,25 +1350,59 @@ func _main() error {
 		}
 		d.httpClient = &http.Client{Transport: tr}
 
-		statusRoute = d.proxyStatus
-		timestampRoute = d.proxyTimestamp
-		verifyRoute = d.proxyVerify
-		walletBalanceRoute = d.proxyWalletBalance
+		statusV1Route = d.proxyStatusV1
+		timestampV1Route = d.proxyTimestampV1
+		verifyV1Route = d.proxyVerifyV1
+		walletBalanceV1Route = d.proxyWalletBalanceV1
+
+		statusV2Route = d.proxyStatusV2
+		timestampBatchV2Route = d.proxyTimestampBatchV2
+		verifyBatchV2Route = d.proxyVerifyBatchV2
+		timestampV2Route = d.proxyTimestampV2
+		verifyV2Route = d.proxyVerifyV2
+		walletBalanceV2Route = d.proxyWalletBalanceV2
 	} else {
-		statusRoute = d.status
-		timestampRoute = d.timestamp
-		verifyRoute = d.verify
-		walletBalanceRoute = d.walletBalance
+		statusV1Route = d.statusV1
+		timestampV1Route = d.timestampV1
+		verifyV1Route = d.verifyV1
+		walletBalanceV1Route = d.walletBalanceV1
+
+		statusV2Route = d.statusV2
+		timestampBatchV2Route = d.timestampBatchV2
+		verifyBatchV2Route = d.verifyBatchV2
+		timestampV2Route = d.timestampV2
+		verifyV2Route = d.verifyV2
+		walletBalanceV2Route = d.walletBalanceV2
 	}
 
-	d.addRoute("POST", v1.StatusRoute, statusRoute)
-	d.addRoute("POST", v1.TimestampRoute, timestampRoute)
-	d.addRoute("POST", v1.VerifyRoute, verifyRoute)
-	d.addRoute("GET", v1.WalletBalanceRoute, walletBalanceRoute)
+	// Top-level route handler
+	d.addRoute("GET", v2.VersionRoute, d.version)
+
+	versions, _ := parseAndValidateAPIVersions(loadedCfg.APIVersions)
+
+	// Add handlers according to supported API versions in cfg
+	for _, v := range versions {
+		switch v {
+		case v1.APIVersion:
+			// API v1 handlers
+			d.addRoute("POST", v1.StatusRoute, statusV1Route)
+			d.addRoute("POST", v1.TimestampRoute, timestampV1Route)
+			d.addRoute("POST", v1.VerifyRoute, verifyV1Route)
+			d.addRoute("GET", v1.WalletBalanceRoute, walletBalanceV1Route)
+		case v2.APIVersion:
+			// API v2 handlers
+			d.addRoute("POST", v2.StatusRoute, statusV2Route)
+			d.addRoute("POST", v2.TimestampBatchRoute, timestampBatchV2Route)
+			d.addRoute("POST", v2.VerifyBatchRoute, verifyBatchV2Route)
+			d.addRoute("GET", v2.WalletBalanceRoute, walletBalanceV2Route)
+			d.router.HandleFunc(v2.TimestampRoute, timestampV2Route).Methods("POST", "GET")
+			d.router.HandleFunc(v2.VerifyRoute, verifyV2Route).Methods("POST", "GET")
+		}
+	}
 
 	// Handle non-api /status as well
 	if trimmed := strings.TrimSuffix(v1.StatusRoute, "/"); trimmed != v1.StatusRoute {
-		d.addRoute("POST", trimmed, statusRoute)
+		d.addRoute("get", trimmed, statusV1Route)
 	}
 
 	// Pretty print web page for individual digest/timestamp
