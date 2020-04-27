@@ -350,7 +350,7 @@ func downloadV2(questions []string) error {
 	}
 
 	c := newClient(*skipVerify)
-	r, err := c.Post(*host+v2.VerifyRoute, "application/json",
+	r, err := c.Post(*host+v2.VerifyBatchRoute, "application/json",
 		bytes.NewReader(b))
 	if err != nil {
 		return err
