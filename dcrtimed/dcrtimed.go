@@ -986,6 +986,7 @@ func (d *DcrtimeStore) verifyV2(w http.ResponseWriter, r *http.Request) {
 	if v.Digest == "" && v.Timestamp == 0 {
 		util.RespondWithError(w, http.StatusBadRequest,
 			"Invalid Request parameters")
+		return
 	}
 
 	// Validate digest.
@@ -1008,7 +1009,7 @@ func (d *DcrtimeStore) verifyV2(w http.ResponseWriter, r *http.Request) {
 		via = fmt.Sprintf("%v via %v", r.RemoteAddr, xff)
 	}
 	log.Infof("%v Verify %v: Timestamp %v Digest %v",
-		r.URL.Path, via, v.Timestamp, digest)
+		r.URL.Path, via, v.Timestamp, v.Digest)
 
 	// Collect timestamp.
 	tsr, err := d.backend.GetTimestamps([]int64{v.Timestamp})

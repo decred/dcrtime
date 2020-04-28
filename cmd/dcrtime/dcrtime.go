@@ -169,17 +169,20 @@ func downloadV1(questions []string) error {
 		return err
 	}
 
-	if *debug {
-		fmt.Println(string(b))
-	}
-
 	// If this is a trial run return.
 	if *trial {
 		return nil
 	}
 
+	route := *host + v1.VerifyRoute
+
+	if *debug {
+		fmt.Println(string(b))
+		fmt.Println(route)
+	}
+
 	c := newClient(*skipVerify)
-	r, err := c.Post(*host+v1.VerifyRoute, "application/json",
+	r, err := c.Post(route, "application/json",
 		bytes.NewReader(b))
 	if err != nil {
 		return err
@@ -340,17 +343,20 @@ func downloadV2(questions []string) error {
 		return err
 	}
 
-	if *debug {
-		fmt.Println(string(b))
-	}
-
 	// If this is a trial run return.
 	if *trial {
 		return nil
 	}
 
+	route := *host + v2.VerifyBatchRoute
+
+	if *debug {
+		fmt.Println(string(b))
+		fmt.Println(route)
+	}
+
 	c := newClient(*skipVerify)
-	r, err := c.Post(*host+v2.VerifyRoute, "application/json",
+	r, err := c.Post(route, "application/json",
 		bytes.NewReader(b))
 	if err != nil {
 		return err
@@ -497,17 +503,20 @@ func uploadV1(digests []string, exists map[string]string) error {
 		return err
 	}
 
-	if *debug {
-		fmt.Println(string(b))
-	}
-
 	// If this is a trial run return.
 	if *trial {
 		return nil
 	}
 
+	route := *host + v1.TimestampRoute
+
+	if *debug {
+		fmt.Println(string(b))
+		fmt.Println(route)
+	}
+
 	c := newClient(*skipVerify)
-	r, err := c.Post(*host+v1.TimestampRoute, "application/json",
+	r, err := c.Post(route, "application/json",
 		bytes.NewReader(b))
 	if err != nil {
 		return err
@@ -564,17 +573,20 @@ func uploadV2(digests []string, exists map[string]string) error {
 		return err
 	}
 
-	if *debug {
-		fmt.Println(string(b))
-	}
-
 	// If this is a trial run return.
 	if *trial {
 		return nil
 	}
 
+	route := *host + v2.TimestampBatchRoute
+
+	if *debug {
+		fmt.Println(string(b))
+		fmt.Println(route)
+	}
+
 	c := newClient(*skipVerify)
-	r, err := c.Post(*host+v2.TimestampBatchRoute, "application/json",
+	r, err := c.Post(route, "application/json",
 		bytes.NewReader(b))
 	if err != nil {
 		return err
@@ -626,6 +638,11 @@ func showWalletBalanceV1() error {
 	c := newClient(*skipVerify)
 
 	route := *host + v1.WalletBalanceRoute
+
+	if *debug {
+		fmt.Println(route)
+	}
+
 	url := fmt.Sprintf("%s?apitoken=%s", route, *apiToken)
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -682,6 +699,11 @@ func showWalletBalanceV2() error {
 	c := newClient(*skipVerify)
 
 	route := *host + v2.WalletBalanceRoute
+
+	if *debug {
+		fmt.Println(route)
+	}
+
 	url := fmt.Sprintf("%s?apitoken=%s", route, *apiToken)
 	fmt.Println(url)
 	request, err := http.NewRequest("GET", url, nil)
