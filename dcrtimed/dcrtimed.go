@@ -986,6 +986,7 @@ func (d *DcrtimeStore) verifyV2(w http.ResponseWriter, r *http.Request) {
 	if v.Digest == "" && v.Timestamp == 0 {
 		util.RespondWithError(w, http.StatusBadRequest,
 			"Invalid Request parameters")
+		return
 	}
 
 	// Validate digest.
