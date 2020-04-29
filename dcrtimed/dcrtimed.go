@@ -1011,8 +1011,12 @@ func (d *DcrtimeStore) verifyV2(w http.ResponseWriter, r *http.Request) {
 	log.Infof("%v Verify %v: Timestamp %v Digest %v",
 		r.URL.Path, via, v.Timestamp, v.Digest)
 
-	// Collect timestamp.
-	tsr, err := d.backend.GetTimestamps([]int64{v.Timestamp})
+	// Collect timestamp, in case it was set in the request.
+	var ts []int64
+	if v.Timestamp != 0 {
+		ts = append(ts, v.Timestamp)
+	}
+	tsr, err := d.backend.GetTimestamps(ts)
 	if err != nil {
 		// Generic internal error.
 		errorCode := time.Now().Unix()
