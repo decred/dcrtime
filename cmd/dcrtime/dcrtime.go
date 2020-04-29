@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"reflect"
 	"strconv"
 
 	v1 "github.com/decred/dcrtime/api/v1"
@@ -318,11 +319,12 @@ func downloadV1(questions []string) error {
 	return nil
 }
 
-func downloadV2(questions []string) error {
+func downloadV2Batch(questions []string) error {
 	ver := v2.VerifyBatch{
 		ID: dcrtimeClientID,
 	}
 
+	// Check if questions are valid.
 	for _, question := range questions {
 		if ts, ok := convertTimestamp(question); ok {
 			ver.Timestamps = append(ver.Timestamps, ts)
@@ -378,115 +380,216 @@ func downloadV2(questions []string) error {
 	}
 
 	// Decode response.
-	var vr v2.VerifyBatchReply
+	var vbr v2.VerifyBatchReply
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&vbr); err != nil {
+		return fmt.Errorf("could node decode VerifyReply: %v", err)
+	}
+
+	verifyDigests(vbr.Digests)
+
+	err = verifyTimestamps(vbr.Timestamps)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func downloadV2Single(question string) error {
+	ver := v2.Verify{
+		ID: dcrtimeClientID,
+	}
+	formParam := url.Values{}
+
+	// Check if question is valid.
+	if ts, ok := convertTimestamp(question); ok {
+		ver.Timestamp = ts
+		formParam.Set("timestamp", strconv.FormatInt(ver.Timestamp, 10))
+	} else if isDigest(question) {
+		ver.Digest = question
+		formParam.Set("digest", ver.Digest)
+	} else {
+		return fmt.Errorf("not a digest or timestamp: %v", question)
+	}
+
+	if *trial {
+		return nil
+	}
+
+	route := *host + v2.VerifyRoute
+
+	if *debug {
+		fmt.Println(ver)
+		fmt.Println(route)
+	}
+
+	c := newClient(*skipVerify)
+	r, err := c.PostForm(route, formParam)
+	if err != nil {
+		return err
+	}
+	defer r.Body.Close()
+
+	if r.StatusCode != http.StatusOK {
+		e, err := getError(r.Body)
+		if err != nil {
+			return fmt.Errorf("%v", r.Status)
+		}
+		return fmt.Errorf("%v: %v", r.Status, e)
+	}
+
+	if *printJson {
+		io.Copy(os.Stdout, r.Body)
+		fmt.Printf("\n")
+		return nil
+	}
+
+	// Decode response.
+	var vr v2.VerifyReply
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&vr); err != nil {
 		return fmt.Errorf("could node decode VerifyReply: %v", err)
 	}
 
-	for _, v := range vr.Timestamps {
-		result, ok := v2.Result[v.Result]
-		if !ok {
-			fmt.Printf("%v invalid error code %v\n", v.ServerTimestamp,
-				v.Result)
-			continue
-		}
-
-		// Verify results if the collection is anchored.
-		if v.CollectionInformation.ChainTimestamp != 0 {
-			// Calculate merkle root of all digests.
-			digests := make([]*[sha256.Size]byte, 0,
-				len(v.CollectionInformation.Digests))
-			for _, digest := range v.CollectionInformation.Digests {
-				d, ok := convertDigest(digest)
-				if !ok {
-					return fmt.Errorf("Invalid digest "+
-						"server response for "+
-						"timestamp: %v",
-						v.ServerTimestamp)
-				}
-				digests = append(digests, &d)
-			}
-			root := merkle.Root(digests)
-			if hex.EncodeToString(root[:]) !=
-				v.CollectionInformation.MerkleRoot {
-				fmt.Printf("invalid merkle root: %v\n", err)
-			}
-		}
-
-		// Print the good news.
-		if v.CollectionInformation.ChainTimestamp == 0 &&
-			v.Result == v2.ResultOK {
-			result = "Not anchored"
-		}
-		fmt.Printf("%v %v\n", v.ServerTimestamp, result)
-
-		if !*verbose {
-			continue
-		}
-
-		prefix := "Digests"
-		for _, digest := range v.CollectionInformation.Digests {
-			fmt.Printf("  %-15v: %v\n", prefix, digest)
-			prefix = ""
-		}
-
-		// Only print additional info if we are anchored
-		if v.CollectionInformation.ChainTimestamp == 0 {
-			continue
-		}
-		fmt.Printf("  %-15v: %v\n", "Chain Timestamp",
-			v.CollectionInformation.ChainTimestamp)
-		fmt.Printf("  %-15v: %v\n", "Merkle Root",
-			v.CollectionInformation.MerkleRoot)
-		fmt.Printf("  %-15v: %v\n", "TxID",
-			v.CollectionInformation.Transaction)
+	// Check if a digest was sent on the request, and therefore
+	// received a non-empty reply struct.
+	if !reflect.DeepEqual(vr.Digest, v2.VerifyDigest{}) {
+		verifyDigests([]v2.VerifyDigest{vr.Digest})
 	}
 
-	for _, v := range vr.Digests {
-		result, ok := v2.Result[v.Result]
+	// Check if a timestamp was sent on the request, and therefore
+	// received a non-empty reply struct.
+	if !reflect.DeepEqual(vr.Timestamp, v2.VerifyTimestamp{}) {
+		err = verifyTimestamps([]v2.VerifyTimestamp{vr.Timestamp})
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func downloadV2(questions []string) error {
+	var err error
+	switch len(questions) {
+	case 1:
+		err = downloadV2Single(questions[0])
+	default:
+		err = downloadV2Batch(questions)
+	}
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func verifyDigests(vd []v2.VerifyDigest) {
+	for _, d := range vd {
+		result, ok := v2.Result[d.Result]
 		if !ok {
-			fmt.Printf("%v invalid error code %v\n", v.Digest,
-				v.Result)
+			fmt.Printf("%v invalid error code %v\n", d.Digest,
+				d.Result)
 			continue
 		}
 
 		// Verify merkle path.
-		root, err := merkle.VerifyAuthPath(&v.ChainInformation.MerklePath)
+		root, err := merkle.VerifyAuthPath(&d.ChainInformation.MerklePath)
 		if err != nil {
 			if err != merkle.ErrEmpty {
 				fmt.Printf("%v invalid auth path %v\n",
-					v.Digest, err)
+					d.Digest, err)
 				continue
 			}
-			fmt.Printf("%v Not anchored\n", v.Digest)
+			fmt.Printf("%v Not anchored\n", d.Digest)
 			continue
 		}
 
 		// Verify merkle root.
-		merkleRoot, err := hex.DecodeString(v.ChainInformation.MerkleRoot)
+		merkleRoot, err := hex.DecodeString(d.ChainInformation.MerkleRoot)
 		if err != nil {
 			fmt.Printf("invalid merkle root: %v\n", err)
 			continue
 		}
 		// This is silly since we check against returned root.
 		if !bytes.Equal(root[:], merkleRoot) {
-			fmt.Printf("%v invalid merkle root\n", v.Digest)
+			fmt.Printf("%v invalid merkle root\n", d.Digest)
 			continue
 		}
 
 		// Print the good news.
-		fmt.Printf("%v %v\n", v.Digest, result)
+		fmt.Printf("%v %v\n", d.Digest, result)
 
 		if !*verbose {
 			continue
 		}
 		fmt.Printf("  %-15v: %v\n", "Chain Timestamp",
-			v.ChainInformation.ChainTimestamp)
+			d.ChainInformation.ChainTimestamp)
 		fmt.Printf("  %-15v: %v\n", "Merkle Root",
-			v.ChainInformation.MerkleRoot)
+			d.ChainInformation.MerkleRoot)
 		fmt.Printf("  %-15v: %v\n", "TxID",
-			v.ChainInformation.Transaction)
+			d.ChainInformation.Transaction)
+	}
+}
+
+func verifyTimestamps(vt []v2.VerifyTimestamp) error {
+	for _, t := range vt {
+		result, ok := v2.Result[t.Result]
+		if !ok {
+			fmt.Printf("%v invalid error code %v\n", t.ServerTimestamp,
+				t.Result)
+			continue
+		}
+
+		// Verify results if the collection is anchored.
+		if t.CollectionInformation.ChainTimestamp != 0 {
+			// Calculate merkle root of all digests.
+			digests := make([]*[sha256.Size]byte, 0,
+				len(t.CollectionInformation.Digests))
+			for _, digest := range t.CollectionInformation.Digests {
+				d, ok := convertDigest(digest)
+				if !ok {
+					return fmt.Errorf("Invalid digest "+
+						"server response for "+
+						"timestamp: %v",
+						t.ServerTimestamp)
+				}
+				digests = append(digests, &d)
+			}
+			root := merkle.Root(digests)
+			if hex.EncodeToString(root[:]) !=
+				t.CollectionInformation.MerkleRoot {
+				fmt.Printf("invalid merkle root\n")
+			}
+		}
+
+		// Print the good news.
+		if t.CollectionInformation.ChainTimestamp == 0 &&
+			t.Result == v2.ResultOK {
+			result = "Not anchored"
+		}
+		fmt.Printf("%v %v\n", t.ServerTimestamp, result)
+
+		if !*verbose {
+			continue
+		}
+
+		prefix := "Digests"
+		for _, digest := range t.CollectionInformation.Digests {
+			fmt.Printf("  %-15v: %v\n", prefix, digest)
+			prefix = ""
+		}
+
+		// Only print additional info if we are anchored
+		if t.CollectionInformation.ChainTimestamp == 0 {
+			continue
+		}
+		fmt.Printf("  %-15v: %v\n", "Chain Timestamp",
+			t.CollectionInformation.ChainTimestamp)
+		fmt.Printf("  %-15v: %v\n", "Merkle Root",
+			t.CollectionInformation.MerkleRoot)
+		fmt.Printf("  %-15v: %v\n", "TxID",
+			t.CollectionInformation.Transaction)
 	}
 
 	return nil
@@ -562,7 +665,7 @@ func uploadV1(digests []string, exists map[string]string) error {
 	return nil
 }
 
-func uploadV2(digests []string, exists map[string]string) error {
+func uploadV2Batch(digests []string, exists map[string]string) error {
 	// batch uploads
 	ts := v2.TimestampBatch{
 		ID:      dcrtimeClientID,
@@ -629,6 +732,84 @@ func uploadV2(digests []string, exists map[string]string) error {
 		fmt.Printf("Collection timestamp: %v\n", tsReply.ServerTimestamp)
 	}
 
+	return nil
+}
+
+func uploadV2Single(digest string, exists map[string]string) error {
+	ts := v2.Timestamp{
+		ID:     dcrtimeClientID,
+		Digest: digest,
+	}
+	formParam := url.Values{}
+	formParam.Set("digest", digest)
+
+	// If this is a trial run return.
+	if *trial {
+		return nil
+	}
+
+	route := *host + v2.TimestampRoute
+
+	if *debug {
+		fmt.Println(ts)
+		fmt.Println(route)
+	}
+
+	c := newClient(*skipVerify)
+	r, err := c.PostForm(route, formParam)
+	if err != nil {
+		return err
+	}
+	defer r.Body.Close()
+
+	if r.StatusCode != http.StatusOK {
+		e, err := getError(r.Body)
+		if err != nil {
+			return fmt.Errorf("%v", r.Status)
+		}
+		return fmt.Errorf("%v: %v", r.Status, e)
+	}
+
+	if *printJson {
+		io.Copy(os.Stdout, r.Body)
+		fmt.Printf("\n")
+		return nil
+	}
+
+	// Decode response.
+	var tsReply v2.TimestampReply
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&tsReply); err != nil {
+		return fmt.Errorf("Could node decode TimestampReply: %v", err)
+	}
+
+	// Print human readable results.
+	filename := exists[tsReply.Digest]
+	if tsReply.Result == v2.ResultOK {
+		fmt.Printf("%v OK %v\n", tsReply.Digest, filename)
+	} else {
+		fmt.Printf("%v Exists %v\n", tsReply.Digest, filename)
+	}
+
+	if *verbose {
+		// Print server timestamp.
+		fmt.Printf("Collection timestamp: %v\n", tsReply.ServerTimestamp)
+	}
+
+	return nil
+}
+
+func uploadV2(digests []string, exists map[string]string) error {
+	var err error
+	switch len(digests) {
+	case 1:
+		err = uploadV2Single(digests[0], exists)
+	default:
+		err = uploadV2Batch(digests, exists)
+	}
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
