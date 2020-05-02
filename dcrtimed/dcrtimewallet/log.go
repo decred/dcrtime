@@ -28,9 +28,15 @@ import (
 // requests it.
 var log = slog.Disabled
 
-// UseLogger sets the logger to use for the gRPC server.
-func UseLogger(l slog.Logger) {
+// UseGrpcLogger sets the logger to use for the gRPC server.
+func UseGrpcLogger(l slog.Logger) {
 	grpclog.SetLogger(logger{l})
+	log = l
+}
+
+// UseLogger sets the subsystem logger for this package, without
+// gRPC logging.
+func UseLogger(l slog.Logger) {
 	log = l
 }
 

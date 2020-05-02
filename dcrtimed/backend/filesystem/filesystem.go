@@ -831,7 +831,6 @@ func New(root, cert, host string, enableCollections bool, passphrase []byte) (*F
 	fs.enableCollections = enableCollections
 
 	// Runtime bits
-	dcrtimewallet.UseLogger(log)
 	fs.wallet, err = dcrtimewallet.New(cert, host, passphrase)
 	if err != nil {
 		return nil, err
