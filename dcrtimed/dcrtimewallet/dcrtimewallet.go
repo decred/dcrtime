@@ -194,7 +194,7 @@ func (d *DcrtimeWallet) Close() {
 func getWalletGrpcConnection(creds credentials.TransportCredentials, host string) (*grpc.ClientConn, error) {
 	var (
 		maxRetries = 100
-		duration   = time.Duration(5 * time.Second)
+		duration   = 5 * time.Second
 		conn       *grpc.ClientConn
 		err        error
 		done       bool
