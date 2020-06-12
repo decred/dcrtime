@@ -410,6 +410,72 @@ func TestPut(t *testing.T) {
 	}
 }
 
+func TestPutFoundInPrevious(t *testing.T) {
+	dir, err := ioutil.TempDir("", "dcrtimed.test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer os.RemoveAll(dir)
+
+	fs, err := internalNew(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Set testing flag.
+	fs.testing = true
+
+	// Put batch success in current time
+	var hashes [][sha256.Size]byte
+	count := 10
+	for i := 0; i < count; i++ {
+		hash := [sha256.Size]byte{}
+		hash[0] = byte(i)
+		hashes = append(hashes, hash)
+	}
+
+	timestamp, me, err := fs.Put(hashes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(me) != count {
+		t.Fatalf("expected %v multi error", count)
+	}
+
+	// Verify all return codes
+	for _, m := range me {
+		if m.ErrorCode != backend.ErrorOK {
+			t.Fatalf("expected ErrorCode %v got %v",
+				backend.ErrorOK, m.ErrorCode)
+		}
+	}
+
+	// Override Now() function and move time 1 duration forward. This
+	// causes Put to use the next timestamp container.
+	fs.myNow = func() time.Time {
+		return time.Unix(timestamp, 0).Add(fs.duration)
+	}
+
+	// Try again, now we expect count ErrorExists from previous
+	//container(foundPrevious).
+	timestamp, me, err = fs.Put(hashes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(me) != count {
+		t.Fatalf("expected %v multi error", count)
+	}
+
+	// Verify all return codes
+	for _, m := range me {
+		if m.ErrorCode != foundPrevious {
+			t.Fatalf("expected ErrorCode %v got %v",
+				foundLocal, m.ErrorCode)
+		}
+	}
+}
+
 func TestFlusher(t *testing.T) {
 	dir, err := ioutil.TempDir("", "dcrtimed.test")
 	if err != nil {
