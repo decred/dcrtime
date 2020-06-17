@@ -499,7 +499,7 @@ func (fs *FileSystem) getTimestamp(timestamp int64) (backend.TimestampResult, er
 
 // getDigest tries to return the timestamp information of the provided digest.
 // It tries the global database and if that fails it tries the current
-// timestamp database (it it exists).  This function must be called with the
+// timestamp database (if it exists).  This function must be called with the
 // READ lock held.
 func (fs *FileSystem) getDigest(ts int64, current *leveldb.DB, digest [sha256.Size]byte) (backend.GetResult, error) {
 	gdme := backend.GetResult{

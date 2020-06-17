@@ -1315,6 +1315,7 @@ func _main() error {
 		}
 	} else {
 		// Setup backend.
+		filesystem.UseLogger(fsbeLog)
 		b, err := filesystem.New(loadedCfg.DataDir,
 			loadedCfg.WalletCert,
 			loadedCfg.WalletHost,
