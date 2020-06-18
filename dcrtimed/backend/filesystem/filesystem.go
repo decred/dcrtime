@@ -33,8 +33,14 @@ const (
 	confirmations = 6
 
 	// error codes that are overridden during tests only.
+	// foundGlobal is thrown if digest was found in global db
 	foundGlobal = 1000
-	foundLocal  = 1001
+	// foundLocal is thrown if digest was found in current
+	// timestamp container
+	foundLocal = 1001
+	// foundPrevious is thrown if digest was found in previous not
+	// anchored yet container
+	foundPrevious = 1002
 )
 
 var (
@@ -181,7 +187,8 @@ func (fs *FileSystem) isFlushed(ts int64) bool {
 	return isFlushed(db)
 }
 
-// flush moves provided timestamp container into global database.
+// flush moves provided timestamp container into global database,
+// and returns nil iff ts flushed successfully
 //
 // This function must be called with the WRITE lock held.
 func (fs *FileSystem) flush(ts int64) error {
@@ -305,7 +312,6 @@ func (fs *FileSystem) doFlush() (int, error) {
 
 	// Reverse sort work.
 	sort.Sort(sort.Reverse(sort.StringSlice(dirs)))
-
 	// Walk directories backwards until we find a flushed database.  At
 	// this point we know we are caught up.
 	count := 0
@@ -331,9 +337,9 @@ func (fs *FileSystem) doFlush() (int, error) {
 				panic(e)
 			}
 			log.Error(e)
+		} else {
+			count++
 		}
-
-		count++
 	}
 
 	return count, nil
@@ -344,7 +350,6 @@ func (fs *FileSystem) flusher() {
 	// From this point on the operation must be atomic.
 	fs.Lock()
 	defer fs.Unlock()
-
 	start := time.Now()
 	count, err := fs.doFlush()
 	end := time.Since(start)
@@ -685,6 +690,7 @@ func (fs *FileSystem) Put(hashes [][sha256.Size]byte) (int64, []backend.PutResul
 
 	// Get current time rounded down.
 	ts := fs.now().Unix()
+	now := fs.now().Format(fStr)
 	timestamp := make([]byte, 8)
 	binary.LittleEndian.PutUint64(timestamp, uint64(ts))
 
@@ -741,14 +747,86 @@ func (fs *FileSystem) Put(hashes [][sha256.Size]byte) (int64, []backend.PutResul
 			continue
 		}
 
-		// Determine if we want to store some metadata.
-		batch.Put(hash[:], timestamp)
+		// Lookup in previous not flushed dirs
+		// Get Dirs.
+		files, err := ioutil.ReadDir(fs.root)
+		if err != nil {
+			return 0, []backend.PutResult{}, err
+		}
+		// Collect relevant dirs.
+		dirs := make([]string, 0, len(files))
+		for _, file := range files {
+			// Skip global db.
+			if file.Name() == globalDBDir {
+				continue
+			}
+			if !file.IsDir() {
+				continue
+			}
+			// Skip current timestamp.
+			if file.Name() == now {
+				continue
+			}
 
-		// Mark as successful.
-		me = append(me, backend.PutResult{
-			Digest:    hash,
-			ErrorCode: backend.ErrorOK,
-		})
+			dirs = append(dirs, file.Name())
+		}
+
+		// Reverse sort work.
+		sort.Sort(sort.Reverse(sort.StringSlice(dirs)))
+		// Walk directories backwards until we find a flushed database. At
+		// this point we know we are caught up.
+		foundP := false
+		for _, dir := range dirs {
+			timestamp, err := time.Parse(fStr, dir)
+			if err != nil {
+				continue
+			}
+			dirTs := timestamp.Unix()
+			if fs.isFlushed(dirTs) {
+				// We hit a flushed dir so we should be done.
+				break
+			}
+
+			// Open dir database
+			dirDb, err := fs.openWrite(dirTs, true)
+			if err != nil {
+				return 0, []backend.PutResult{}, err
+			}
+			foundP, err = dirDb.Has(hash[:], nil)
+			if err != nil {
+				return 0, []backend.PutResult{}, err
+			}
+			if foundP {
+				me = append(me, backend.PutResult{
+					Digest:    hash,
+					ErrorCode: backend.ErrorExists,
+				})
+				// Convert dir name to unix timestamp
+				// to return as collection time
+				tsTime, _ := time.Parse(fStr, dir)
+				ts = tsTime.Unix()
+
+				// Override error code during testing
+				if fs.testing {
+					me[len(me)-1].ErrorCode = foundPrevious
+				}
+				dirDb.Close()
+				break
+			}
+			dirDb.Close()
+		}
+
+		// Accept only if doesn't exist
+		if !foundP {
+			// Determine if we want to store some metadata.
+			batch.Put(hash[:], timestamp)
+
+			// Mark as successful.
+			me = append(me, backend.PutResult{
+				Digest:    hash,
+				ErrorCode: backend.ErrorOK,
+			})
+		}
 	}
 
 	// From this point on the operation must be atomic.
