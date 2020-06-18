@@ -458,7 +458,7 @@ func TestPutFoundInPrevious(t *testing.T) {
 	}
 
 	// Try again, now we expect count ErrorExists from previous
-	//container(foundPrevious).
+	// container(foundPrevious).
 	timestamp, me, err = fs.Put(hashes)
 	if err != nil {
 		t.Fatal(err)
