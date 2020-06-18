@@ -471,7 +471,7 @@ func TestPutFoundInPrevious(t *testing.T) {
 	for _, m := range me {
 		if m.ErrorCode != foundPrevious {
 			t.Fatalf("expected ErrorCode %v got %v",
-				foundLocal, m.ErrorCode)
+				foundPrevious, m.ErrorCode)
 		}
 	}
 }
