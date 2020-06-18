@@ -33,11 +33,13 @@ const (
 	confirmations = 6
 
 	// error codes that are overridden during tests only.
-	// foundGlobal will be thrown if digest was found in global db
+	// foundGlobal is thrown if digest was found in global db
 	foundGlobal = 1000
-	// foundLocal will be thrown if digest was found in current timestamp container
+	// foundLocal is thrown if digest was found in current
+	// timestamp container
 	foundLocal = 1001
-	// foundPrevious will be thrown if digest was found in previous not anchored yet container
+	// foundPrevious is thrown if digest was found in previous not
+	// anchored yet container
 	foundPrevious = 1002
 )
 
