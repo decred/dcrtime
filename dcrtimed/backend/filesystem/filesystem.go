@@ -86,6 +86,8 @@ func ts2dirname(ts int64) string {
 	return time.Unix(ts, 0).UTC().Format(fStr)
 }
 
+// EncodeFlushRecord encodes given backend.FlushRecord to a
+// []byte
 func EncodeFlushRecord(fr backend.FlushRecord) ([]byte, error) {
 	b, err := json.Marshal(fr)
 	if err != nil {
@@ -95,6 +97,8 @@ func EncodeFlushRecord(fr backend.FlushRecord) ([]byte, error) {
 	return b, nil
 }
 
+// DecodeFlushRecord decoded given []byte payload to
+// a backend.FlushRecord
 func DecodeFlushRecord(payload []byte) (*backend.FlushRecord, error) {
 	var fr backend.FlushRecord
 
@@ -864,6 +868,87 @@ func (fs *FileSystem) Close() {
 		fs.wallet.Close()
 	}
 	fs.db.Close()
+}
+
+// LastAnchor provides the info of last successfull anchor
+// such as timestamp, tx id and block hash
+func (fs *FileSystem) LastAnchor() (*backend.LastAnchorResult, error) {
+	now := fs.now().Format(fStr)
+	// Get Dirs.
+	files, err := ioutil.ReadDir(fs.root)
+	if err != nil {
+		return &backend.LastAnchorResult{}, err
+	}
+	// Collect relevant dirs.
+	dirs := make([]string, 0, len(files))
+	for _, file := range files {
+		// Skip global db.
+		if file.Name() == globalDBDir {
+			continue
+		}
+		if !file.IsDir() {
+			continue
+		}
+		// Skip current timestamp.
+		if file.Name() == now {
+			continue
+		}
+
+		dirs = append(dirs, file.Name())
+	}
+
+	// Reverse sort work.
+	sort.Sort(sort.Reverse(sort.StringSlice(dirs)))
+
+	var flushedTs int64
+	// Find the latest flushed dir
+	for _, dir := range dirs {
+		timestamp, err := time.Parse(fStr, dir)
+		if err != nil {
+			continue
+		}
+		dirTs := timestamp.Unix()
+		if fs.isFlushed(dirTs) {
+			flushedTs = dirTs
+			// We hit a flushed dir so we should be done.
+			break
+		}
+	}
+	// No flushed dirs yet
+	// return default payload
+	if flushedTs == 0 {
+		return &backend.LastAnchorResult{}, nil
+	}
+
+	// Try opening database.
+	db, err := fs.openRead(flushedTs)
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+
+	// Check for flush record.
+	var fr *backend.FlushRecord
+	var me backend.LastAnchorResult
+	payload, err := db.Get([]byte(flushedKey), nil)
+	if err == nil {
+		fr, err = DecodeFlushRecord(payload)
+		if err != nil {
+			return &me, err
+		}
+
+		me.Tx = fr.Tx
+		// Lookup anchored tx info.
+		res, err := fs.wallet.Lookup(fr.Tx)
+		if err != nil {
+			return &backend.LastAnchorResult{}, err
+		}
+		me.ChainTimestamp = res.Timestamp
+		me.Block = res.Block.String()
+		return &me, nil
+	}
+
+	return &backend.LastAnchorResult{}, err
 }
 
 // GetBalance provides the balance of the wallet and satisfies the

@@ -51,7 +51,8 @@ type DcrtimeStore struct {
 	apiTokens  map[string]struct{}
 }
 
-func (d *DcrtimeStore) sendToBackend(w http.ResponseWriter, method, route, contentType, remoteAddr string, body *bytes.Reader) {
+func (d *DcrtimeStore) sendToBackend(w http.ResponseWriter, method, route,
+	contentType, remoteAddr string, body *bytes.Reader) {
 	storeHost := fmt.Sprintf("https://%s%s", d.cfg.StoreHost, route)
 
 	req, err := http.NewRequest(method, storeHost, body)
@@ -1138,6 +1139,29 @@ func (d *DcrtimeStore) verifyV2(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (d *DcrtimeStore) lastAnchorV2(w http.ResponseWriter, r *http.Request) {
+	log.Infof("%v LastAnchor %v", r.URL.Path, r.RemoteAddr)
+
+	lastAnchorResult, err := d.backend.LastAnchor()
+	if err != nil {
+		errorCode := time.Now().Unix()
+
+		log.Errorf("%v lastAnchor error code %v: %v",
+			r.RemoteAddr, errorCode, err)
+		util.RespondWithError(w, http.StatusInternalServerError,
+			fmt.Sprintf("failed to retrieve lastest anchor info, "+
+				"contact administrator and provide "+
+				"the following error code: %v", errorCode))
+		return
+	}
+
+	util.RespondWithJSON(w, http.StatusOK, v2.LastAnchorReply{
+		ChainTimestamp: lastAnchorResult.ChainTimestamp,
+		Transaction:    lastAnchorResult.Tx.String(),
+		Block:          lastAnchorResult.Block,
+	})
+}
+
 // walletBalanceV2 takes an apitoken get param and returns balance information
 // of the wallet.
 func (d *DcrtimeStore) walletBalanceV2(w http.ResponseWriter, r *http.Request) {
@@ -1345,6 +1369,7 @@ func _main() error {
 	var timestampV2Route func(http.ResponseWriter, *http.Request)
 	var verifyV2Route func(http.ResponseWriter, *http.Request)
 	var walletBalanceV2Route http.HandlerFunc
+	var lastAnchorV2Route http.HandlerFunc
 
 	if certPool != nil {
 		// PROXY ENABLED
@@ -1379,6 +1404,7 @@ func _main() error {
 		timestampV2Route = d.timestampV2
 		verifyV2Route = d.verifyV2
 		walletBalanceV2Route = d.walletBalanceV2
+		lastAnchorV2Route = d.lastAnchorV2
 	}
 
 	// Top-level route handler
@@ -1401,6 +1427,7 @@ func _main() error {
 			d.addRoute("POST", v2.TimestampBatchRoute, timestampBatchV2Route)
 			d.addRoute("POST", v2.VerifyBatchRoute, verifyBatchV2Route)
 			d.addRoute("GET", v2.WalletBalanceRoute, walletBalanceV2Route)
+			d.addRoute("GET", v2.LastAnchorRoute, lastAnchorV2Route)
 			d.router.HandleFunc(v2.TimestampRoute, timestampV2Route).Methods("POST", "GET")
 			d.router.HandleFunc(v2.VerifyRoute, verifyV2Route).Methods("POST", "GET")
 		}
