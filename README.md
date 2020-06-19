@@ -62,6 +62,8 @@ wallethost=localhost
 walletcert=../.dcrwallet/rpc.cert
 walletpassphrase=MySikritPa$$w0ard
 testnet=1
+apitoken=sometoken // used to access privileged http endpoints in the daemon.
+
 ```
 
 Start the store.
