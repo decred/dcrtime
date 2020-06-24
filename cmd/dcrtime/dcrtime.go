@@ -944,7 +944,9 @@ func lastAnchorV1() error {
 	c := newClient(*skipVerify)
 	route := *host + v1.LastAnchorRoute
 
-	fmt.Println(route)
+	if *debug {
+		fmt.Println(route)
+	}
 
 	request, err := http.NewRequest("GET", route, nil)
 	if err != nil {
@@ -997,7 +999,9 @@ func lastAnchorV2() error {
 	c := newClient(*skipVerify)
 	route := *host + v2.LastAnchorRoute
 
-	fmt.Println(route)
+	if *debug {
+		fmt.Println(route)
+	}
 
 	request, err := http.NewRequest("GET", route, nil)
 	if err != nil {
