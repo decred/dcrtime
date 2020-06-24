@@ -15,13 +15,13 @@ import (
 
 const (
 	// ErrorOK retuned when everything's cool
-	ErrorOK = 0
+	ErrorOK = 1
 	// ErrorExists returned when digest exists
-	ErrorExists = 1
+	ErrorExists = 2
 	// ErrorNotFound returned as generic not found error
-	ErrorNotFound = 2
+	ErrorNotFound = 3
 	// ErrorNotAllowed returned as generic not allowed error
-	ErrorNotAllowed = 3
+	ErrorNotAllowed = 4
 )
 
 var (
