@@ -234,7 +234,12 @@ type WalletBalanceReply struct {
 	Unconfirmed int64 `json:"unconfirmed"`
 }
 
-// LastAnchorReply is returned by server on a last anchor info request
+// LastAnchorReply is returned by server on a last succcessful anchor info
+// request, last successful anchor is the last dir which was anchored on the
+// blockchain (it's tx was broadcasted to the network and recorded on the db).
+// ChainTimestamp is stored on db only after 6 confirmations, if that's the
+// case and tx has more than 6 confirmations then LastAnchorReply will
+// include the tx blockchain timestamp.
 type LastAnchorReply struct {
 	ChainTimestamp int64  `json:"chaintimestamp"`
 	Transaction    string `json:"transaction"`
