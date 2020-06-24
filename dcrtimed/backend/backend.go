@@ -14,6 +14,8 @@ import (
 )
 
 const (
+	// ErrorInvalid is the default returned error code
+	ErrorInvalid = 0
 	// ErrorOK retuned when everything's cool
 	ErrorOK = 1
 	// ErrorExists returned when digest exists
