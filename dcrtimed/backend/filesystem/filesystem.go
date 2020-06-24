@@ -51,8 +51,8 @@ var (
 	// really should be automated but cron is hard.
 	//
 	// Seconds Minutes Hours Days Months DayOfWeek
-	flushSchedule = "10 * * * * *" // On the hour + 10 seconds
-	duration      = time.Minute    // Default how often we combine digests
+	flushSchedule = "10 0 * * * *" // On the hour + 10 seconds
+	duration      = time.Hour      // Default how often we combine digests
 
 	// Errors
 	errInvalidDB      = errors.New("not a database") // Should not happen
