@@ -14,15 +14,22 @@ import (
 )
 
 const (
-	ErrorOK         = 0 // Everything's cool
-	ErrorExists     = 1 // Digest exists
-	ErrorNotFound   = 2 // Generic not found error
-	ErrorNotAllowed = 3 // Generic not allowed error
+	// ErrorInvalid is the default returned error code
+	ErrorInvalid = 0
+	// ErrorOK retuned when everything's cool
+	ErrorOK = 1
+	// ErrorExists returned when digest exists
+	ErrorExists = 2
+	// ErrorNotFound returned as generic not found error
+	ErrorNotFound = 3
+	// ErrorNotAllowed returned as generic not allowed error
+	ErrorNotAllowed = 4
 )
 
 var (
-	ErrTryAgainLater     = errors.New("busy, try again later")
-	ErrTimestampNotFound = errors.New("timestamp not found")
+	// ErrTryAgainLater is thrown when can't upload
+	// while anchoring
+	ErrTryAgainLater = errors.New("busy, try again later")
 )
 
 // FlushRecord contains blockchain information.  This information only becomes
@@ -118,6 +125,16 @@ type GetBalanceResult struct {
 	Unconfirmed int64
 }
 
+// LastAnchorResult contains last successful anchor
+// info
+type LastAnchorResult struct {
+	ChainTimestamp int64          `json:"timestamp"`   // Timestamp anchored
+	Tx             chainhash.Hash `json:"tx"`          // Tx last succcessfull anchor
+	BlockHash      string         `json:"blockhash"`   // Anchored tx block hash
+	BlockHeight    int32          `json:"blockheight"` // Anchored tx block height
+}
+
+// Backend interface
 type Backend interface {
 	// Return timestamp information for given digests.
 	Get([][sha256.Size]byte) ([]GetResult, error)
@@ -150,4 +167,7 @@ type Backend interface {
 	// GetBalance retrieves balance information for the wallet
 	// backing this instance
 	GetBalance() (*GetBalanceResult, error)
+
+	// LastAnchor retrieves last successful anchor details
+	LastAnchor() (*LastAnchorResult, error)
 }

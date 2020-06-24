@@ -33,7 +33,7 @@ const (
 var (
 	testnet   = flag.Bool("testnet", false, "Use testnet port")
 	debug     = flag.Bool("debug", false, "Print JSON that is sent to server")
-	printJson = flag.Bool("json", false, "Print JSON response from server")
+	printJSON = flag.Bool("json", false, "Print JSON response from server")
 	fileOnly  = flag.Bool("file", false, "Treat digests and timestamps "+
 		"as file names")
 	host     = flag.String("h", "", "Timestamping host")
@@ -41,10 +41,12 @@ var (
 	trial    = flag.Bool("t", false, "Trial run, don't contact server")
 	verbose  = flag.Bool("v", false, "Verbose")
 	digest   = flag.String("digest", "", "Submit a raw 256 bit digest to anchor")
-	apiToken = flag.String("apitoken", "", `long:"apitoken" description:"Token`+
-		` for accessing privileged API resources"`)
-	balance = flag.Bool("balance", false, `long:"balance" description:"Display`+
-		` the connected server's wallet balance. An API Token is required"`)
+	apiToken = flag.String("apitoken", "", "Token for accessing privileged API"+
+		" resources")
+	balance = flag.Bool("balance", false, "Display the connected server's"+
+		" wallet balance. An API Token is required")
+	lastAnchor = flag.Bool("lastanchor", false, "Display last anchored"+
+		" timestamp details")
 	apiVersion = flag.Int("api", v2.APIVersion,
 		"Inform the API version to be used by the cli (1 or 2)")
 	skipVerify = flag.Bool("skipverify", false, "Skip TLS certificates"+
@@ -198,7 +200,7 @@ func downloadV1(questions []string) error {
 		return fmt.Errorf("%v: %v", r.Status, e)
 	}
 
-	if *printJson {
+	if *printJSON {
 		io.Copy(os.Stdout, r.Body)
 		fmt.Printf("\n")
 		return nil
@@ -373,7 +375,7 @@ func downloadV2Batch(questions []string) error {
 		return fmt.Errorf("%v: %v", r.Status, e)
 	}
 
-	if *printJson {
+	if *printJSON {
 		io.Copy(os.Stdout, r.Body)
 		fmt.Printf("\n")
 		return nil
@@ -439,7 +441,7 @@ func downloadV2Single(question string) error {
 		return fmt.Errorf("%v: %v", r.Status, e)
 	}
 
-	if *printJson {
+	if *printJSON {
 		io.Copy(os.Stdout, r.Body)
 		fmt.Printf("\n")
 		return nil
@@ -634,7 +636,7 @@ func uploadV1(digests []string, exists map[string]string) error {
 		return fmt.Errorf("%v: %v", r.Status, e)
 	}
 
-	if *printJson {
+	if *printJSON {
 		io.Copy(os.Stdout, r.Body)
 		fmt.Printf("\n")
 		return nil
@@ -704,7 +706,7 @@ func uploadV2Batch(digests []string, exists map[string]string) error {
 		return fmt.Errorf("%v: %v", r.Status, e)
 	}
 
-	if *printJson {
+	if *printJSON {
 		io.Copy(os.Stdout, r.Body)
 		fmt.Printf("\n")
 		return nil
@@ -770,7 +772,7 @@ func uploadV2Single(digest string, exists map[string]string) error {
 		return fmt.Errorf("%v: %v", r.Status, e)
 	}
 
-	if *printJson {
+	if *printJSON {
 		io.Copy(os.Stdout, r.Body)
 		fmt.Printf("\n")
 		return nil
@@ -837,7 +839,7 @@ func showWalletBalanceV1() error {
 
 	defer response.Body.Close()
 
-	if *printJson {
+	if *printJSON {
 		io.Copy(os.Stdout, response.Body)
 		fmt.Printf("\n")
 		return nil
@@ -899,7 +901,7 @@ func showWalletBalanceV2() error {
 
 	defer response.Body.Close()
 
-	if *printJson {
+	if *printJSON {
 		io.Copy(os.Stdout, response.Body)
 		fmt.Printf("\n")
 		return nil
@@ -932,6 +934,116 @@ func showWalletBalanceV2() error {
 	} else {
 		fmt.Printf("Spendable wallet balance (atoms): %v\n", balance.Spendable)
 	}
+
+	return nil
+}
+
+// lastAnchorV1 returns the last anchor information
+// such as: tx, chain timestamp, block height & block hash
+func lastAnchorV1() error {
+	c := newClient(*skipVerify)
+	route := *host + v1.LastAnchorRoute
+
+	if *debug {
+		fmt.Println(route)
+	}
+
+	request, err := http.NewRequest("GET", route, nil)
+	if err != nil {
+		return err
+	}
+
+	response, err := c.Do(request)
+	if err != nil {
+		return err
+	}
+
+	defer response.Body.Close()
+
+	if *printJSON {
+		io.Copy(os.Stdout, response.Body)
+		fmt.Printf("\n")
+		return nil
+	}
+
+	if response.StatusCode != http.StatusOK {
+		e, err := getError(response.Body)
+		if err != nil {
+			return fmt.Errorf("Retrieve last anchor info failed: %v",
+				response.Status)
+		}
+		return fmt.Errorf("Retrieve last anchor info failed - %v: %v",
+			response.Status, e)
+	}
+
+	// Decode the response from dcrtimed
+	var anchor v1.LastAnchorReply
+	jsonDecoder := json.NewDecoder(response.Body)
+	if err := jsonDecoder.Decode(&anchor); err != nil {
+		return fmt.Errorf("Could not decode LastAnchorReply: %v", err)
+	}
+
+	fmt.Printf(
+		"ChainTimestamp:   %v\n"+
+			"Transaction:      %v\n"+
+			"Blockhash:        %v\n"+
+			"Blockheight:      %v\n",
+		anchor.ChainTimestamp, anchor.Transaction, anchor.BlockHash, anchor.BlockHeight)
+
+	return nil
+}
+
+// lastAnchorV2 returns the last anchor information
+// such as: tx, chain timestamp, block height & block hash
+func lastAnchorV2() error {
+	c := newClient(*skipVerify)
+	route := *host + v2.LastAnchorRoute
+
+	if *debug {
+		fmt.Println(route)
+	}
+
+	request, err := http.NewRequest("GET", route, nil)
+	if err != nil {
+		return err
+	}
+
+	response, err := c.Do(request)
+	if err != nil {
+		return err
+	}
+
+	defer response.Body.Close()
+
+	if *printJSON {
+		io.Copy(os.Stdout, response.Body)
+		fmt.Printf("\n")
+		return nil
+	}
+
+	if response.StatusCode != http.StatusOK {
+		e, err := getError(response.Body)
+		if err != nil {
+			return fmt.Errorf("Retrieve last anchor info failed: %v",
+				response.Status)
+		}
+		return fmt.Errorf("Retrieve last anchor info failed - %v: %v",
+			response.Status, e)
+	}
+
+	// Decode the response from dcrtimed
+	var anchor v2.LastAnchorReply
+	jsonDecoder := json.NewDecoder(response.Body)
+	if err := jsonDecoder.Decode(&anchor); err != nil {
+		return fmt.Errorf("Could not decode LastAnchorReply: %v", err)
+	}
+
+	fmt.Printf(
+		"ChainTimestamp:   %v\n"+
+			"Transaction:      %v\n"+
+			"Blockhash:        %v\n"+
+			"Blockheight:      %v\n",
+		anchor.ChainTimestamp, anchor.Transaction, anchor.BlockHash, anchor.BlockHeight)
 
 	return nil
 }
@@ -1002,6 +1114,7 @@ func _main() error {
 	var upload func([]string, map[string]string) error
 	var download func([]string) error
 	var showWalletBalance func() error
+	var lastAnchorInfo func() error
 
 	// Set values according to selected API version. Default is v2.
 	switch *apiVersion {
@@ -1013,6 +1126,7 @@ func _main() error {
 		upload = uploadV1
 		download = downloadV1
 		showWalletBalance = showWalletBalanceV1
+		lastAnchorInfo = lastAnchorV1
 	case v2.APIVersion:
 		mainnetHost = v2.DefaultMainnetTimeHost
 		testnetHost = v2.DefaultTestnetTimeHost
@@ -1021,6 +1135,7 @@ func _main() error {
 		upload = uploadV2
 		download = downloadV2
 		showWalletBalance = showWalletBalanceV2
+		lastAnchorInfo = lastAnchorV2
 	default:
 		return fmt.Errorf("Invalid API version %v", *apiVersion)
 	}
@@ -1059,6 +1174,16 @@ func _main() error {
 	// Print the wallet balance via privileged endpoint.
 	if *balance {
 		err := showWalletBalance()
+		if err != nil {
+			return err
+		}
+
+		didRunCommand = true
+	}
+
+	// Print last anchor timestamp info
+	if *lastAnchor {
+		err := lastAnchorInfo()
 		if err != nil {
 			return err
 		}

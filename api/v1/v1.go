@@ -68,6 +68,11 @@ var (
 	// the account balance from dcrtimed's wallet instance
 	WalletBalanceRoute = RoutePrefix + "/balance"
 
+	// LastAnchorRoute defines the API route for retrieving
+	// info about last successfull anchor, such as
+	// timestamp, block height & tx id
+	LastAnchorRoute = RoutePrefix + "/last"
+
 	// Result defines legible string messages to a timestamping/query
 	// result code.
 	Result = map[int]string{
@@ -159,4 +164,11 @@ type WalletBalanceReply struct {
 	Total       int64 `json:"total"`
 	Spendable   int64 `json:"spendable"`
 	Unconfirmed int64 `json:"unconfirmed"`
+}
+
+type LastAnchorReply struct {
+	ChainTimestamp int64  `json:"chaintimestamp"`
+	Transaction    string `json:"transaction"`
+	BlockHash      string `json:"blockhash"`
+	BlockHeight    int32  `json:"blockheight"`
 }

@@ -82,6 +82,11 @@ var (
 	// the account balance from dcrtimed's wallet instance
 	WalletBalanceRoute = RoutePrefix + "/balance"
 
+	// LastAnchorRoute defines the API route for retrieving
+	// info about last successfull anchor, such as
+	// timestamp, block height & tx id
+	LastAnchorRoute = RoutePrefix + "/last"
+
 	// Result defines legible string messages to a timestamping/query
 	// result code.
 	Result = map[ResultT]string{
@@ -194,16 +199,16 @@ type VerifyBatch struct {
 	Timestamps []int64  `json:"timestamps"`
 }
 
-// VerifyBatchReply is returned by the server with the status results for the requested
-// digests and timestamps.
+// VerifyBatchReply is returned by the server with the status results for the
+// requested digests and timestamps.
 type VerifyBatchReply struct {
 	ID         string            `json:"id"`
 	Digests    []VerifyDigest    `json:"digests"`
 	Timestamps []VerifyTimestamp `json:"timestamps"`
 }
 
-// ChainInformation is returned by the server on a verify digest request. It contains
-// the merkle path of that digest.
+// ChainInformation is returned by the server on a verify digest request.
+// It contains the merkle path of that digest.
 type ChainInformation struct {
 	ChainTimestamp int64         `json:"chaintimestamp"`
 	Transaction    string        `json:"transaction"`
@@ -211,8 +216,9 @@ type ChainInformation struct {
 	MerklePath     merkle.Branch `json:"merklepath"`
 }
 
-// CollectionInformation is returned by the server on a verify timestamp request.
-// It contains all digests grouped on the collection of the requested block timestamp.
+// CollectionInformation is returned by the server on a verify timestamp
+// request. It contains all digests grouped on the collection of the
+// requested block timestamp.
 type CollectionInformation struct {
 	ChainTimestamp int64    `json:"chaintimestamp"`
 	Transaction    string   `json:"transaction"`
@@ -220,9 +226,21 @@ type CollectionInformation struct {
 	Digests        []string `json:"digests"`
 }
 
-// WalletBalanceReply returns balance information of the decred wallet.
+// WalletBalanceReply is returned by server on a balance information of the
+// decred wallet.
 type WalletBalanceReply struct {
 	Total       int64 `json:"total"`
 	Spendable   int64 `json:"spendable"`
 	Unconfirmed int64 `json:"unconfirmed"`
+}
+
+// LastAnchorReply is returned by server on a last succcessful anchor info
+// request, it includes the id of the latest successfully broadcasted tx,
+// block hash & block height if the transaction was included in a block
+// and the chain timestamp if the tx block has more than 6 confirmations.
+type LastAnchorReply struct {
+	ChainTimestamp int64  `json:"chaintimestamp"`
+	Transaction    string `json:"transaction"`
+	BlockHash      string `json:"blockhash"`
+	BlockHeight    int32  `json:"blockheight"`
 }
