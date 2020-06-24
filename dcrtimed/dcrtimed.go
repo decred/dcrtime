@@ -598,6 +598,30 @@ func (d *DcrtimeStore) verifyV1(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (d *DcrtimeStore) lastAnchorV1(w http.ResponseWriter, r *http.Request) {
+	log.Infof("%v LastAnchor %v", r.URL.Path, r.RemoteAddr)
+
+	lastAnchorResult, err := d.backend.LastAnchor()
+	if err != nil {
+		errorCode := time.Now().Unix()
+
+		log.Errorf("%v lastAnchor error code %v: %v",
+			r.RemoteAddr, errorCode, err)
+		util.RespondWithError(w, http.StatusInternalServerError,
+			fmt.Sprintf("failed to retrieve lastest anchor info, "+
+				"contact administrator and provide "+
+				"the following error code: %v", errorCode))
+		return
+	}
+
+	util.RespondWithJSON(w, http.StatusOK, v1.LastAnchorReply{
+		ChainTimestamp: lastAnchorResult.ChainTimestamp,
+		Transaction:    lastAnchorResult.Tx.String(),
+		BlockHash:      lastAnchorResult.BlockHash,
+		BlockHeight:    lastAnchorResult.BlockHeight,
+	})
+}
+
 func (d *DcrtimeStore) walletBalanceV1(w http.ResponseWriter, r *http.Request) {
 	if !d.isAuthorized(r) {
 		util.RespondWithError(w, http.StatusUnauthorized, "not authorized")
@@ -1362,6 +1386,7 @@ func _main() error {
 	var timestampV1Route func(http.ResponseWriter, *http.Request)
 	var verifyV1Route func(http.ResponseWriter, *http.Request)
 	var walletBalanceV1Route http.HandlerFunc
+	var lastAnchorV1Route http.HandlerFunc
 
 	// API v2 routes
 	var statusV2Route func(http.ResponseWriter, *http.Request)
@@ -1398,6 +1423,7 @@ func _main() error {
 		timestampV1Route = d.timestampV1
 		verifyV1Route = d.verifyV1
 		walletBalanceV1Route = d.walletBalanceV1
+		lastAnchorV1Route = d.lastAnchorV1
 
 		statusV2Route = d.statusV2
 		timestampBatchV2Route = d.timestampBatchV2
@@ -1422,6 +1448,7 @@ func _main() error {
 			d.addRoute("POST", v1.TimestampRoute, timestampV1Route)
 			d.addRoute("POST", v1.VerifyRoute, verifyV1Route)
 			d.addRoute("GET", v1.WalletBalanceRoute, walletBalanceV1Route)
+			d.addRoute("GET", v1.LastAnchorRoute, lastAnchorV1Route)
 		case v2.APIVersion:
 			// API v2 handlers
 			d.addRoute("POST", v2.StatusRoute, statusV2Route)

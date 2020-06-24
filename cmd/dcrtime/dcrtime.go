@@ -876,57 +876,6 @@ func showWalletBalanceV1() error {
 	return nil
 }
 
-func lastAnchorV2() error {
-	c := newClient(*skipVerify)
-	route := *host + v2.LastAnchorRoute
-
-	fmt.Println(route)
-
-	request, err := http.NewRequest("GET", route, nil)
-	if err != nil {
-		return err
-	}
-
-	response, err := c.Do(request)
-	if err != nil {
-		return err
-	}
-
-	defer response.Body.Close()
-
-	if *printJSON {
-		io.Copy(os.Stdout, response.Body)
-		fmt.Printf("\n")
-		return nil
-	}
-
-	if response.StatusCode != http.StatusOK {
-		e, err := getError(response.Body)
-		if err != nil {
-			return fmt.Errorf("Retrieve last anchor info failed: %v",
-				response.Status)
-		}
-		return fmt.Errorf("Retrieve last anchor info failed - %v: %v",
-			response.Status, e)
-	}
-
-	// Decode the response from dcrtimed
-	var anchor v2.LastAnchorReply
-	jsonDecoder := json.NewDecoder(response.Body)
-	if err := jsonDecoder.Decode(&anchor); err != nil {
-		return fmt.Errorf("Could not decode LastAnchorReply: %v", err)
-	}
-
-	fmt.Printf(
-		"ChainTimestamp:   %v\n"+
-			"Transaction:      %v\n"+
-			"Blockhash:        %v\n"+
-			"Blockheight:      %v\n",
-		anchor.ChainTimestamp, anchor.Transaction, anchor.BlockHash, anchor.BlockHeight)
-
-	return nil
-}
-
 // showWalletBalanceV2 returns the total balance of the primary dcrtimed wallet,
 // in atoms.
 func showWalletBalanceV2() error {
@@ -985,6 +934,112 @@ func showWalletBalanceV2() error {
 	} else {
 		fmt.Printf("Spendable wallet balance (atoms): %v\n", balance.Spendable)
 	}
+
+	return nil
+}
+
+// lastAnchorV1 returns the last anchor information
+// such as: tx, chain timestamp, block height & block hash
+func lastAnchorV1() error {
+	c := newClient(*skipVerify)
+	route := *host + v1.LastAnchorRoute
+
+	fmt.Println(route)
+
+	request, err := http.NewRequest("GET", route, nil)
+	if err != nil {
+		return err
+	}
+
+	response, err := c.Do(request)
+	if err != nil {
+		return err
+	}
+
+	defer response.Body.Close()
+
+	if *printJSON {
+		io.Copy(os.Stdout, response.Body)
+		fmt.Printf("\n")
+		return nil
+	}
+
+	if response.StatusCode != http.StatusOK {
+		e, err := getError(response.Body)
+		if err != nil {
+			return fmt.Errorf("Retrieve last anchor info failed: %v",
+				response.Status)
+		}
+		return fmt.Errorf("Retrieve last anchor info failed - %v: %v",
+			response.Status, e)
+	}
+
+	// Decode the response from dcrtimed
+	var anchor v1.LastAnchorReply
+	jsonDecoder := json.NewDecoder(response.Body)
+	if err := jsonDecoder.Decode(&anchor); err != nil {
+		return fmt.Errorf("Could not decode LastAnchorReply: %v", err)
+	}
+
+	fmt.Printf(
+		"ChainTimestamp:   %v\n"+
+			"Transaction:      %v\n"+
+			"Blockhash:        %v\n"+
+			"Blockheight:      %v\n",
+		anchor.ChainTimestamp, anchor.Transaction, anchor.BlockHash, anchor.BlockHeight)
+
+	return nil
+}
+
+// lastAnchorV2 returns the last anchor information
+// such as: tx, chain timestamp, block height & block hash
+func lastAnchorV2() error {
+	c := newClient(*skipVerify)
+	route := *host + v2.LastAnchorRoute
+
+	fmt.Println(route)
+
+	request, err := http.NewRequest("GET", route, nil)
+	if err != nil {
+		return err
+	}
+
+	response, err := c.Do(request)
+	if err != nil {
+		return err
+	}
+
+	defer response.Body.Close()
+
+	if *printJSON {
+		io.Copy(os.Stdout, response.Body)
+		fmt.Printf("\n")
+		return nil
+	}
+
+	if response.StatusCode != http.StatusOK {
+		e, err := getError(response.Body)
+		if err != nil {
+			return fmt.Errorf("Retrieve last anchor info failed: %v",
+				response.Status)
+		}
+		return fmt.Errorf("Retrieve last anchor info failed - %v: %v",
+			response.Status, e)
+	}
+
+	// Decode the response from dcrtimed
+	var anchor v2.LastAnchorReply
+	jsonDecoder := json.NewDecoder(response.Body)
+	if err := jsonDecoder.Decode(&anchor); err != nil {
+		return fmt.Errorf("Could not decode LastAnchorReply: %v", err)
+	}
+
+	fmt.Printf(
+		"ChainTimestamp:   %v\n"+
+			"Transaction:      %v\n"+
+			"Blockhash:        %v\n"+
+			"Blockheight:      %v\n",
+		anchor.ChainTimestamp, anchor.Transaction, anchor.BlockHash, anchor.BlockHeight)
 
 	return nil
 }
@@ -1067,6 +1122,7 @@ func _main() error {
 		upload = uploadV1
 		download = downloadV1
 		showWalletBalance = showWalletBalanceV1
+		lastAnchorInfo = lastAnchorV1
 	case v2.APIVersion:
 		mainnetHost = v2.DefaultMainnetTimeHost
 		testnetHost = v2.DefaultTestnetTimeHost

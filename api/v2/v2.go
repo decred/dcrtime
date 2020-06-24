@@ -226,7 +226,7 @@ type CollectionInformation struct {
 	Digests        []string `json:"digests"`
 }
 
-// WalletBalanceReply is returned by serve on a balance information of the
+// WalletBalanceReply is returned by server on a balance information of the
 // decred wallet.
 type WalletBalanceReply struct {
 	Total       int64 `json:"total"`
@@ -234,7 +234,7 @@ type WalletBalanceReply struct {
 	Unconfirmed int64 `json:"unconfirmed"`
 }
 
-// LastAnchorReply retu
+// LastAnchorReply is returned by server on a last anchor info request
 type LastAnchorReply struct {
 	ChainTimestamp int64  `json:"chaintimestamp"`
 	Transaction    string `json:"transaction"`
