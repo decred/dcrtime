@@ -51,8 +51,8 @@ var (
 	// really should be automated but cron is hard.
 	//
 	// Seconds Minutes Hours Days Months DayOfWeek
-	flushSchedule = "10 0 * * * *" // On the hour + 10 seconds
-	duration      = time.Hour      // Default how often we combine digests
+	flushSchedule = "10 * * * * *" // On the hour + 10 seconds
+	duration      = time.Minute    // Default how often we combine digests
 
 	// Errors
 	errInvalidDB      = errors.New("not a database") // Should not happen
@@ -389,7 +389,9 @@ func (fs *FileSystem) lazyFlush(dbts int64, fr *backend.FlushRecord) (*dcrtimewa
 	if res.Confirmations == -1 {
 		return nil, errInvalidConfirmations
 	} else if res.Confirmations < confirmations {
-		return nil, errNotEnoughConfirmation
+		// Return error & wallet lookup res
+		// for error handling
+		return res, errNotEnoughConfirmation
 	}
 
 	// Reassign and write back flush record
@@ -942,10 +944,14 @@ func (fs *FileSystem) LastAnchor() (*backend.LastAnchorResult, error) {
 		// Close db conection as we may
 		// write & update it
 		db.Close()
+
 		// Lookup anchored tx info,
 		// and update db if info changed.
 		txWalletInfo, err := fs.lazyFlush(flushedTs, fr)
-		if err != nil {
+
+		// If no error, or no enough confirmations
+		// err continue, else return err.
+		if err != nil && err != errNotEnoughConfirmation {
 			return &backend.LastAnchorResult{}, err
 		}
 		me.ChainTimestamp = fr.ChainTimestamp
