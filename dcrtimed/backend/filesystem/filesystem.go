@@ -370,25 +370,26 @@ var (
 )
 
 // lazyFlush takes a pointer to a flush record and updates the chain anchor
-// timestamp of said record and writes it back to the database.
+// timestamp of said record and writes it back to the database and returns
+// the result of the wallet's Lookup function
 //
 // IMPORTANT NOTE: We *may* write to a timestamp database in case of a lazy
 // timestamp update to the flush record while holding the READ lock.  This is
 // OK because at worst we are racing multiple atomic writes to the same key
 // with the same information.  This is suboptimal but beats taking a write lock
 // for all get* calls.
-func (fs *FileSystem) lazyFlush(dbts int64, fr *backend.FlushRecord) error {
+func (fs *FileSystem) lazyFlush(dbts int64, fr *backend.FlushRecord) (*dcrtimewallet.TxLookupResult, error) {
 	res, err := fs.wallet.Lookup(fr.Tx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	log.Debugf("lazyFlush confirmations: %v", res.Confirmations)
 
 	if res.Confirmations == -1 {
-		return errInvalidConfirmations
+		return nil, errInvalidConfirmations
 	} else if res.Confirmations < confirmations {
-		return errNotEnoughConfirmation
+		return nil, errNotEnoughConfirmation
 	}
 
 	// Reassign and write back flush record
@@ -397,22 +398,22 @@ func (fs *FileSystem) lazyFlush(dbts int64, fr *backend.FlushRecord) error {
 	// Write back
 	payload, err := EncodeFlushRecord(*fr)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	dbw, err := fs.openWrite(dbts, false)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer dbw.Close()
 	err = dbw.Put([]byte(flushedKey), payload, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	log.Infof("Flushed anchor timestamp: %v %v", fr.Tx.String(),
 		res.Timestamp)
 
-	return nil
+	return res, nil
 }
 
 // getTimestamp returns all hashes for a given timestamp.
@@ -460,7 +461,7 @@ func (fs *FileSystem) getTimestamp(timestamp int64) (backend.TimestampResult, er
 
 		// Do the lazy flush, note that fr.ChainTimestamp is updated.
 		if fr.ChainTimestamp == 0 && !fs.testing {
-			err = fs.lazyFlush(timestamp, fr)
+			_, err = fs.lazyFlush(timestamp, fr)
 			if err != nil {
 				if err == errNotEnoughConfirmation {
 					// fr.ChainTimestamp == 0
@@ -548,7 +549,7 @@ func (fs *FileSystem) getDigest(ts int64, current *leveldb.DB, digest [sha256.Si
 		if fs.testing {
 			gdme.ErrorCode = foundGlobal
 		} else if gdme.AnchoredTimestamp == 0 {
-			err = fs.lazyFlush(dbts, fr)
+			_, err = fs.lazyFlush(dbts, fr)
 			if err != nil {
 				if err == errNotEnoughConfirmation {
 					// fr.ChainTimestamp == 0
@@ -936,15 +937,20 @@ func (fs *FileSystem) LastAnchor() (*backend.LastAnchorResult, error) {
 		if err != nil {
 			return &me, err
 		}
-
 		me.Tx = fr.Tx
-		// Lookup anchored tx info.
-		res, err := fs.wallet.Lookup(fr.Tx)
+
+		// Close db conection as we may
+		// write & update it
+		db.Close()
+		// Lookup anchored tx info,
+		// and update db if info changed.
+		txWalletInfo, err := fs.lazyFlush(flushedTs, fr)
 		if err != nil {
 			return &backend.LastAnchorResult{}, err
 		}
-		me.ChainTimestamp = res.Timestamp
-		me.Block = res.Block.String()
+		me.ChainTimestamp = fr.ChainTimestamp
+		me.BlockHash = txWalletInfo.BlockHash.String()
+		me.BlockHeight = txWalletInfo.BlockHeight
 		return &me, nil
 	}
 

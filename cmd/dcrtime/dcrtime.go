@@ -920,8 +920,9 @@ func lastAnchorV2() error {
 	fmt.Printf(
 		"ChainTimestamp:   %v\n"+
 			"Transaction:      %v\n"+
-			"Block:            %v\n",
-		anchor.ChainTimestamp, anchor.Transaction, anchor.Block)
+			"Blockhash:        %v\n"+
+			"Blockheight:      %v\n",
+		anchor.ChainTimestamp, anchor.Transaction, anchor.BlockHash, anchor.BlockHeight)
 
 	return nil
 }

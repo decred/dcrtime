@@ -1158,7 +1158,8 @@ func (d *DcrtimeStore) lastAnchorV2(w http.ResponseWriter, r *http.Request) {
 	util.RespondWithJSON(w, http.StatusOK, v2.LastAnchorReply{
 		ChainTimestamp: lastAnchorResult.ChainTimestamp,
 		Transaction:    lastAnchorResult.Tx.String(),
-		Block:          lastAnchorResult.Block,
+		BlockHash:      lastAnchorResult.BlockHash,
+		BlockHeight:    lastAnchorResult.BlockHeight,
 	})
 }
 

@@ -238,5 +238,6 @@ type WalletBalanceReply struct {
 type LastAnchorReply struct {
 	ChainTimestamp int64  `json:"chaintimestamp"`
 	Transaction    string `json:"transaction"`
-	Block          string `json:"string"`
+	BlockHash      string `json:"blockhash"`
+	BlockHeight    int32  `json:"blockheight"`
 }

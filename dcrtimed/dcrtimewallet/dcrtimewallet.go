@@ -26,10 +26,11 @@ type DcrtimeWallet struct {
 	passphrase []byte
 }
 
-type Result struct {
-	Block         chainhash.Hash
+type TxLookupResult struct {
+	BlockHash     chainhash.Hash
 	Timestamp     int64
 	Confirmations int32
+	BlockHeight   int32
 }
 
 // BalanceResult contains information about the backing dcrwallet
@@ -41,7 +42,7 @@ type BalanceResult struct {
 }
 
 // Lookup looks up the provided TX hash and returns a Result structure.
-func (d *DcrtimeWallet) Lookup(tx chainhash.Hash) (*Result, error) {
+func (d *DcrtimeWallet) Lookup(tx chainhash.Hash) (*TxLookupResult, error) {
 	ctx, cancel := context.WithCancel(d.ctx)
 	defer cancel()
 
@@ -77,7 +78,7 @@ func (d *DcrtimeWallet) Lookup(tx chainhash.Hash) (*Result, error) {
 
 	// Abort early if we don't have enough confirmations.
 	if r.Confirmations[0].Confirmations <= 0 {
-		return &Result{
+		return &TxLookupResult{
 			Confirmations: r.Confirmations[0].Confirmations,
 		}, nil
 	}
@@ -95,10 +96,11 @@ func (d *DcrtimeWallet) Lookup(tx chainhash.Hash) (*Result, error) {
 		return nil, err
 	}
 
-	return &Result{
-		Block:         *block,
+	return &TxLookupResult{
+		BlockHash:     *block,
 		Timestamp:     rbi.Timestamp,
 		Confirmations: rbi.Confirmations,
+		BlockHeight:   rbi.BlockHeight,
 	}, nil
 }
 

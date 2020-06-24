@@ -126,9 +126,10 @@ type GetBalanceResult struct {
 // LastAnchorResult contains last successful anchor
 // info
 type LastAnchorResult struct {
-	ChainTimestamp int64          `json:"timestamp"` // Timestamp anchored
-	Tx             chainhash.Hash `json:"tx"`        // Tx last succcessfull anchor
-	Block          string         `json:"block"`     // Anchored tx block
+	ChainTimestamp int64          `json:"timestamp"`   // Timestamp anchored
+	Tx             chainhash.Hash `json:"tx"`          // Tx last succcessfull anchor
+	BlockHash      string         `json:"blockhash"`   // Anchored tx block hash
+	BlockHeight    int32          `json:"blockheight"` // Anchored tx block height
 }
 
 // Backend interface
