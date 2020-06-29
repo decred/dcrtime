@@ -66,7 +66,7 @@ apitoken=sometoken
 
 ```
 
-*Note:* `apitoken` key is used to access privileged http endpoints in the daemon.
+**Note:** `apitoken` key is used to access privileged http endpoints in the daemon.
 Multiple values may be provided by providing multiple apitoken values, each on
 a separate line with each line starting with "apitoken=".
 The backend will not start if at least one value is not specified.
