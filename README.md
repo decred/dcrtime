@@ -62,9 +62,14 @@ wallethost=localhost
 walletcert=../.dcrwallet/rpc.cert
 walletpassphrase=MySikritPa$$w0ard
 testnet=1
-apitoken=sometoken // used to access privileged http endpoints in the daemon.
+apitoken=sometoken
 
 ```
+
+*Note:* `apitoken` key is used to access privileged http endpoints in the daemon.
+Multiple values may be provided by providing multiple apitoken values, each on
+a separate line with each line starting with "apitoken=".
+The backend will not start if at least one value is not specified.
 
 Start the store.
 ```
