@@ -711,7 +711,7 @@ func (fs *FileSystem) Put(hashes [][sha256.Size]byte) (int64, []backend.PutResul
 	}
 	defer current.Close()
 
-	// Create a Put batch for provided digests.  Obviously looking things
+	// Create a Put batch for provided digests. Obviously looking things
 	// up without a lock will make the lookups racy however when a
 	// container is committed it is locked and therefore overall an atomic
 	// operation.
@@ -754,7 +754,7 @@ func (fs *FileSystem) Put(hashes [][sha256.Size]byte) (int64, []backend.PutResul
 			continue
 		}
 
-		// Lookup in previous not flushed dirs
+		// Lookup in previous not flushed dirs.
 		// Get Dirs.
 		files, err := ioutil.ReadDir(fs.root)
 		if err != nil {
@@ -934,33 +934,34 @@ func (fs *FileSystem) LastAnchor() (*backend.LastAnchorResult, error) {
 	var fr *backend.FlushRecord
 	var me backend.LastAnchorResult
 	payload, err := db.Get([]byte(flushedKey), nil)
-	if err == nil {
-		fr, err = DecodeFlushRecord(payload)
-		if err != nil {
-			return &me, err
-		}
-		me.Tx = fr.Tx
-
-		// Close db conection as we may
-		// write & update it
-		db.Close()
-
-		// Lookup anchored tx info,
-		// and update db if info changed.
-		txWalletInfo, err := fs.lazyFlush(flushedTs, fr)
-
-		// If no error, or no enough confirmations
-		// err continue, else return err.
-		if err != nil && err != errNotEnoughConfirmation {
-			return &backend.LastAnchorResult{}, err
-		}
-		me.ChainTimestamp = fr.ChainTimestamp
-		me.BlockHash = txWalletInfo.BlockHash.String()
-		me.BlockHeight = txWalletInfo.BlockHeight
-		return &me, nil
+	if err != nil {
+		return &backend.LastAnchorResult{}, err
 	}
 
-	return &backend.LastAnchorResult{}, err
+	fr, err = DecodeFlushRecord(payload)
+	if err != nil {
+		return &me, err
+	}
+	me.Tx = fr.Tx
+
+	// Close db conection as we may
+	// write & update it
+	db.Close()
+
+	// Lookup anchored tx info,
+	// and update db if info changed.
+	txWalletInfo, err := fs.lazyFlush(flushedTs, fr)
+
+	// If no error, or no enough confirmations
+	// err continue, else return err.
+	if err != nil && err != errNotEnoughConfirmation {
+		return &backend.LastAnchorResult{}, err
+	}
+
+	me.ChainTimestamp = fr.ChainTimestamp
+	me.BlockHash = txWalletInfo.BlockHash.String()
+	me.BlockHeight = txWalletInfo.BlockHeight
+	return &me, nil
 }
 
 // GetBalance provides the balance of the wallet and satisfies the
