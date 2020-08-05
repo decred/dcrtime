@@ -8,7 +8,7 @@ timestamped digests and the second for storing anchors information, where each
 succesful anchor will result in a new entry. Each `record` which was included 
 in an `anchor` will be connected to the corresponding entry in the anchors 
 table using the col `anchor_merkle` which defined as forgein key & indexed in 
-records table, below you find the detailed description of the two table:
+records table, below you find the detailed description of the two tables:
 
 
 ### Tables
