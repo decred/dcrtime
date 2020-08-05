@@ -19,6 +19,14 @@ records table, below you find the detailed description of the two table:
 | key                  | serial            | x        | x      |        |         | Auto incremented  identifier                                   |
 | collection_timestamp | text              | x        |        |        | x       | Unix timestamp of collection                                   |
 | digest               | bytea             | x        |        |        |         | Timestamped digest                                             |
-| anchor_merkle        | char. varying(64) |          |        | x      | x       | Merkle root of corresponding anchor,   nil if not anchored yet |
+| anchor_merkle        | char. varying(64) |          |        | x      | x       | Merkle root of corresponding anchor - linking to anchors table, nil if not anchored yet |
 
+**Anchors:**
+| Col Name         | Type              | Not Null | P. Key | F. Key | Indexed | Description                     |
+|------------------|-------------------|----------|--------|--------|---------|---------------------------------|
+| merkle           | char. varying(64) | x        | x      |        |         | Anchor merkle root              |
+| hashes           | text[]            | x        |        |        |         | Anchored hashes                 |
+| tx_hash          | text              |          |        |        |         | Anchor tx hash                  |
+| chain_timestamp  | bigint            |          |        |        | x       | Anchor timestamp on blockchain  |
+| flush_timestamp  | bigint            |          |        |        | x       | When anchor actually  flushed   |
 
