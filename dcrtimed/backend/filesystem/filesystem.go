@@ -754,7 +754,7 @@ func (fs *FileSystem) Put(hashes [][sha256.Size]byte) (int64, []backend.PutResul
 			continue
 		}
 
-		// Lookup in previous not flushed dirs.
+		// Lookup in previous not flushed dirs
 		// Get Dirs.
 		files, err := ioutil.ReadDir(fs.root)
 		if err != nil {
