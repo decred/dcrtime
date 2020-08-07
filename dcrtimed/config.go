@@ -40,6 +40,7 @@ var (
 	defaultHTTPSCertFile = filepath.Join(defaultHomeDir, "https.cert")
 	defaultLogDir        = filepath.Join(defaultHomeDir, defaultLogDirname)
 	defaultAPIVersions   = fmt.Sprintf("%v,%v", v1.APIVersion, v2.APIVersion)
+	defaultBackend       = "filesystem"
 )
 
 // runServiceCommand is only set to a real function on Windows.  It is used
@@ -73,6 +74,7 @@ type config struct {
 	EnableCollections bool     `long:"enablecollections" description:"Allow clients to query collection timestamps."`
 	APITokens         []string `long:"apitoken" description:"Token used to grant access to privileged API resources"`
 	APIVersions       string   `long:"apiversions" description:"Enables API versions on the daemon"`
+	Backend           string   `long:"backend" description:"Sets the cache layer type 'filesystem'/'postgres'"`
 }
 
 // serviceOptions defines the configuration options for the daemon as a service
@@ -278,6 +280,7 @@ func loadConfig() (*config, []string, error) {
 		HTTPSCert:   defaultHTTPSCertFile,
 		Version:     version(),
 		APIVersions: defaultAPIVersions,
+		Backend:     defaultBackend,
 	}
 
 	// Service options which are only added on Windows.
@@ -542,6 +545,9 @@ func loadConfig() (*config, []string, error) {
 		}
 		cfg.APITokens = validTokens
 	}
+
+	fmt.Println(11111111111)
+	fmt.Println(cfg.Backend)
 
 	// Warn about missing config file only after all other configuration is
 	// done.  This prevents the warning on help messages and invalid

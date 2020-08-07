@@ -5,8 +5,14 @@
 package postgres
 
 import (
+	"crypto/sha256"
+	"os"
 	"sync"
 	"time"
+
+	"github.com/decred/dcrtime/dcrtimed/backend"
+	"github.com/decred/dcrtime/dcrtimed/dcrtimewallet"
+	"github.com/robfig/cron"
 )
 
 var (
@@ -32,4 +38,56 @@ type Postgres struct {
 	commit   uint          // Current version, incremented during flush
 
 	wallet *dcrtimewallet.DcrtimeWallet // Wallet context.
+}
+
+// Return timestamp information for given digests.
+func (pg *Postgres) Get([][sha256.Size]byte) ([]backend.GetResult, error) {
+	return nil, nil
+}
+
+// Return all hashes for given timestamps.
+func (pg *Postgres) GetTimestamps([]int64) ([]backend.TimestampResult, error) {
+	return nil, nil
+}
+
+// Store hashes and return timestamp and associated errors.  Put is
+// allowed to return transient errors.
+func (pg *Postgres) Put([][sha256.Size]byte) (int64, []backend.PutResult, error) {
+	return 0, nil, nil
+}
+
+// Close performs cleanup of the backend.
+func (pg *Postgres) Close() {
+}
+
+// Dump dumps database to the provided file descriptor. If the
+// human flag is set to true it pretty prints the database content
+// otherwise it dumps a JSON stream.
+func (pg *Postgres) Dump(*os.File, bool) error {
+	return nil
+}
+
+// Restore recreates the the database from the provided file
+// descriptor. The verbose flag is set to true to indicate that this
+// call may parint to stdout. The provided string describes the target
+// location and is implementation specific.
+func (pg *Postgres) Restore(*os.File, bool, string) error {
+	return nil
+}
+
+// Fsck walks all data and verifies its integrity. In addition it
+// verifies anchored timestamps' existence on the blockchain.
+func (pg *Postgres) Fsck(*backend.FsckOptions) error {
+	return nil
+}
+
+// GetBalance retrieves balance information for the wallet
+// backing this instance
+func (pg *Postgres) GetBalance() (*backend.GetBalanceResult, error) {
+	return nil, nil
+}
+
+// LastAnchor retrieves last successful anchor details
+func (pg *Postgres) LastAnchor() (*backend.LastAnchorResult, error) {
+	return nil, nil
 }
