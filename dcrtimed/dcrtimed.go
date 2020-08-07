@@ -26,6 +26,7 @@ import (
 	v2 "github.com/decred/dcrtime/api/v2"
 	"github.com/decred/dcrtime/dcrtimed/backend"
 	"github.com/decred/dcrtime/dcrtimed/backend/filesystem"
+	"github.com/decred/dcrtime/dcrtimed/backend/postgres"
 	"github.com/decred/dcrtime/util"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -1364,15 +1365,24 @@ func _main() error {
 		}
 	} else {
 		// Setup backend.
-		filesystem.UseLogger(fsbeLog)
-		b, err := filesystem.New(loadedCfg.DataDir,
-			loadedCfg.WalletCert,
-			loadedCfg.WalletHost,
-			loadedCfg.EnableCollections,
-			[]byte(loadedCfg.WalletPassphrase))
-
-		if err != nil {
-			return err
+		var b backend.Backend
+		switch loadedCfg.Backend {
+		case "filesystem":
+			filesystem.UseLogger(fsbeLog)
+			b, err = filesystem.New(loadedCfg.DataDir,
+				loadedCfg.WalletCert,
+				loadedCfg.WalletHost,
+				loadedCfg.EnableCollections,
+				[]byte(loadedCfg.WalletPassphrase))
+			if err != nil {
+				return err
+			}
+		case "postgres":
+			postgres.UseLogger(fsbeLog)
+			b, err = postgres.New()
+			if err != nil {
+				return nil
+			}
 		}
 
 		d.backend = b

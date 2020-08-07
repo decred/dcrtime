@@ -546,9 +546,6 @@ func loadConfig() (*config, []string, error) {
 		cfg.APITokens = validTokens
 	}
 
-	fmt.Println(11111111111)
-	fmt.Println(cfg.Backend)
-
 	// Warn about missing config file only after all other configuration is
 	// done.  This prevents the warning on help messages and invalid
 	// options.  Note this should go directly before the return.
