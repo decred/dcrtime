@@ -6,7 +6,11 @@
 package main
 
 import (
+	"crypto/tls"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
@@ -75,6 +79,10 @@ type config struct {
 	APITokens         []string `long:"apitoken" description:"Token used to grant access to privileged API resources"`
 	APIVersions       string   `long:"apiversions" description:"Enables API versions on the daemon"`
 	Backend           string   `long:"backend" description:"Sets the cache layer type 'filesystem'/'postgres'"`
+	PostgresHost      string   `long:"postgreshost" description:"Postgres ip:port"`
+	PostgresRootCert  string   `long:"postgresrootcert" description:"File containing the CA certificate for postgres"`
+	PostgresCert      string   `long:"postgrescert" description:"File containing the dcrtimed client certificate for postgres"`
+	PostgresKey       string   `long:"postgreskey" description:"File containing the dcrtimed client certificate key for postgres"`
 }
 
 // serviceOptions defines the configuration options for the daemon as a service
@@ -544,6 +552,49 @@ func loadConfig() (*config, []string, error) {
 			return nil, nil, err
 		}
 		cfg.APITokens = validTokens
+	}
+
+	if cfg.Backend == "postgres" {
+		switch {
+		case cfg.PostgresHost == "":
+			return nil, nil, fmt.Errorf("postgres backend can " +
+				"not be used without the postgreshost param")
+		case cfg.PostgresRootCert == "":
+			return nil, nil, fmt.Errorf("postgres backend can " +
+				"not be used without the postgresrootcert param")
+		case cfg.PostgresCert == "":
+			return nil, nil, fmt.Errorf("postgres backend can " +
+				"not be used without the postgrescert param")
+		case cfg.PostgresKey == "":
+			return nil, nil, fmt.Errorf("postgres backend can " +
+				"not be used without the postgreskey param")
+		}
+
+		cfg.PostgresRootCert = cleanAndExpandPath(cfg.PostgresRootCert)
+		cfg.PostgresCert = cleanAndExpandPath(cfg.PostgresCert)
+		cfg.PostgresKey = cleanAndExpandPath(cfg.PostgresKey)
+
+		// Validate cache root cert.
+		b, err := ioutil.ReadFile(cfg.PostgresRootCert)
+		if err != nil {
+			return nil, nil, fmt.Errorf("read cacherootcert: %v", err)
+		}
+		block, _ := pem.Decode(b)
+		if block == nil {
+			return nil, nil, fmt.Errorf("%s is not a valid certificate",
+				cfg.PostgresRootCert)
+		}
+		_, err = x509.ParseCertificate(block.Bytes)
+		if err != nil {
+			return nil, nil, fmt.Errorf("parse cacherootcert: %v", err)
+		}
+
+		// Validate cache key pair.
+		_, err = tls.LoadX509KeyPair(cfg.PostgresCert, cfg.PostgresKey)
+		if err != nil {
+			return nil, nil, fmt.Errorf("load key pair cachecert "+
+				"and cachekey: %v", err)
+		}
 	}
 
 	// Warn about missing config file only after all other configuration is

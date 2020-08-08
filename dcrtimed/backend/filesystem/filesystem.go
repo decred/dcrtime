@@ -711,7 +711,7 @@ func (fs *FileSystem) Put(hashes [][sha256.Size]byte) (int64, []backend.PutResul
 	}
 	defer current.Close()
 
-	// Create a Put batch for provided digests. Obviously looking things
+	// Create a Put batch for provided digests.  Obviously looking things
 	// up without a lock will make the lookups racy however when a
 	// container is committed it is locked and therefore overall an atomic
 	// operation.

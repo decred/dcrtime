@@ -19,6 +19,7 @@ require (
 	github.com/jessevdk/go-flags v1.4.0
 	github.com/jrick/logrotate v1.0.0
 	github.com/kr/pretty v0.1.0 // indirect
+	github.com/lib/pq v1.8.0 // indirect
 	github.com/robfig/cron v1.2.0
 	github.com/syndtr/goleveldb v1.0.0
 	google.golang.org/grpc v1.27.1
