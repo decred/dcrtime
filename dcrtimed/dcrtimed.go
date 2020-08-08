@@ -35,7 +35,8 @@ import (
 const (
 	fStr = "20060102.150405"
 
-	forward = "X-Forwarded-For"
+	forward      = "X-Forwarded-For"
+	postgresUser = "dcrtimed"
 )
 
 var (
@@ -1379,7 +1380,24 @@ func _main() error {
 			}
 		case "postgres":
 			postgres.UseLogger(fsbeLog)
-			b, err = postgres.New()
+			var net string
+			switch loadedCfg.TestNet {
+			case true:
+				net = "testnet"
+			default:
+				net = "mainnet"
+			}
+			b, err = postgres.New(
+				postgresUser,
+				loadedCfg.PostgresHost,
+				net,
+				loadedCfg.PostgresRootCert,
+				loadedCfg.PostgresCert,
+				loadedCfg.PostgresKey,
+				loadedCfg.WalletCert,
+				loadedCfg.WalletHost,
+				loadedCfg.EnableCollections,
+				[]byte(loadedCfg.WalletPassphrase))
 			if err != nil {
 				return nil
 			}

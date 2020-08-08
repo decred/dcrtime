@@ -577,7 +577,7 @@ func loadConfig() (*config, []string, error) {
 		// Validate cache root cert.
 		b, err := ioutil.ReadFile(cfg.PostgresRootCert)
 		if err != nil {
-			return nil, nil, fmt.Errorf("read cacherootcert: %v", err)
+			return nil, nil, fmt.Errorf("read postgresrootcert: %v", err)
 		}
 		block, _ := pem.Decode(b)
 		if block == nil {
@@ -586,13 +586,13 @@ func loadConfig() (*config, []string, error) {
 		}
 		_, err = x509.ParseCertificate(block.Bytes)
 		if err != nil {
-			return nil, nil, fmt.Errorf("parse cacherootcert: %v", err)
+			return nil, nil, fmt.Errorf("parse postgresrootcert: %v", err)
 		}
 
 		// Validate cache key pair.
 		_, err = tls.LoadX509KeyPair(cfg.PostgresCert, cfg.PostgresKey)
 		if err != nil {
-			return nil, nil, fmt.Errorf("load key pair cachecert "+
+			return nil, nil, fmt.Errorf("load key pair postgrescert "+
 				"and cachekey: %v", err)
 		}
 	}
