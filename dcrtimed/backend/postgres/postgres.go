@@ -16,6 +16,7 @@ import (
 
 	"github.com/decred/dcrtime/dcrtimed/backend"
 	"github.com/decred/dcrtime/dcrtimed/dcrtimewallet"
+	_ "github.com/lib/pq"
 	"github.com/robfig/cron"
 )
 
@@ -172,14 +173,14 @@ func New(user, host, net, rootCert, cert, key, walletCert, walletHost string, en
 	//}
 
 	// Launch cron.
-	//err = pg.cron.AddFunc(flushSchedule, func() {
-	//pg.flusher()
-	///})
-	//if err != nil {
-	//return nil, err
-	//}
+	err = pg.cron.AddFunc(flushSchedule, func() {
+		fmt.Println("brrrrrr")
+	})
+	if err != nil {
+		return nil, err
+	}
 
-	//pg.cron.Start()
+	pg.cron.Start()
 
 	return pg, nil
 }

@@ -1399,7 +1399,7 @@ func _main() error {
 				loadedCfg.EnableCollections,
 				[]byte(loadedCfg.WalletPassphrase))
 			if err != nil {
-				return nil
+				return err
 			}
 		}
 

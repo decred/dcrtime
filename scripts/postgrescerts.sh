@@ -16,7 +16,7 @@
 set -ex
 
 # Database usernames
-readonly USER_DCRTIMED="dcrtimedd"
+readonly USER_DCRTIMED="dcrtimed"
 
 # POSTGRES_DIR is where all of the certificates will be created.
 POSTGRES_DIR=$1
