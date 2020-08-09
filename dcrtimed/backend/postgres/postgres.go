@@ -112,6 +112,16 @@ func buildQueryString(rootCert, cert, key string) string {
 	return v.Encode()
 }
 
+func createTables(db *sql.DB) error {
+	//if !tx.HasTable(tableKeyValue) {
+	//err := tx.CreateTable(&KeyValue{}).Error
+	//if err != nil {
+	//return err
+	//}
+
+	return nil
+}
+
 // internalNew creates the Pstgres context but does not launch background
 // bits.  This is used by the test packages.
 func internalNew(user, host, net, rootCert, cert, key string) (*Postgres, error) {
