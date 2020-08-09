@@ -20,6 +20,11 @@ import (
 	"github.com/robfig/cron"
 )
 
+const (
+	tableRecords = "records"
+	tableAnchors = "anchors"
+)
+
 var (
 	_ backend.Backend = (*Postgres)(nil)
 
@@ -112,13 +117,57 @@ func buildQueryString(rootCert, cert, key string) string {
 	return v.Encode()
 }
 
+func hasTable(db *sql.DB, name string) (bool, error) {
+	rows, err := db.Query(`SELECT EXISTS (SELECT FROM information_schema.tables 
+	WHERE table_schema = 'public' AND table_name  = $1)`, name)
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+	var exists bool
+	for rows.Next() {
+		err = rows.Scan(&exists)
+		if err != nil {
+			return false, err
+		}
+	}
+	return exists, nil
+}
+
+func createAnchorsTable(db *sql.DB) error {
+	_, err := db.Exec(`CREATE TABLE public.anchors
+(
+    merkle character varying(64) COLLATE pg_catalog."default" NOT NULL,
+    hashes text[] COLLATE pg_catalog."default" NOT NULL,
+    tx_hash text COLLATE pg_catalog."default",
+    chain_timestamp bigint,
+    flush_timestamp bigint,
+    CONSTRAINT anchors_pkey PRIMARY KEY (merkle)
+)`)
+	if err != nil {
+		return err
+	}
+	fmt.Println("anchors creared")
+	return nil
+}
+
 func createTables(db *sql.DB) error {
-	//if !tx.HasTable(tableKeyValue) {
-	//err := tx.CreateTable(&KeyValue{}).Error
+	exists, err := hasTable(db, tableAnchors)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		err := createAnchorsTable(db)
+		if err != nil {
+			return err
+		}
+	}
+	//if !db.HasTable(tableRecords) {
+	//err := db.CreateTable(&Anchor{}).Error
 	//if err != nil {
 	//return err
 	//}
-
+	//}
 	return nil
 }
 
@@ -139,6 +188,12 @@ func internalNew(user, host, net, rootCert, cert, key string) (*Postgres, error)
 	db, err := sql.Open("postgres", addr)
 	if err != nil {
 		return nil, fmt.Errorf("connect to database '%v': %v", addr, err)
+	}
+
+	// Create tables
+	err = createTables(db)
+	if err != nil {
+		return nil, err
 	}
 
 	pg := &Postgres{
