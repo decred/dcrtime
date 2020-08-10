@@ -119,7 +119,7 @@ func buildQueryString(rootCert, cert, key string) string {
 
 func hasTable(db *sql.DB, name string) (bool, error) {
 	rows, err := db.Query(`SELECT EXISTS (SELECT FROM information_schema.tables 
-	WHERE table_schema = 'public' AND table_name  = $1)`, name)
+		WHERE table_schema = 'public' AND table_name  = $1)`, name)
 	if err != nil {
 		return false, err
 	}
@@ -143,11 +143,56 @@ func createAnchorsTable(db *sql.DB) error {
     chain_timestamp bigint,
     flush_timestamp bigint,
     CONSTRAINT anchors_pkey PRIMARY KEY (merkle)
-)`)
+);
+-- Index: idx_chain_timestamp
+CREATE INDEX idx_chain_timestamp
+    ON public.anchors USING btree
+    (chain_timestamp ASC NULLS LAST)
+    TABLESPACE pg_default;
+-- Index: idx_flush_timestamp
+CREATE INDEX idx_flush_timestamp
+    ON public.anchors USING btree
+    (flush_timestamp ASC NULLS LAST)
+    TABLESPACE pg_default;
+`)
 	if err != nil {
 		return err
 	}
-	fmt.Println("anchors creared")
+	log.Infof("Anchors table created")
+	return nil
+}
+
+func createRecordsTable(db *sql.DB) error {
+	_, err := db.Exec(`CREATE TABLE public.records
+(
+    digest bytea NOT NULL,
+    anchor_merkle character varying(64) COLLATE pg_catalog."default",
+    key serial NOT NULL,
+    collection_timestamp text COLLATE pg_catalog."default" NOT NULL,
+    CONSTRAINT records_pkey PRIMARY KEY (key),
+    CONSTRAINT records_anchors_fkey FOREIGN KEY (anchor_merkle)
+        REFERENCES public.anchors (merkle) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE NO ACTION
+        NOT VALID
+);
+
+-- Index: fki_records_anchors_fkey
+CREATE INDEX fki_records_anchors_fkey
+    ON public.records USING btree
+    (anchor_merkle COLLATE pg_catalog."default" ASC NULLS LAST)
+    TABLESPACE pg_default;
+
+-- Index: idx_collection_timestamp
+CREATE INDEX idx_collection_timestamp
+    ON public.records USING btree
+    (collection_timestamp COLLATE pg_catalog."default" ASC NULLS LAST)
+    TABLESPACE pg_default;
+`)
+	if err != nil {
+		return err
+	}
+	log.Infof("Records table created")
 	return nil
 }
 
@@ -157,17 +202,21 @@ func createTables(db *sql.DB) error {
 		return err
 	}
 	if !exists {
-		err := createAnchorsTable(db)
+		err = createAnchorsTable(db)
 		if err != nil {
 			return err
 		}
 	}
-	//if !db.HasTable(tableRecords) {
-	//err := db.CreateTable(&Anchor{}).Error
-	//if err != nil {
-	//return err
-	//}
-	//}
+	exists, err = hasTable(db, tableRecords)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		err = createRecordsTable(db)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -239,7 +288,6 @@ func New(user, host, net, rootCert, cert, key, walletCert, walletHost string, en
 
 	// Launch cron.
 	err = pg.cron.AddFunc(flushSchedule, func() {
-		fmt.Println("brrrrrr")
 	})
 	if err != nil {
 		return nil, err

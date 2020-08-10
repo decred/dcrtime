@@ -1379,7 +1379,7 @@ func _main() error {
 				return err
 			}
 		case "postgres":
-			postgres.UseLogger(fsbeLog)
+			postgres.UseLogger(pgbeLog)
 			var net string
 			switch loadedCfg.TestNet {
 			case true:
