@@ -7,6 +7,7 @@ package postgres
 import (
 	"crypto/sha256"
 	"database/sql"
+	"encoding/binary"
 	"fmt"
 	"net/url"
 	"os"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/decred/dcrtime/dcrtimed/backend"
 	"github.com/decred/dcrtime/dcrtimed/dcrtimewallet"
+	"github.com/lib/pq"
 	_ "github.com/lib/pq"
 	"github.com/robfig/cron"
 )
@@ -23,6 +25,9 @@ import (
 const (
 	tableRecords = "records"
 	tableAnchors = "anchors"
+
+	// errorFound is thrown if digest was found in records table
+	errorFound = 1001
 )
 
 var (
@@ -56,6 +61,18 @@ type Postgres struct {
 	testing bool             // Enabled during test
 }
 
+// now returns current time stamp rounded down to 1 hour.  All timestamps are
+// UTC.
+func (pg *Postgres) now() time.Time {
+	return pg.truncate(pg.myNow().UTC(), pg.duration)
+}
+
+// truncate rounds time down to the provided duration.  This is split out in
+// order to test.
+func (pg *Postgres) truncate(t time.Time, d time.Duration) time.Time {
+	return t.Truncate(d)
+}
+
 // Return timestamp information for given digests.
 func (pg *Postgres) Get([][sha256.Size]byte) ([]backend.GetResult, error) {
 	return nil, nil
@@ -66,10 +83,108 @@ func (pg *Postgres) GetTimestamps([]int64) ([]backend.TimestampResult, error) {
 	return nil, nil
 }
 
+func (pg *Postgres) checkIfDigestExists(hash []byte) (bool, error) {
+	rows, err := pg.db.Query(`SELECT EXISTS (SELECT FROM records 
+		WHERE digest = $1)`, hash)
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+	var exists bool
+	for rows.Next() {
+		err = rows.Scan(&exists)
+		if err != nil {
+			return false, err
+		}
+	}
+	return exists, nil
+}
+
 // Store hashes and return timestamp and associated errors.  Put is
 // allowed to return transient errors.
-func (pg *Postgres) Put([][sha256.Size]byte) (int64, []backend.PutResult, error) {
-	return 0, nil, nil
+func (pg *Postgres) Put(hashes [][sha256.Size]byte) (int64, []backend.PutResult, error) {
+	// Poor mans two-phase commit.
+	pg.Lock()
+	commit := pg.commit
+	pg.Unlock()
+
+	// Get current time rounded down.
+	ts := pg.now().Unix()
+	//now := fs.now().Format(fStr)
+	timestamp := make([]byte, 8)
+	binary.LittleEndian.PutUint64(timestamp, uint64(ts))
+
+	// Prep return and unwind bits before taking mutex.
+	me := make([]backend.PutResult, 0, len(hashes))
+
+	// Create batch transaction
+	txn, err := pg.db.Begin()
+	if err != nil {
+		return 0, []backend.PutResult{}, err
+	}
+
+	stmt, err := txn.Prepare(pq.CopyIn("records", "digest",
+		"collection_timestamp"))
+	if err != nil {
+		return 0, []backend.PutResult{}, err
+	}
+
+	for _, hash := range hashes {
+		// exists ?
+		exists, err := pg.checkIfDigestExists(hash[:])
+		if err != nil {
+			return 0, []backend.PutResult{}, err
+		}
+		if exists {
+			me = append(me, backend.PutResult{
+				Digest:    hash,
+				ErrorCode: backend.ErrorExists,
+			})
+
+			// Override error code during testing
+			if pg.testing {
+				me[len(me)-1].ErrorCode = errorFound
+			}
+			continue
+		}
+
+		// Insert record
+		_, err = stmt.Exec(hash, ts)
+		if err != nil {
+			return 0, []backend.PutResult{}, err
+		}
+
+		// Mark as successful
+		me = append(me, backend.PutResult{
+			Digest:    hash,
+			ErrorCode: backend.ErrorOK,
+		})
+	}
+
+	// From this point on the operation must be atomic.
+	pg.Lock()
+	defer pg.Unlock()
+
+	// Make sure we are on the same commit.
+	if commit != pg.commit {
+		return 0, []backend.PutResult{}, backend.ErrTryAgainLater
+	}
+
+	// Write to db
+	_, err = stmt.Exec()
+	if err != nil {
+		return 0, []backend.PutResult{}, err
+	}
+	err = stmt.Close()
+	if err != nil {
+		return 0, []backend.PutResult{}, err
+	}
+	err = txn.Commit()
+	if err != nil {
+		return 0, []backend.PutResult{}, err
+	}
+
+	return ts, me, nil
 }
 
 // Close performs cleanup of the backend.
