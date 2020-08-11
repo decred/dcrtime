@@ -210,7 +210,15 @@ func (pg *Postgres) Fsck(*backend.FsckOptions) error {
 // GetBalance retrieves balance information for the wallet
 // backing this instance
 func (pg *Postgres) GetBalance() (*backend.GetBalanceResult, error) {
-	return nil, nil
+	result, err := pg.wallet.GetWalletBalance()
+	if err != nil {
+		return nil, err
+	}
+	return &backend.GetBalanceResult{
+		Total:       result.Total,
+		Spendable:   result.Spendable,
+		Unconfirmed: result.Unconfirmed,
+	}, nil
 }
 
 // LastAnchor retrieves last successful anchor details
