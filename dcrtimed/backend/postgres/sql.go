@@ -82,9 +82,8 @@ func (pg *Postgres) createRecordsTable() error {
 (
     digest bytea NOT NULL,
     anchor_merkle character varying(64) COLLATE pg_catalog."default",
-    key serial NOT NULL,
     collection_timestamp bigint NOT NULL,
-    CONSTRAINT records_pkey PRIMARY KEY (key),
+    CONSTRAINT records_pkey PRIMARY KEY (digest),
     CONSTRAINT records_anchors_fkey FOREIGN KEY (anchor_merkle)
         REFERENCES public.anchors (merkle) MATCH SIMPLE
         ON UPDATE NO ACTION

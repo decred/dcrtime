@@ -16,9 +16,8 @@ records table, below you find the detailed description of the two tables:
 **Records:**
 | Col Name             | Type              | Not Null | P. Key | F. Key | Indexed | Unique | Description                  |
 |----------------------|-------------------|----------|--------|--------|---------|--------|------------------------------|
-| key                  | serial            | x        | x      |        |         |        | Auto incremented  identifier |
 | collection_timestamp | text              | x        |        |        | x       |        | Unix timestamp of collection |
-| digest               | bytea             | x        |        |        | x       | x      | Timestamped digest           |
+| digest               | bytea             | x        | x      |        | x       | x      | Timestamped digest           |
 | anchor_merkle        | char. varying(64) |          |        | x      | x       |        | Anchor merkle root           |
 
 **Note:** `anchor_merkle` linking to anchors table, nil if not anchored yet

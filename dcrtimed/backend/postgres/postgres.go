@@ -251,7 +251,6 @@ func internalNew(host, net, rootCert, cert, key string) (*Postgres, error) {
 // New creates a new backend instance.  The caller should issue a Close once
 // the Postgres backend is no longer needed.
 func New(host, net, rootCert, cert, key, walletCert, walletHost string, enableCollections bool, walletPassphrase []byte) (*Postgres, error) {
-	// XXX log more stuff
 	log.Tracef("New: %v %v %v %v %v %v", host, net, rootCert, cert, key)
 
 	pg, err := internalNew(host, net, rootCert, cert, key)
