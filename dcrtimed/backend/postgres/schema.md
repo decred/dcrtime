@@ -14,19 +14,19 @@ records table, below you find the detailed description of the two tables:
 ### Tables
 
 **Records:**
-| Col Name             | Type              | Not Null | P. Key | F. Key | Indexed | Description                                                    |
-|----------------------|-------------------|----------|--------|--------|---------|----------------------------------------------------------------|
-| key                  | serial            | x        | x      |        |         | Auto incremented  identifier                                   |
-| collection_timestamp | text              | x        |        |        | x       | Unix timestamp of collection                                   |
-| digest               | bytea             | x        |        |        |         | Timestamped digest                                             |
-| anchor_merkle        | char. varying(64) |          |        | x      | x       | Merkle root of corresponding anchor - linking to anchors table, nil if not anchored yet |
+| Col Name         | Type              | Not Null | P. Key | F. Key | Indexed | Unique | Description                     |
+|------------------|-------------------|----------|--------|--------|---------|--------|---------------------------------|
+| merkle           | char. varying(64) | x        | x      |        | x       | x      | Anchor merkle root              |
+| hashes           | text[]            | x        |        |        | x       | x      | Anchored hashes                 |
+| tx_hash          | text              |          |        |        | x       | x      | Anchor tx hash                  |
+| chain_timestamp  | bigint            |          |        |        |         |        | Anchor timestamp on blockchain  |
 
 **Anchors:**
-| Col Name         | Type              | Not Null | P. Key | F. Key | Indexed | Description                     |
-|------------------|-------------------|----------|--------|--------|---------|---------------------------------|
-| merkle           | char. varying(64) | x        | x      |        |         | Anchor merkle root              |
-| hashes           | text[]            | x        |        |        |         | Anchored hashes                 |
-| tx_hash          | text              |          |        |        |         | Anchor tx hash                  |
-| chain_timestamp  | bigint            |          |        |        | x       | Anchor timestamp on blockchain  |
-| flush_timestamp  | bigint            |          |        |        | x       | When anchor actually  flushed   |
+| Col Name         | Type              | Not Null | P. Key | F. Key | Indexed | Unique | Description                     |
+|------------------|-------------------|----------|--------|--------|---------|--------|---------------------------------|
+| merkle           | char. varying(64) | x        | x      |        | x       | x      | Anchor merkle root              |
+| hashes           | text[]            | x        |        |        | x       | x      | Anchored hashes                 |
+| tx_hash          | text              |          |        |        | x       | x      | Anchor tx hash                  |
+| chain_timestamp  | bigint            |          |        |        |         |        | Anchor timestamp on blockchain  |
+| flush_timestamp  | bigint            |          |        |        |         |        | When anchor actually  flushed   |
 
