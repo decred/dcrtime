@@ -7,7 +7,6 @@ package postgres
 import (
 	"crypto/sha256"
 	"database/sql"
-	"encoding/binary"
 	"fmt"
 	"net/url"
 	"os"
@@ -23,6 +22,7 @@ import (
 )
 
 const (
+	fStr         = "20060102.150405"
 	tableRecords = "records"
 	tableAnchors = "anchors"
 
@@ -103,16 +103,14 @@ func (pg *Postgres) checkIfDigestExists(hash []byte) (bool, error) {
 // Store hashes and return timestamp and associated errors.  Put is
 // allowed to return transient errors.
 func (pg *Postgres) Put(hashes [][sha256.Size]byte) (int64, []backend.PutResult, error) {
-	// Poor mans two-phase commit.
+
+	// Two-phase commit.
 	pg.Lock()
 	commit := pg.commit
 	pg.Unlock()
 
 	// Get current time rounded down.
 	ts := pg.now().Unix()
-	//now := fs.now().Format(fStr)
-	timestamp := make([]byte, 8)
-	binary.LittleEndian.PutUint64(timestamp, uint64(ts))
 
 	// Prep return and unwind bits before taking mutex.
 	me := make([]backend.PutResult, 0, len(hashes))
@@ -130,7 +128,7 @@ func (pg *Postgres) Put(hashes [][sha256.Size]byte) (int64, []backend.PutResult,
 	}
 
 	for _, hash := range hashes {
-		// exists ?
+		// Check if digest exists
 		exists, err := pg.checkIfDigestExists(hash[:])
 		if err != nil {
 			return 0, []backend.PutResult{}, err
@@ -147,9 +145,8 @@ func (pg *Postgres) Put(hashes [][sha256.Size]byte) (int64, []backend.PutResult,
 			}
 			continue
 		}
-
 		// Insert record
-		_, err = stmt.Exec(hash, ts)
+		_, err = stmt.Exec(hash[:], ts)
 		if err != nil {
 			return 0, []backend.PutResult{}, err
 		}
