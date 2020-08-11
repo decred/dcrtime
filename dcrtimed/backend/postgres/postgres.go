@@ -266,6 +266,21 @@ CREATE INDEX idx_flush_timestamp
     ON public.anchors USING btree
     (flush_timestamp ASC NULLS LAST)
     TABLESPACE pg_default;
+-- Index: idx_hashes
+CREATE UNIQUE INDEX idx_hashes
+    ON public.anchors USING btree
+    (hashes COLLATE pg_catalog."default" ASC NULLS LAST)
+    TABLESPACE pg_default;
+-- Index: idx_merkle
+CREATE UNIQUE INDEX idx_merkle
+    ON public.anchors USING btree
+    (merkle COLLATE pg_catalog."default" ASC NULLS LAST)
+    TABLESPACE pg_default;
+-- Index: idx_tx_hash
+CREATE UNIQUE INDEX idx_tx_hash
+    ON public.anchors USING btree
+    (tx_hash COLLATE pg_catalog."default" ASC NULLS LAST)
+    TABLESPACE pg_default;
 `)
 	if err != nil {
 		return err
@@ -294,11 +309,15 @@ CREATE INDEX fki_records_anchors_fkey
     ON public.records USING btree
     (anchor_merkle COLLATE pg_catalog."default" ASC NULLS LAST)
     TABLESPACE pg_default;
-
 -- Index: idx_collection_timestamp
 CREATE INDEX idx_collection_timestamp
     ON public.records USING btree
     (collection_timestamp COLLATE pg_catalog."default" ASC NULLS LAST)
+    TABLESPACE pg_default;
+-- Index: idx_digest
+CREATE UNIQUE INDEX idx_digest
+    ON public.records USING btree
+    (digest ASC NULLS LAST)
     TABLESPACE pg_default;
 `)
 	if err != nil {
