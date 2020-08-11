@@ -14,12 +14,14 @@ records table, below you find the detailed description of the two tables:
 ### Tables
 
 **Records:**
-| Col Name         | Type              | Not Null | P. Key | F. Key | Indexed | Unique | Description                     |
-|------------------|-------------------|----------|--------|--------|---------|--------|---------------------------------|
-| merkle           | char. varying(64) | x        | x      |        | x       | x      | Anchor merkle root              |
-| hashes           | text[]            | x        |        |        | x       | x      | Anchored hashes                 |
-| tx_hash          | text              |          |        |        | x       | x      | Anchor tx hash                  |
-| chain_timestamp  | bigint            |          |        |        |         |        | Anchor timestamp on blockchain  |
+| Col Name             | Type              | Not Null | P. Key | F. Key | Indexed | Unique | Description                  |
+|----------------------|-------------------|----------|--------|--------|---------|--------|------------------------------|
+| key                  | serial            | x        | x      |        |         |        | Auto incremented  identifier |
+| collection_timestamp | text              | x        |        |        | x       |        | Unix timestamp of collection |
+| digest               | bytea             | x        |        |        | x       | x      | Timestamped digest           |
+| anchor_merkle        | char. varying(64) |          |        | x      | x       |        | Anchor merkle root           |
+
+**Note:** `anchor_merkle` linking to anchors table, nil if not anchored yet
 
 **Anchors:**
 | Col Name         | Type              | Not Null | P. Key | F. Key | Indexed | Unique | Description                     |
