@@ -16,7 +16,7 @@ records table, below you find the detailed description of the two tables:
 **Records:**
 | Col Name             | Type              | Not Null | P. Key | F. Key | Indexed | Unique | Description                  |
 |----------------------|-------------------|----------|--------|--------|---------|--------|------------------------------|
-| collection_timestamp | text              | x        |        |        | x       |        | Unix timestamp of collection |
+| collection_timestamp | bigint            | x        |        |        | x       |        | Unix timestamp of collection |
 | digest               | bytea             | x        | x      |        | x       | x      | Timestamped digest           |
 | anchor_merkle        | char. varying(64) |          |        | x      | x       |        | Anchor merkle root           |
 

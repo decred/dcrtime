@@ -168,8 +168,22 @@ func (pg *Postgres) Put(hashes [][sha256.Size]byte) (int64, []backend.PutResult,
 	return ts, me, nil
 }
 
-// Close performs cleanup of the backend.
+// Close performs cleanup of the backend. In our case closes postgres
+// connection
 func (pg *Postgres) Close() {
+	// Block until last command is complete.
+	pg.Lock()
+	defer pg.Unlock()
+	defer log.Infof("Exiting")
+
+	// We need nil tests when in dump/restore mode.
+	if pg.cron != nil {
+		pg.cron.Stop()
+	}
+	if pg.wallet != nil {
+		pg.wallet.Close()
+	}
+	pg.db.Close()
 }
 
 // Dump dumps database to the provided file descriptor. If the
