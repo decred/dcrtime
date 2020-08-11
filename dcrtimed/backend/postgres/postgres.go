@@ -252,7 +252,7 @@ func internalNew(host, net, rootCert, cert, key string) (*Postgres, error) {
 // the Postgres backend is no longer needed.
 func New(host, net, rootCert, cert, key, walletCert, walletHost string, enableCollections bool, walletPassphrase []byte) (*Postgres, error) {
 	// XXX log more stuff
-	log.Tracef("New: %v %v %v %v %v %v", dbUser, host, net, rootCert, cert, key)
+	log.Tracef("New: %v %v %v %v %v %v", host, net, rootCert, cert, key)
 
 	pg, err := internalNew(host, net, rootCert, cert, key)
 	if err != nil {
