@@ -35,8 +35,7 @@ import (
 const (
 	fStr = "20060102.150405"
 
-	forward      = "X-Forwarded-For"
-	postgresUser = "dcrtimed"
+	forward = "X-Forwarded-For"
 )
 
 var (
@@ -1388,7 +1387,6 @@ func _main() error {
 				net = "mainnet"
 			}
 			b, err = postgres.New(
-				postgresUser,
 				loadedCfg.PostgresHost,
 				net,
 				loadedCfg.PostgresRootCert,

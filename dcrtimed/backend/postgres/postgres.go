@@ -25,6 +25,7 @@ const (
 	fStr         = "20060102.150405"
 	tableRecords = "records"
 	tableAnchors = "anchors"
+	dbUser       = "dcrtimed"
 
 	// errorFound is thrown if digest was found in records table
 	errorFound = 1001
@@ -214,10 +215,10 @@ func buildQueryString(rootCert, cert, key string) string {
 
 // internalNew creates the Pstgres context but does not launch background
 // bits.  This is used by the test packages.
-func internalNew(user, host, net, rootCert, cert, key string) (*Postgres, error) {
+func internalNew(host, net, rootCert, cert, key string) (*Postgres, error) {
 	// Connect to database
 	dbName := net + "_dcrtime"
-	h := "postgresql://" + user + "@" + host + "/" + dbName
+	h := "postgresql://" + dbUser + "@" + host + "/" + dbName
 	u, err := url.Parse(h)
 	if err != nil {
 		return nil, fmt.Errorf("parse url '%v': %v", h, err)
@@ -249,11 +250,11 @@ func internalNew(user, host, net, rootCert, cert, key string) (*Postgres, error)
 
 // New creates a new backend instance.  The caller should issue a Close once
 // the Postgres backend is no longer needed.
-func New(user, host, net, rootCert, cert, key, walletCert, walletHost string, enableCollections bool, walletPassphrase []byte) (*Postgres, error) {
+func New(host, net, rootCert, cert, key, walletCert, walletHost string, enableCollections bool, walletPassphrase []byte) (*Postgres, error) {
 	// XXX log more stuff
-	log.Tracef("New: %v %v %v %v %v %v", user, host, net, rootCert, cert, key)
+	log.Tracef("New: %v %v %v %v %v %v", dbUser, host, net, rootCert, cert, key)
 
-	pg, err := internalNew(user, host, net, rootCert, cert, key)
+	pg, err := internalNew(host, net, rootCert, cert, key)
 	if err != nil {
 		return nil, err
 	}
