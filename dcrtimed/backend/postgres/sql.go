@@ -1,11 +1,19 @@
 package postgres
 
 import (
+	"crypto/sha256"
+	"database/sql"
+
 	"github.com/decred/dcrtime/dcrtimed/backend"
 )
 
 func (pg *Postgres) getRecordByDigest(hash []byte, r *backend.GetResult) (bool, error) {
-	q := "SELECT collection_timestamp FROM records WHERE digest = $1"
+	q := `SELECT r.anchor_merkle, r.collection_timestamp, an.tx_hash, 
+an.chain_timestamp
+FROM records as r
+LEFT JOIN anchors as an
+ON r.anchor_merkle = an.merkle
+WHERE digest = $1`
 
 	rows, err := pg.db.Query(q, hash)
 	if err != nil {
@@ -13,13 +21,24 @@ func (pg *Postgres) getRecordByDigest(hash []byte, r *backend.GetResult) (bool, 
 	}
 	defer rows.Close()
 
-	var ts int64
+	var merkle []byte
+	var txHash sql.NullString
+	var chainTs sql.NullInt64
+	var serverTs int64
 	for rows.Next() {
-		err = rows.Scan(&ts)
+		err = rows.Scan(&merkle, &serverTs, &txHash, &chainTs)
 		if err != nil {
 			return false, err
 		}
-		(*r).Timestamp = ts
+		(*r).Timestamp = serverTs
+		copy(merkle[:], (*r).MerkleRoot[:sha256.Size])
+		// txHash & chainTs can be NULL - handle safely
+		if txHash.Valid {
+			copy((*r).Tx[:], []byte(txHash.String))
+		}
+		if chainTs.Valid {
+			(*r).AnchoredTimestamp = chainTs.Int64
+		}
 		return true, nil
 	}
 
@@ -27,7 +46,8 @@ func (pg *Postgres) getRecordByDigest(hash []byte, r *backend.GetResult) (bool, 
 }
 
 func (pg *Postgres) hasTable(name string) (bool, error) {
-	rows, err := pg.db.Query(`SELECT EXISTS (SELECT FROM information_schema.tables 
+	rows, err := pg.db.Query(`SELECT EXISTS (SELECT 
+		FROM information_schema.tables 
 		WHERE table_schema = 'public' AND table_name  = $1)`, name)
 	if err != nil {
 		return false, err
@@ -63,7 +83,7 @@ func (pg *Postgres) checkIfDigestExists(hash []byte) (bool, error) {
 func (pg *Postgres) createAnchorsTable() error {
 	_, err := pg.db.Exec(`CREATE TABLE public.anchors
 (
-    merkle character varying(64) COLLATE pg_catalog."default" NOT NULL,
+    merkle bytea NOT NULL,
     hashes text[] COLLATE pg_catalog."default" NOT NULL,
     tx_hash text COLLATE pg_catalog."default",
     chain_timestamp bigint,
@@ -88,7 +108,7 @@ CREATE UNIQUE INDEX idx_hashes
 -- Index: idx_merkle
 CREATE UNIQUE INDEX idx_merkle
     ON public.anchors USING btree
-    (merkle COLLATE pg_catalog."default" ASC NULLS LAST)
+		(merkle ASC NULLS LAST)
     TABLESPACE pg_default;
 -- Index: idx_tx_hash
 CREATE UNIQUE INDEX idx_tx_hash
@@ -107,7 +127,7 @@ func (pg *Postgres) createRecordsTable() error {
 	_, err := pg.db.Exec(`CREATE TABLE public.records
 (
     digest bytea NOT NULL,
-    anchor_merkle character varying(64) COLLATE pg_catalog."default",
+    anchor_merkle bytea,
     collection_timestamp bigint NOT NULL,
     CONSTRAINT records_pkey PRIMARY KEY (digest),
     CONSTRAINT records_anchors_fkey FOREIGN KEY (anchor_merkle)
@@ -120,7 +140,7 @@ func (pg *Postgres) createRecordsTable() error {
 -- Index: fki_records_anchors_fkey
 CREATE INDEX fki_records_anchors_fkey
     ON public.records USING btree
-    (anchor_merkle COLLATE pg_catalog."default" ASC NULLS LAST)
+    (anchor_merkle ASC NULLS LAST)
     TABLESPACE pg_default;
 -- Index: idx_collection_timestamp
 CREATE INDEX idx_collection_timestamp

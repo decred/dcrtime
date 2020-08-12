@@ -96,6 +96,7 @@ func (pg *Postgres) Get(digests [][sha256.Size]byte) ([]backend.GetResult, error
 		if !found {
 			gdme.ErrorCode = backend.ErrorNotFound
 		}
+		log.Infof("ffffffferererer: %v, %v", gdme.ErrorCode, gdme.Timestamp)
 		gdmes = append(gdmes, gdme)
 	}
 	return gdmes, nil
