@@ -20,9 +20,10 @@ func (pg *Postgres) getRecordByDigest(hash []byte, r *backend.GetResult) (bool, 
 			return false, err
 		}
 		(*r).Timestamp = ts
+		return true, nil
 	}
 
-	return true, nil
+	return false, nil
 }
 
 func (pg *Postgres) hasTable(name string) (bool, error) {
