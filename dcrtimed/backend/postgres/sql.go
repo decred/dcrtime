@@ -1,5 +1,30 @@
 package postgres
 
+import (
+	"github.com/decred/dcrtime/dcrtimed/backend"
+)
+
+func (pg *Postgres) getRecordByDigest(hash []byte, r *backend.GetResult) (bool, error) {
+	q := "SELECT collection_timestamp FROM records WHERE digest = $1"
+
+	rows, err := pg.db.Query(q, hash)
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+
+	var ts int64
+	for rows.Next() {
+		err = rows.Scan(&ts)
+		if err != nil {
+			return false, err
+		}
+		(*r).Timestamp = ts
+	}
+
+	return true, nil
+}
+
 func (pg *Postgres) hasTable(name string) (bool, error) {
 	rows, err := pg.db.Query(`SELECT EXISTS (SELECT FROM information_schema.tables 
 		WHERE table_schema = 'public' AND table_name  = $1)`, name)

@@ -75,8 +75,30 @@ func (pg *Postgres) truncate(t time.Time, d time.Duration) time.Time {
 }
 
 // Return timestamp information for given digests.
-func (pg *Postgres) Get([][sha256.Size]byte) ([]backend.GetResult, error) {
-	return nil, nil
+func (pg *Postgres) Get(digests [][sha256.Size]byte) ([]backend.GetResult, error) {
+	gdmes := make([]backend.GetResult, 0, len(digests))
+
+	// We need to be read locked from here on out.  Note that we are not
+	// locking/releasing.  This is by design in order to let all readers
+	// finish before a potential write occurs.
+	pg.RLock()
+	defer pg.RUnlock()
+
+	// Iterate over digests and translate results to backend interface.
+	for _, d := range digests {
+		gdme := backend.GetResult{
+			Digest: d,
+		}
+		found, err := pg.getRecordByDigest(d[:], &gdme)
+		if err != nil {
+			return nil, err
+		}
+		if !found {
+			gdme.ErrorCode = backend.ErrorNotFound
+		}
+		gdmes = append(gdmes, gdme)
+	}
+	return gdmes, nil
 }
 
 // Return all hashes for given timestamps.
@@ -273,7 +295,7 @@ func internalNew(host, net, rootCert, cert, key string) (*Postgres, error) {
 // New creates a new backend instance.  The caller should issue a Close once
 // the Postgres backend is no longer needed.
 func New(host, net, rootCert, cert, key, walletCert, walletHost string, enableCollections bool, walletPassphrase []byte) (*Postgres, error) {
-	log.Tracef("New: %v %v %v %v %v %v", host, net, rootCert, cert, key)
+	log.Tracef("New: %v %v %v %v %v", host, net, rootCert, cert, key)
 
 	pg, err := internalNew(host, net, rootCert, cert, key)
 	if err != nil {
