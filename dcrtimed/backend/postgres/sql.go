@@ -7,6 +7,47 @@ import (
 	"github.com/decred/dcrtime/dcrtimed/backend"
 )
 
+func (pg *Postgres) getDigestsByTimestamp(ts int64) ([]*[sha256.Size]byte, error) {
+	q := `SELECT digest from records WHERE collection_timestamp = $1`
+
+	rows, err := pg.db.Query(q, ts)
+	if err != nil {
+		return nil, err
+	}
+	var rawDigest []byte
+	var digest [sha256.Size]byte
+	digests := []*[sha256.Size]byte{}
+	for rows.Next() {
+		err = rows.Scan(&rawDigest)
+		if err != nil {
+			return nil, err
+		}
+		copy(digest[:], rawDigest[:])
+		digests = append(digests, &digest)
+	}
+	return digests, nil
+}
+
+func (pg *Postgres) getUnflushedTimestamps(current int64) ([]int64, error) {
+	q := `SELECT collection_timestamp FROM records 
+WHERE collection_timestamp != $1 AND anchor_merkle IS NULL`
+
+	rows, err := pg.db.Query(q, current)
+	if err != nil {
+		return nil, err
+	}
+	var ts int64
+	tss := []int64{}
+	for rows.Next() {
+		err = rows.Scan(&ts)
+		if err != nil {
+			return nil, err
+		}
+		tss = append(tss, ts)
+	}
+	return tss, nil
+}
+
 func (pg *Postgres) getRecordByDigest(hash []byte, r *backend.GetResult) (bool, error) {
 	q := `SELECT r.anchor_merkle, r.collection_timestamp, an.tx_hash, 
 an.chain_timestamp

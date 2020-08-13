@@ -7,6 +7,7 @@ package postgres
 import (
 	"crypto/sha256"
 	"database/sql"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/decred/dcrtime/dcrtimed/backend"
 	"github.com/decred/dcrtime/dcrtimed/dcrtimewallet"
+	"github.com/decred/dcrtime/merkle"
 	"github.com/lib/pq"
 	_ "github.com/lib/pq"
 	"github.com/robfig/cron"
@@ -40,6 +42,8 @@ var (
 	// Seconds Minutes Hours Days Months DayOfWeek
 	flushSchedule = "10 0 * * * *" // On the hour + 10 seconds
 	duration      = time.Hour      // Default how often we combine digests
+
+	errEmptySet = errors.New("empty set")
 )
 
 // Postgres is a postgreSQL implementation of a backend, it stores all uploaded
@@ -291,6 +295,99 @@ func internalNew(host, net, rootCert, cert, key string) (*Postgres, error) {
 	return pg, nil
 }
 
+// doFlush gets all timestamps which have unflushed records and flushes them.
+// It skips current timestamp.
+// It returns the number of directories that were flushed.
+//
+// This must be called with the WRITE lock held.  We may have to consider
+// errors out of this function terminal.
+func (pg *Postgres) doFlush() (int, error) {
+	current := pg.now().Unix()
+
+	// Get timestamps with unflushed records.
+	// Exclude current timestamp.
+	tss, err := pg.getUnflushedTimestamps(current)
+	if err != nil {
+		return 0, err
+	}
+	count := 0
+	// Flush timestamps' records
+	for _, ts := range tss {
+		err = pg.flush(ts)
+		if err != nil {
+			e := fmt.Sprintf("flush %v: %v", ts, err)
+			if pg.testing {
+				panic(e)
+			}
+			log.Error(e)
+		} else {
+			count++
+		}
+	}
+
+	return count, nil
+}
+
+// flusher is called periodically to flush the current timestamp.
+func (pg *Postgres) flusher() {
+	// From this point on the operation must be atomic.
+	pg.Lock()
+	defer pg.Unlock()
+	start := time.Now()
+	count, err := pg.doFlush()
+	end := time.Since(start)
+	if err != nil {
+		log.Errorf("flusher: %v", err)
+	}
+
+	log.Infof("Flusher: directories %v in %v", count, end)
+}
+
+// flush flushes all records associated with given timestamp.
+// returns nil iff ts records flushed successfully
+//
+// This function must be called with the WRITE lock held.
+func (pg *Postgres) flush(ts int64) error {
+	// Get timestamp's digests
+	digests, err := pg.getDigestsByTimestamp(ts)
+	if err != nil {
+		return err
+	}
+
+	if len(digests) == 0 {
+		// this really should not happen.
+		return errEmptySet
+	}
+
+	// Create merkle root and send to wallet
+	mt := merkle.Tree(digests)
+	root := *mt[len(mt)-1] // Last element is root
+	fr := backend.FlushRecord{
+		Root:           root,
+		Hashes:         mt[:len(digests)], // Only store hashes
+		FlushTimestamp: time.Now().Unix(),
+	}
+	if !pg.testing {
+		tx, err := pg.wallet.Construct(root)
+		if err != nil {
+			// XXX do something with unsufficient funds here.
+			return fmt.Errorf("flush Construct tx: %v", err)
+		}
+		log.Infof("Flush timestamp: %v digests %v merkle: %x tx: %v",
+			ts, len(digests), root, tx.String())
+		fr.Tx = *tx
+	}
+
+	// XXX Insert anchor data to db!
+
+	// XXX Update records merkle root
+
+	// Update commit.
+	pg.commit++
+
+	return nil
+}
+
 // New creates a new backend instance.  The caller should issue a Close once
 // the Postgres backend is no longer needed.
 func New(host, net, rootCert, cert, key, walletCert, walletHost string, enableCollections bool, walletPassphrase []byte) (*Postgres, error) {
@@ -309,20 +406,21 @@ func New(host, net, rootCert, cert, key, walletCert, walletHost string, enableCo
 		return nil, err
 	}
 
-	// Flushing backend reconciles uncommitted work to the global database.
-	//start := time.Now()
-	//flushed, err := pg.doFlush()
-	//end := time.Since(start)
-	//if err != nil {
-	//return nil, err
-	//}
+	// Flushing backend reconciles uncommitted work to the anchors table.
+	start := time.Now()
+	flushed, err := pg.doFlush()
+	end := time.Since(start)
+	if err != nil {
+		return nil, err
+	}
 
-	//if flushed != 0 {
-	//log.Infof("Startup flusher: directories %v in %v", flushed, end)
-	//}
+	if flushed != 0 {
+		log.Infof("Startup flusher: timestamps %v in %v", flushed, end)
+	}
 
 	// Launch cron.
 	err = pg.cron.AddFunc(flushSchedule, func() {
+		pg.flusher()
 	})
 	if err != nil {
 		return nil, err
@@ -331,4 +429,5 @@ func New(host, net, rootCert, cert, key, walletCert, walletHost string, enableCo
 	pg.cron.Start()
 
 	return pg, nil
+
 }
