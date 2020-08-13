@@ -96,7 +96,6 @@ func (pg *Postgres) Get(digests [][sha256.Size]byte) ([]backend.GetResult, error
 		if !found {
 			gdme.ErrorCode = backend.ErrorNotFound
 		}
-		log.Infof("ffffffferererer: %v, %v", gdme.ErrorCode, gdme.Timestamp)
 		gdmes = append(gdmes, gdme)
 	}
 	return gdmes, nil
@@ -110,7 +109,6 @@ func (pg *Postgres) GetTimestamps([]int64) ([]backend.TimestampResult, error) {
 // Store hashes and return timestamp and associated errors.  Put is
 // allowed to return transient errors.
 func (pg *Postgres) Put(hashes [][sha256.Size]byte) (int64, []backend.PutResult, error) {
-
 	// Two-phase commit.
 	pg.Lock()
 	commit := pg.commit

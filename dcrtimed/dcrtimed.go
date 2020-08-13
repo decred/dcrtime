@@ -1119,7 +1119,7 @@ func (d *DcrtimeStore) verifyV2(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Translate digest results.
+	// Translate digest result.
 	var dReply v2.VerifyDigest
 	if len(drs) != 0 {
 		dr := drs[len(drs)-1]

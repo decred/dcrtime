@@ -39,6 +39,7 @@ WHERE digest = $1`
 		if chainTs.Valid {
 			(*r).AnchoredTimestamp = chainTs.Int64
 		}
+		(*r).ErrorCode = backend.ErrorOK
 		return true, nil
 	}
 
