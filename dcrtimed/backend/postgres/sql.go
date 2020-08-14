@@ -7,6 +7,19 @@ import (
 	"github.com/decred/dcrtime/dcrtimed/backend"
 )
 
+func (pg *Postgres) insertAnchor(fr backend.FlushRecord) error {
+	q := `INSERT INTO anchors (merkle, tx_hash, flush_timestamp)
+VALUES($1, $2, $3)`
+
+	var root []byte
+	err := pg.db.QueryRow(q, copy(root[:], fr.Root[:]), fr.Tx.String(),
+		fr.FlushTimestamp).Scan()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (pg *Postgres) getDigestsByTimestamp(ts int64) ([]*[sha256.Size]byte, error) {
 	q := `SELECT digest from records WHERE collection_timestamp = $1`
 
@@ -125,9 +138,8 @@ func (pg *Postgres) checkIfDigestExists(hash []byte) (bool, error) {
 func (pg *Postgres) createAnchorsTable() error {
 	_, err := pg.db.Exec(`CREATE TABLE public.anchors
 (
-    merkle bytea NOT NULL,
-    hashes text[] COLLATE pg_catalog."default" NOT NULL,
-    tx_hash text COLLATE pg_catalog."default",
+    merkle bytea NOT NULL UNIQUE,
+    tx_hash text COLLATE pg_catalog."default" UNIQUE,
     chain_timestamp bigint,
     flush_timestamp bigint,
     CONSTRAINT anchors_pkey PRIMARY KEY (merkle)
@@ -141,11 +153,6 @@ CREATE INDEX idx_chain_timestamp
 CREATE INDEX idx_flush_timestamp
     ON public.anchors USING btree
     (flush_timestamp ASC NULLS LAST)
-    TABLESPACE pg_default;
--- Index: idx_hashes
-CREATE UNIQUE INDEX idx_hashes
-    ON public.anchors USING btree
-    (hashes COLLATE pg_catalog."default" ASC NULLS LAST)
     TABLESPACE pg_default;
 -- Index: idx_merkle
 CREATE UNIQUE INDEX idx_merkle
@@ -168,7 +175,7 @@ CREATE UNIQUE INDEX idx_tx_hash
 func (pg *Postgres) createRecordsTable() error {
 	_, err := pg.db.Exec(`CREATE TABLE public.records
 (
-    digest bytea NOT NULL,
+    digest bytea NOT NULL UNIQUE,
     anchor_merkle bytea,
     collection_timestamp bigint NOT NULL,
     CONSTRAINT records_pkey PRIMARY KEY (digest),

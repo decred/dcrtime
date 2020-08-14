@@ -10,7 +10,6 @@ in an `anchor` will be connected to the corresponding entry in the anchors
 table using the col `anchor_merkle` which defined as forgein key & indexed in 
 records table, below you find the detailed description of the two tables:
 
-
 ### Tables
 
 **Records:**
@@ -26,7 +25,6 @@ records table, below you find the detailed description of the two tables:
 | Col Name         | Type              | Not Null | P. Key | F. Key | Indexed | Unique | Description                     |
 |------------------|-------------------|----------|--------|--------|---------|--------|---------------------------------|
 | merkle           | char. varying(64) | x        | x      |        | x       | x      | Anchor merkle root              |
-| hashes           | text[]            | x        |        |        | x       | x      | Anchored hashes                 |
 | tx_hash          | text              |          |        |        | x       | x      | Anchor tx hash                  |
 | chain_timestamp  | bigint            |          |        |        |         |        | Anchor timestamp on blockchain  |
 | flush_timestamp  | bigint            |          |        |        |         |        | When anchor actually  flushed   |

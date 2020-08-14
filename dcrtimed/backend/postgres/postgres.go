@@ -24,7 +24,6 @@ import (
 )
 
 const (
-	fStr         = "20060102.150405"
 	tableRecords = "records"
 	tableAnchors = "anchors"
 	dbUser       = "dcrtimed"
@@ -346,7 +345,7 @@ func (pg *Postgres) flusher() {
 // flush flushes all records associated with given timestamp.
 // returns nil iff ts records flushed successfully
 //
-// This function must be called with the WRITE lock held.
+// This function must be called with the WRITE lock held
 func (pg *Postgres) flush(ts int64) error {
 	// Get timestamp's digests
 	digests, err := pg.getDigestsByTimestamp(ts)
@@ -355,13 +354,14 @@ func (pg *Postgres) flush(ts int64) error {
 	}
 
 	if len(digests) == 0 {
-		// this really should not happen.
+		// This really should not happen
 		return errEmptySet
 	}
 
-	// Create merkle root and send to wallet
+	// Generate merkle
 	mt := merkle.Tree(digests)
-	root := *mt[len(mt)-1] // Last element is root
+	// Last element is root
+	root := *mt[len(mt)-1]
 	fr := backend.FlushRecord{
 		Root:           root,
 		Hashes:         mt[:len(digests)], // Only store hashes
@@ -378,7 +378,11 @@ func (pg *Postgres) flush(ts int64) error {
 		fr.Tx = *tx
 	}
 
-	// XXX Insert anchor data to db!
+	// Insert anchor data into db
+	err = pg.insertAnchor(fr)
+	if err != nil {
+		return err
+	}
 
 	// XXX Update records merkle root
 
