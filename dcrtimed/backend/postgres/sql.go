@@ -7,14 +7,29 @@ import (
 	"github.com/decred/dcrtime/dcrtimed/backend"
 )
 
+func (pg *Postgres) updateRecordsAnchor(ts int64, merkleRoot [sha256.Size]byte) error {
+	q := `UPDATE records SET anchor_merkle = $1
+	WHERE collection_timestamp = $2`
+
+	err := pg.db.QueryRow(q, merkleRoot[:], ts).Scan()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (pg *Postgres) insertAnchor(fr backend.FlushRecord) error {
 	q := `INSERT INTO anchors (merkle, tx_hash, flush_timestamp)
 VALUES($1, $2, $3)`
 
-	var root []byte
-	err := pg.db.QueryRow(q, copy(root[:], fr.Root[:]), fr.Tx.String(),
+	err := pg.db.QueryRow(q, fr.Root[:], fr.Tx.String(),
 		fr.FlushTimestamp).Scan()
 	if err != nil {
+		// The insert command won't return any value, the following error is
+		// expected and means anchor row inserted successfully
+		if err.Error() == "sql: no rows in result set" {
+			return nil
+		}
 		return err
 	}
 	return nil

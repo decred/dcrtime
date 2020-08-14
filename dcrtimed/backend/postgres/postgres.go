@@ -384,7 +384,8 @@ func (pg *Postgres) flush(ts int64) error {
 		return err
 	}
 
-	// XXX Update records merkle root
+	// Update timestamp's records merkle root
+	pg.updateRecordsAnchor(ts, fr.Root)
 
 	// Update commit.
 	pg.commit++
