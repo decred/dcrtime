@@ -24,12 +24,14 @@ import (
 )
 
 const (
-	tableRecords = "records"
-	tableAnchors = "anchors"
-	dbUser       = "dcrtimed"
+	tableRecords  = "records"
+	tableAnchors  = "anchors"
+	dbUser        = "dcrtimed"
+	confirmations = 6
 
-	// errorFound is thrown if digest was found in records table
-	errorFound = 1001
+	// error codes that are overridden during tests only.
+	// digestFound is thrown if digest was found in records table
+	digestFound = 1001
 )
 
 var (
@@ -77,6 +79,49 @@ func (pg *Postgres) truncate(t time.Time, d time.Duration) time.Time {
 	return t.Truncate(d)
 }
 
+var (
+	errInvalidConfirmations  = errors.New("invalid confirmations")
+	errNotEnoughConfirmation = errors.New("not enough confirmations")
+)
+
+// lazyFlush takes a pointer to a flush record and updates the chain anchor
+// timestamp of said record and writes it back to the database and returns
+// the result of the wallet's Lookup function
+//
+// IMPORTANT NOTE: We *may* write to the anchors database in case of a lazy
+// timestamp update to the anchor timestamo while holding the READ lock.  This
+// is OK because at worst we are racing multiple atomic writes.
+// This is suboptimal but beats taking a write lock for all get* calls.
+func (pg *Postgres) lazyFlush(fr *backend.FlushRecord) (*dcrtimewallet.TxLookupResult, error) {
+	res, err := pg.wallet.Lookup((*fr).Tx)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Debugf("lazyFlush confirmations: %v", res.Confirmations)
+
+	if res.Confirmations == -1 {
+		return nil, errInvalidConfirmations
+	} else if res.Confirmations < confirmations {
+		// Return error & wallet lookup res
+		// for error handling
+		return res, errNotEnoughConfirmation
+	}
+
+	fr.ChainTimestamp = res.Timestamp
+
+	// Update anchor row in database
+	err = pg.updateAnchorChainTs(fr)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Infof("Flushed anchor timestamp: %v %v", fr.Tx.String(),
+		res.Timestamp)
+
+	return res, nil
+}
+
 // Return timestamp information for given digests.
 func (pg *Postgres) Get(digests [][sha256.Size]byte) ([]backend.GetResult, error) {
 	gdmes := make([]backend.GetResult, 0, len(digests))
@@ -96,8 +141,26 @@ func (pg *Postgres) Get(digests [][sha256.Size]byte) ([]backend.GetResult, error
 		if err != nil {
 			return nil, err
 		}
+
 		if !found {
 			gdme.ErrorCode = backend.ErrorNotFound
+		} else {
+			// Override error code during testing
+			if pg.testing {
+				gdme.ErrorCode = digestFound
+				// Lazyflush records if was anchored but blockchain isn't
+				// avialable yet
+			} else if gdme.Tx.String() != "" && gdme.AnchoredTimestamp == 0 {
+				// Lazyflush records if was anchored but blockchain isn't
+				// avialable yet
+				_, err = pg.lazyFlush(&backend.FlushRecord{
+					Tx:   gdme.Tx,
+					Root: gdme.MerkleRoot,
+				})
+				if err != nil {
+					return nil, err
+				}
+			}
 		}
 		gdmes = append(gdmes, gdme)
 	}
@@ -149,7 +212,7 @@ func (pg *Postgres) Put(hashes [][sha256.Size]byte) (int64, []backend.PutResult,
 
 			// Override error code during testing
 			if pg.testing {
-				me[len(me)-1].ErrorCode = errorFound
+				me[len(me)-1].ErrorCode = digestFound
 			}
 			continue
 		}
@@ -296,7 +359,7 @@ func internalNew(host, net, rootCert, cert, key string) (*Postgres, error) {
 
 // doFlush gets all timestamps which have unflushed records and flushes them.
 // It skips current timestamp.
-// It returns the number of directories that were flushed.
+// It returns the number of timestamps that were flushed.
 //
 // This must be called with the WRITE lock held.  We may have to consider
 // errors out of this function terminal.
@@ -339,7 +402,7 @@ func (pg *Postgres) flusher() {
 		log.Errorf("flusher: %v", err)
 	}
 
-	log.Infof("Flusher: directories %v in %v", count, end)
+	log.Infof("Flusher: timestamps %v in %v", count, end)
 }
 
 // flush flushes all records associated with given timestamp.

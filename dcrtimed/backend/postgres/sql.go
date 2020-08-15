@@ -4,8 +4,25 @@ import (
 	"crypto/sha256"
 	"database/sql"
 
+	"github.com/decred/dcrd/chaincfg/chainhash"
 	"github.com/decred/dcrtime/dcrtimed/backend"
+	"github.com/decred/dcrtime/merkle"
 )
+
+func (pg *Postgres) updateAnchorChainTs(fr *backend.FlushRecord) error {
+	q := `UPDATE anchors SET chain_timestamp = $1
+	WHERE merkle = $2`
+	err := pg.db.QueryRow(q, fr.ChainTimestamp, fr.Root[:]).Scan()
+	if err != nil {
+		// The insert command won't return any value, the following error is
+		// expected and means anchor row inserted successfully
+		if err.Error() == "sql: no rows in result set" {
+			return nil
+		}
+		return err
+	}
+	return nil
+}
 
 func (pg *Postgres) updateRecordsAnchor(ts int64, merkleRoot [sha256.Size]byte) error {
 	q := `UPDATE records SET anchor_merkle = $1
@@ -20,7 +37,7 @@ func (pg *Postgres) updateRecordsAnchor(ts int64, merkleRoot [sha256.Size]byte) 
 
 func (pg *Postgres) insertAnchor(fr backend.FlushRecord) error {
 	q := `INSERT INTO anchors (merkle, tx_hash, flush_timestamp)
-VALUES($1, $2, $3)`
+	VALUES($1, $2, $3)`
 
 	err := pg.db.QueryRow(q, fr.Root[:], fr.Tx.String(),
 		fr.FlushTimestamp).Scan()
@@ -33,6 +50,28 @@ VALUES($1, $2, $3)`
 		return err
 	}
 	return nil
+}
+
+func (pg *Postgres) getDigestsByMerkleRoot(merkle []byte) ([]*[sha256.Size]byte, error) {
+	q := `SELECT digest from records WHERE anchor_merkle = $1`
+
+	rows, err := pg.db.Query(q, merkle)
+	if err != nil {
+		return nil, err
+	}
+	var rawDigest []byte
+	var digest [sha256.Size]byte
+	digests := []*[sha256.Size]byte{}
+	for rows.Next() {
+		err = rows.Scan(&rawDigest)
+		if err != nil {
+			return nil, err
+		}
+		copy(digest[:], rawDigest[:])
+		digests = append(digests, &digest)
+	}
+	return digests, nil
+
 }
 
 func (pg *Postgres) getDigestsByTimestamp(ts int64) ([]*[sha256.Size]byte, error) {
@@ -90,25 +129,39 @@ WHERE digest = $1`
 	}
 	defer rows.Close()
 
-	var merkle []byte
+	var mr []byte
 	var txHash sql.NullString
 	var chainTs sql.NullInt64
 	var serverTs int64
 	for rows.Next() {
-		err = rows.Scan(&merkle, &serverTs, &txHash, &chainTs)
+		err = rows.Scan(&mr, &serverTs, &txHash, &chainTs)
 		if err != nil {
 			return false, err
 		}
-		(*r).Timestamp = serverTs
-		copy(merkle[:], (*r).MerkleRoot[:sha256.Size])
+		r.Timestamp = serverTs
+		copy(r.MerkleRoot[:sha256.Size], mr[:])
 		// txHash & chainTs can be NULL - handle safely
 		if txHash.Valid {
-			copy((*r).Tx[:], []byte(txHash.String))
+			tx, err := chainhash.NewHashFromStr(txHash.String)
+			if err != nil {
+				return false, err
+			}
+			r.Tx = *tx
 		}
 		if chainTs.Valid {
-			(*r).AnchoredTimestamp = chainTs.Int64
+			r.AnchoredTimestamp = chainTs.Int64
 		}
-		(*r).ErrorCode = backend.ErrorOK
+		if mr != nil {
+			hashes, err := pg.getDigestsByMerkleRoot(mr)
+			if err != nil {
+				return false, err
+			}
+			var digest [sha256.Size]byte
+			copy(digest[:], hash[:])
+			// That pointer better not be nil!
+			r.MerklePath = *merkle.AuthPath(hashes, &digest)
+		}
+		r.ErrorCode = backend.ErrorOK
 		return true, nil
 	}
 
