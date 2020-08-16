@@ -19,7 +19,6 @@ import (
 	"github.com/decred/dcrtime/dcrtimed/dcrtimewallet"
 	"github.com/decred/dcrtime/merkle"
 	"github.com/lib/pq"
-	_ "github.com/lib/pq"
 	"github.com/robfig/cron"
 )
 
@@ -148,18 +147,27 @@ func (pg *Postgres) Get(digests [][sha256.Size]byte) ([]backend.GetResult, error
 			// Override error code during testing
 			if pg.testing {
 				gdme.ErrorCode = digestFound
-				// Lazyflush records if was anchored but blockchain isn't
-				// avialable yet
-			} else if gdme.Tx.String() != "" && gdme.AnchoredTimestamp == 0 {
-				// Lazyflush records if was anchored but blockchain isn't
-				// avialable yet
-				_, err = pg.lazyFlush(&backend.FlushRecord{
+			} else if gdme.MerkleRoot != [sha256.Size]byte{} && gdme.AnchoredTimestamp == 0 {
+				// Lazyflush record if it was anchored but blockchain timestamp
+				// isn't avialable yet
+				fr := backend.FlushRecord{
 					Tx:   gdme.Tx,
 					Root: gdme.MerkleRoot,
-				})
-				if err != nil {
-					return nil, err
 				}
+				_, err = pg.lazyFlush(&fr)
+				if err != nil {
+					switch err {
+					case errNotEnoughConfirmation:
+						// All good, continue without blockchain timestamp
+					case errInvalidConfirmations:
+						log.Errorf("%v: Confirmations = -1",
+							gdme.Tx.String())
+						return nil, err
+					default:
+						return nil, err
+					}
+				}
+				gdme.AnchoredTimestamp = fr.ChainTimestamp
 			}
 		}
 		gdmes = append(gdmes, gdme)
