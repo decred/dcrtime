@@ -59,19 +59,22 @@ func (pg *Postgres) getDigestsByMerkleRoot(merkle []byte) ([]*[sha256.Size]byte,
 	if err != nil {
 		return nil, err
 	}
-	var rawDigest []byte
-	var digest [sha256.Size]byte
-	digests := []*[sha256.Size]byte{}
+	var digests []*[sha256.Size]byte
 	for rows.Next() {
+		var rawDigest []byte
 		err = rows.Scan(&rawDigest)
 		if err != nil {
 			return nil, err
 		}
+		var digest [sha256.Size]byte
 		copy(digest[:], rawDigest[:])
 		digests = append(digests, &digest)
 	}
+	// Reverse hashes
+	for i, j := 0, len(digests)-1; i < j; i, j = i+1, j-1 {
+		digests[i], digests[j] = digests[j], digests[i]
+	}
 	return digests, nil
-
 }
 
 func (pg *Postgres) getDigestsByTimestamp(ts int64) ([]*[sha256.Size]byte, error) {
@@ -81,14 +84,14 @@ func (pg *Postgres) getDigestsByTimestamp(ts int64) ([]*[sha256.Size]byte, error
 	if err != nil {
 		return nil, err
 	}
-	var rawDigest []byte
-	var digest [sha256.Size]byte
-	digests := []*[sha256.Size]byte{}
+	var digests []*[sha256.Size]byte
 	for rows.Next() {
+		var rawDigest []byte
 		err = rows.Scan(&rawDigest)
 		if err != nil {
 			return nil, err
 		}
+		var digest [sha256.Size]byte
 		copy(digest[:], rawDigest[:])
 		digests = append(digests, &digest)
 	}
@@ -96,7 +99,7 @@ func (pg *Postgres) getDigestsByTimestamp(ts int64) ([]*[sha256.Size]byte, error
 }
 
 func (pg *Postgres) getUnflushedTimestamps(current int64) ([]int64, error) {
-	q := `SELECT collection_timestamp FROM records 
+	q := `SELECT DISTINCT collection_timestamp FROM records 
 WHERE collection_timestamp != $1 AND anchor_merkle IS NULL`
 
 	rows, err := pg.db.Query(q, current)
@@ -139,7 +142,7 @@ WHERE digest = $1`
 			return false, err
 		}
 		r.Timestamp = serverTs
-		copy(r.MerkleRoot[:sha256.Size], mr[:])
+		copy(r.MerkleRoot[:], mr[:sha256.Size])
 		// txHash & chainTs can be NULL - handle safely
 		if txHash.Valid {
 			tx, err := chainhash.NewHashFromStr(txHash.String)
@@ -158,6 +161,7 @@ WHERE digest = $1`
 			}
 			var digest [sha256.Size]byte
 			copy(digest[:], hash[:])
+
 			// That pointer better not be nil!
 			r.MerklePath = *merkle.AuthPath(hashes, &digest)
 		}
