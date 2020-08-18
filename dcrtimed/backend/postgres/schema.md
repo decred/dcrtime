@@ -17,14 +17,14 @@ records table, below you find the detailed description of the two tables:
 |----------------------|-------------------|----------|--------|--------|---------|--------|------------------------------|
 | collection_timestamp | bigint            | x        |        |        | x       |        | Unix timestamp of collection |
 | digest               | bytea             | x        | x      |        | x       | x      | Timestamped digest           |
-| anchor_merkle        | char. varying(64) |          |        | x      | x       |        | Anchor merkle root           |
+| anchor_merkle        | bytea           ) |          |        | x      | x       |        | Anchor merkle root           |
 
 **Note:** `anchor_merkle` linking to anchors table, nil if not anchored yet
 
 **Anchors:**
 | Col Name         | Type              | Not Null | P. Key | F. Key | Indexed | Unique | Description                     |
 |------------------|-------------------|----------|--------|--------|---------|--------|---------------------------------|
-| merkle           | char. varying(64) | x        | x      |        | x       | x      | Anchor merkle root              |
+| merkle           | bytea             | x        | x      |        | x       | x      | Anchor merkle root              |
 | tx_hash          | text              |          |        |        | x       | x      | Anchor tx hash                  |
 | chain_timestamp  | bigint            |          |        |        |         |        | Anchor timestamp on blockchain  |
 | flush_timestamp  | bigint            |          |        |        |         |        | When anchor actually  flushed   |
