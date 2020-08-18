@@ -175,9 +175,73 @@ func (pg *Postgres) Get(digests [][sha256.Size]byte) ([]backend.GetResult, error
 	return gdmes, nil
 }
 
-// Return all hashes for given timestamps.
-func (pg *Postgres) GetTimestamps([]int64) ([]backend.TimestampResult, error) {
-	return nil, nil
+// GetTimestamps is a required interface function.  In our case it retrieves
+// the digests for a given timestamp.
+//
+// GetTimestamps satisfies the backend interface.
+func (pg *Postgres) GetTimestamps(timestamps []int64) ([]backend.TimestampResult, error) {
+	gtmes := make([]backend.TimestampResult, 0, len(timestamps))
+
+	// We need to be read locked from here on out.  Note that we are not
+	// locking/releasing.  This is by design in order to let all readers
+	// finish before a potential write occurs.
+	pg.RLock()
+	defer pg.RUnlock()
+
+	// Iterate over timestamps and translate results to backend interface.
+	for _, ts := range timestamps {
+		gtme := backend.TimestampResult{
+			Timestamp: ts,
+		}
+		if pg.enableCollections {
+			exists, tsDigests, err := pg.getRecordsByServerTs(ts)
+			if err != nil {
+				return nil, err
+			}
+			gtme = backend.TimestampResult{
+				ErrorCode: backend.ErrorOK,
+			}
+			if !exists {
+				gtme.ErrorCode = backend.ErrorNotFound
+			}
+			// copy ts digests
+			gtme.Digests = make([][sha256.Size]byte, 0, len(tsDigests))
+			for _, digest := range tsDigests {
+				gtme.Digests = append(gtme.Digests, (*digest).Digest)
+				gtme.Tx = (*digest).Tx
+				gtme.AnchoredTimestamp = (*digest).AnchoredTimestamp
+				gtme.MerkleRoot = (*digest).MerkleRoot
+			}
+			// Lazyflush record if it was anchored but blockchain timestamp
+			// isn't avialable yet
+			if gtme.MerkleRoot != [sha256.Size]byte{} && gtme.AnchoredTimestamp == 0 {
+				fr := backend.FlushRecord{
+					Tx:   gtme.Tx,
+					Root: gtme.MerkleRoot,
+				}
+				_, err = pg.lazyFlush(&fr)
+				if err != nil {
+					switch err {
+					case errNotEnoughConfirmation:
+						// All good, continue without blockchain timestamp
+					case errInvalidConfirmations:
+						log.Errorf("%v: Confirmations = -1",
+							gtme.Tx.String())
+						return nil, err
+					default:
+						return nil, err
+					}
+				}
+				gtme.AnchoredTimestamp = fr.ChainTimestamp
+			}
+		} else {
+			gtme = backend.TimestampResult{
+				ErrorCode: backend.ErrorNotAllowed,
+			}
+		}
+		gtmes = append(gtmes, gtme)
+	}
+	return gtmes, nil
 }
 
 // Store hashes and return timestamp and associated errors.  Put is

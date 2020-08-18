@@ -11,7 +11,8 @@ import (
 
 func (pg *Postgres) updateAnchorChainTs(fr *backend.FlushRecord) error {
 	q := `UPDATE anchors SET chain_timestamp = $1
-	WHERE merkle = $2`
+WHERE merkle = $2`
+
 	err := pg.db.QueryRow(q, fr.ChainTimestamp, fr.Root[:]).Scan()
 	if err != nil {
 		// The insert command won't return any value, the following error is
@@ -26,7 +27,7 @@ func (pg *Postgres) updateAnchorChainTs(fr *backend.FlushRecord) error {
 
 func (pg *Postgres) updateRecordsAnchor(ts int64, merkleRoot [sha256.Size]byte) error {
 	q := `UPDATE records SET anchor_merkle = $1
-	WHERE collection_timestamp = $2`
+WHERE collection_timestamp = $2`
 
 	err := pg.db.QueryRow(q, merkleRoot[:], ts).Scan()
 	if err != nil {
@@ -37,7 +38,7 @@ func (pg *Postgres) updateRecordsAnchor(ts int64, merkleRoot [sha256.Size]byte) 
 
 func (pg *Postgres) insertAnchor(fr backend.FlushRecord) error {
 	q := `INSERT INTO anchors (merkle, tx_hash, flush_timestamp)
-	VALUES($1, $2, $3)`
+VALUES($1, $2, $3)`
 
 	err := pg.db.QueryRow(q, fr.Root[:], fr.Tx.String(),
 		fr.FlushTimestamp).Scan()
@@ -118,13 +119,61 @@ WHERE collection_timestamp != $1 AND anchor_merkle IS NULL`
 	return tss, nil
 }
 
+func (pg *Postgres) getRecordsByServerTs(ts int64) (bool, []*backend.GetResult, error) {
+	q := `SELECT r.anchor_merkle, an.tx_hash, an.chain_timestamp, r.digest
+FROM records as r
+LEFT JOIN anchors as an
+on r.achor_merkle = an.merkle
+WHERE r.collection_timestamp = $1`
+
+	rows, err := pg.db.Query(q, ts)
+	if err != nil {
+		return false, nil, err
+	}
+	defer rows.Close()
+	var (
+		mr      []byte
+		digest  []byte
+		txHash  sql.NullString
+		chainTs sql.NullInt64
+	)
+	r := []*backend.GetResult{}
+	for rows.Next() {
+		rr := backend.GetResult{
+			Timestamp: ts,
+		}
+		err = rows.Scan(&mr, &txHash, &chainTs, &digest)
+		if err != nil {
+			return false, nil, err
+		}
+		rr.Timestamp = ts
+		copy(rr.MerkleRoot[:], mr[:sha256.Size])
+		// txHash & chainTs can be NULL - handle safely
+		if txHash.Valid {
+			tx, err := chainhash.NewHashFromStr(txHash.String)
+			if err != nil {
+				return false, nil, err
+			}
+			rr.Tx = *tx
+		}
+		if chainTs.Valid {
+			rr.AnchoredTimestamp = chainTs.Int64
+		}
+		copy(rr.Digest[:], digest[:])
+
+		r = append(r, &rr)
+	}
+
+	return len(r) > 0, r, nil
+}
+
 func (pg *Postgres) getRecordByDigest(hash []byte, r *backend.GetResult) (bool, error) {
 	q := `SELECT r.anchor_merkle, r.collection_timestamp, an.tx_hash, 
 an.chain_timestamp
 FROM records as r
 LEFT JOIN anchors as an
 ON r.anchor_merkle = an.merkle
-WHERE digest = $1`
+WHERE r.digest = $1`
 
 	rows, err := pg.db.Query(q, hash)
 	if err != nil {
@@ -173,9 +222,11 @@ WHERE digest = $1`
 }
 
 func (pg *Postgres) hasTable(name string) (bool, error) {
-	rows, err := pg.db.Query(`SELECT EXISTS (SELECT 
-		FROM information_schema.tables 
-		WHERE table_schema = 'public' AND table_name  = $1)`, name)
+	q := `SELECT EXISTS (SELECT 
+FROM information_schema.tables 
+WHERE table_schema = 'public' AND table_name  = $1)`
+
+	rows, err := pg.db.Query(q, name)
 	if err != nil {
 		return false, err
 	}
@@ -191,8 +242,10 @@ func (pg *Postgres) hasTable(name string) (bool, error) {
 }
 
 func (pg *Postgres) checkIfDigestExists(hash []byte) (bool, error) {
-	rows, err := pg.db.Query(`SELECT EXISTS (SELECT FROM records 
-		WHERE digest = $1)`, hash)
+	q := `SELECT EXISTS 
+(SELECT FROM records WHERE digest = $1)`
+
+	rows, err := pg.db.Query(q, hash)
 	if err != nil {
 		return false, err
 	}
