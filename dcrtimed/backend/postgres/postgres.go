@@ -198,9 +198,7 @@ func (pg *Postgres) GetTimestamps(timestamps []int64) ([]backend.TimestampResult
 			if err != nil {
 				return nil, err
 			}
-			gtme = backend.TimestampResult{
-				ErrorCode: backend.ErrorOK,
-			}
+			gtme.ErrorCode = backend.ErrorOK
 			if !exists {
 				gtme.ErrorCode = backend.ErrorNotFound
 			}
@@ -235,9 +233,7 @@ func (pg *Postgres) GetTimestamps(timestamps []int64) ([]backend.TimestampResult
 				gtme.AnchoredTimestamp = fr.ChainTimestamp
 			}
 		} else {
-			gtme = backend.TimestampResult{
-				ErrorCode: backend.ErrorNotAllowed,
-			}
+			gtme.ErrorCode = backend.ErrorNotAllowed
 		}
 		gtmes = append(gtmes, gtme)
 	}

@@ -123,7 +123,7 @@ func (pg *Postgres) getRecordsByServerTs(ts int64) (bool, []*backend.GetResult, 
 	q := `SELECT r.anchor_merkle, an.tx_hash, an.chain_timestamp, r.digest
 FROM records as r
 LEFT JOIN anchors as an
-on r.achor_merkle = an.merkle
+on r.anchor_merkle = an.merkle
 WHERE r.collection_timestamp = $1`
 
 	rows, err := pg.db.Query(q, ts)
