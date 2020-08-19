@@ -378,7 +378,36 @@ func (pg *Postgres) GetBalance() (*backend.GetBalanceResult, error) {
 
 // LastAnchor retrieves last successful anchor details
 func (pg *Postgres) LastAnchor() (*backend.LastAnchorResult, error) {
-	return nil, nil
+	ts, merkle, tx, err := pg.getLatestAnchoredTimestamp()
+	if err != nil {
+		return nil, err
+	}
+
+	if ts == 0 {
+		return &backend.LastAnchorResult{}, nil
+	}
+
+	var me backend.LastAnchorResult
+	me.Tx = *tx
+
+	// Lookup anchored tx info,
+	// and update db if info changed.
+	fr := backend.FlushRecord{
+		Tx:   *tx,
+		Root: *merkle,
+	}
+	txWalletInfo, err := pg.lazyFlush(&fr)
+
+	// If no error, or no enough confirmations
+	// err continue, else return err.
+	if err != nil && err != errNotEnoughConfirmation {
+		return &backend.LastAnchorResult{}, err
+	}
+
+	me.ChainTimestamp = fr.ChainTimestamp
+	me.BlockHash = txWalletInfo.BlockHash.String()
+	me.BlockHeight = txWalletInfo.BlockHeight
+	return &me, nil
 }
 
 func buildQueryString(rootCert, cert, key string) string {

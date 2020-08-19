@@ -9,6 +9,42 @@ import (
 	"github.com/decred/dcrtime/merkle"
 )
 
+func (pg *Postgres) getLatestAnchoredTimestamp() (int64, *[sha256.Size]byte, *chainhash.Hash, error) {
+	q := `SELECT r.collection_timestamp, r.anchor_merkle, an.tx_hash
+				FROM records as r
+				LEFT JOIN anchors as an
+				on r.anchor_merkle = an.merkle
+				WHERE r.anchor_merkle IS NOT NULL
+				ORDER BY r.collection_timestamp DESC
+				LIMIT 1`
+
+	rows, err := pg.db.Query(q)
+	if err != nil {
+		return 0, nil, nil, err
+	}
+	defer rows.Close()
+
+	var (
+		serverTs int64
+		txHash   []byte
+		mr       []byte
+		merkle   [sha256.Size]byte
+		tx       *chainhash.Hash
+	)
+	for rows.Next() {
+		err = rows.Scan(&serverTs, &mr, &txHash)
+		if err != nil {
+			return 0, nil, nil, err
+		}
+		copy(merkle[:], mr[:sha256.Size])
+		tx, err = chainhash.NewHash(txHash)
+		if err != nil {
+			return 0, nil, nil, err
+		}
+	}
+	return serverTs, &merkle, tx, nil
+}
+
 func (pg *Postgres) updateAnchorChainTs(fr *backend.FlushRecord) error {
 	q := `UPDATE anchors SET chain_timestamp = $1
 				WHERE merkle = $2`
