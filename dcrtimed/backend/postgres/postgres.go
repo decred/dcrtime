@@ -40,8 +40,8 @@ var (
 	// matching we mean both are hourly or every so many minutes.
 	//
 	// Seconds Minutes Hours Days Months DayOfWeek
-	flushSchedule = "10 0 * * * *" // On the hour + 10 seconds
-	duration      = time.Hour      // Default how often we combine digests
+	flushSchedule = "10 * * * * *" // On the hour + 10 seconds
+	duration      = time.Minute    // Default how often we combine digests
 
 	errEmptySet = errors.New("empty set")
 )

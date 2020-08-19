@@ -40,7 +40,7 @@ func (pg *Postgres) insertAnchor(fr backend.FlushRecord) error {
 	q := `INSERT INTO anchors (merkle, tx_hash, flush_timestamp)
 				VALUES($1, $2, $3)`
 
-	err := pg.db.QueryRow(q, fr.Root[:], fr.Tx.String(),
+	err := pg.db.QueryRow(q, fr.Root[:], fr.Tx[:],
 		fr.FlushTimestamp).Scan()
 	if err != nil {
 		// The insert command won't return any value, the following error is
@@ -134,7 +134,7 @@ func (pg *Postgres) getRecordsByServerTs(ts int64) (bool, []*backend.GetResult, 
 	var (
 		mr      []byte
 		digest  []byte
-		txHash  sql.NullString
+		txHash  []byte
 		chainTs sql.NullInt64
 	)
 	r := []*backend.GetResult{}
@@ -148,14 +148,12 @@ func (pg *Postgres) getRecordsByServerTs(ts int64) (bool, []*backend.GetResult, 
 		}
 		rr.Timestamp = ts
 		copy(rr.MerkleRoot[:], mr[:sha256.Size])
-		// txHash & chainTs can be NULL - handle safely
-		if txHash.Valid {
-			tx, err := chainhash.NewHashFromStr(txHash.String)
-			if err != nil {
-				return false, nil, err
-			}
-			rr.Tx = *tx
+		tx, err := chainhash.NewHash(txHash[:])
+		if err != nil {
+			return false, nil, err
 		}
+		rr.Tx = *tx
+		// chainTs can be NULL - handle safely
 		if chainTs.Valid {
 			rr.AnchoredTimestamp = chainTs.Int64
 		}
@@ -180,11 +178,12 @@ func (pg *Postgres) getRecordByDigest(hash []byte, r *backend.GetResult) (bool, 
 		return false, err
 	}
 	defer rows.Close()
-
-	var mr []byte
-	var txHash sql.NullString
-	var chainTs sql.NullInt64
-	var serverTs int64
+	var (
+		mr       []byte
+		txHash   []byte
+		chainTs  sql.NullInt64
+		serverTs int64
+	)
 	for rows.Next() {
 		err = rows.Scan(&mr, &serverTs, &txHash, &chainTs)
 		if err != nil {
@@ -192,14 +191,12 @@ func (pg *Postgres) getRecordByDigest(hash []byte, r *backend.GetResult) (bool, 
 		}
 		r.Timestamp = serverTs
 		copy(r.MerkleRoot[:], mr[:sha256.Size])
-		// txHash & chainTs can be NULL - handle safely
-		if txHash.Valid {
-			tx, err := chainhash.NewHashFromStr(txHash.String)
-			if err != nil {
-				return false, err
-			}
-			r.Tx = *tx
+		tx, err := chainhash.NewHash(txHash[:])
+		if err != nil {
+			return false, err
 		}
+		r.Tx = *tx
+		// chainTs can be NULL - handle safely
 		if chainTs.Valid {
 			r.AnchoredTimestamp = chainTs.Int64
 		}
