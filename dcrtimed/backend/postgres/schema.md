@@ -25,7 +25,7 @@ records table, below you find the detailed description of the two tables:
 | Col Name         | Type              | Not Null | P. Key | F. Key | Indexed | Unique | Description                     |
 |------------------|-------------------|----------|--------|--------|---------|--------|---------------------------------|
 | merkle           | bytea             | x        | x      |        | x       | x      | Anchor merkle root              |
-| tx_hash          | text              |          |        |        | x       | x      | Anchor tx hash                  |
+| tx_hash          | bytea             |          |        |        | x       | x      | Anchor tx hash                  |
 | chain_timestamp  | bigint            |          |        |        |         |        | Anchor timestamp on blockchain  |
 | flush_timestamp  | bigint            |          |        |        |         |        | When anchor actually  flushed   |
 

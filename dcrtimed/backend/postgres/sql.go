@@ -11,7 +11,7 @@ import (
 
 func (pg *Postgres) updateAnchorChainTs(fr *backend.FlushRecord) error {
 	q := `UPDATE anchors SET chain_timestamp = $1
-WHERE merkle = $2`
+				WHERE merkle = $2`
 
 	err := pg.db.QueryRow(q, fr.ChainTimestamp, fr.Root[:]).Scan()
 	if err != nil {
@@ -27,7 +27,7 @@ WHERE merkle = $2`
 
 func (pg *Postgres) updateRecordsAnchor(ts int64, merkleRoot [sha256.Size]byte) error {
 	q := `UPDATE records SET anchor_merkle = $1
-WHERE collection_timestamp = $2`
+				WHERE collection_timestamp = $2`
 
 	err := pg.db.QueryRow(q, merkleRoot[:], ts).Scan()
 	if err != nil {
@@ -38,7 +38,7 @@ WHERE collection_timestamp = $2`
 
 func (pg *Postgres) insertAnchor(fr backend.FlushRecord) error {
 	q := `INSERT INTO anchors (merkle, tx_hash, flush_timestamp)
-VALUES($1, $2, $3)`
+				VALUES($1, $2, $3)`
 
 	err := pg.db.QueryRow(q, fr.Root[:], fr.Tx.String(),
 		fr.FlushTimestamp).Scan()
@@ -101,7 +101,7 @@ func (pg *Postgres) getDigestsByTimestamp(ts int64) ([]*[sha256.Size]byte, error
 
 func (pg *Postgres) getUnflushedTimestamps(current int64) ([]int64, error) {
 	q := `SELECT DISTINCT collection_timestamp FROM records 
-WHERE collection_timestamp != $1 AND anchor_merkle IS NULL`
+				WHERE collection_timestamp != $1 AND anchor_merkle IS NULL`
 
 	rows, err := pg.db.Query(q, current)
 	if err != nil {
@@ -121,10 +121,10 @@ WHERE collection_timestamp != $1 AND anchor_merkle IS NULL`
 
 func (pg *Postgres) getRecordsByServerTs(ts int64) (bool, []*backend.GetResult, error) {
 	q := `SELECT r.anchor_merkle, an.tx_hash, an.chain_timestamp, r.digest
-FROM records as r
-LEFT JOIN anchors as an
-on r.anchor_merkle = an.merkle
-WHERE r.collection_timestamp = $1`
+				FROM records as r
+				LEFT JOIN anchors as an
+				on r.anchor_merkle = an.merkle
+				WHERE r.collection_timestamp = $1`
 
 	rows, err := pg.db.Query(q, ts)
 	if err != nil {
@@ -169,11 +169,11 @@ WHERE r.collection_timestamp = $1`
 
 func (pg *Postgres) getRecordByDigest(hash []byte, r *backend.GetResult) (bool, error) {
 	q := `SELECT r.anchor_merkle, r.collection_timestamp, an.tx_hash, 
-an.chain_timestamp
-FROM records as r
-LEFT JOIN anchors as an
-ON r.anchor_merkle = an.merkle
-WHERE r.digest = $1`
+				an.chain_timestamp
+				FROM records as r
+				LEFT JOIN anchors as an
+				ON r.anchor_merkle = an.merkle
+				WHERE r.digest = $1`
 
 	rows, err := pg.db.Query(q, hash)
 	if err != nil {
@@ -223,8 +223,8 @@ WHERE r.digest = $1`
 
 func (pg *Postgres) hasTable(name string) (bool, error) {
 	q := `SELECT EXISTS (SELECT 
-FROM information_schema.tables 
-WHERE table_schema = 'public' AND table_name  = $1)`
+				FROM information_schema.tables 
+				WHERE table_schema = 'public' AND table_name  = $1)`
 
 	rows, err := pg.db.Query(q, name)
 	if err != nil {
@@ -243,7 +243,7 @@ WHERE table_schema = 'public' AND table_name  = $1)`
 
 func (pg *Postgres) checkIfDigestExists(hash []byte) (bool, error) {
 	q := `SELECT EXISTS 
-(SELECT FROM records WHERE digest = $1)`
+			  (SELECT FROM records WHERE digest = $1)`
 
 	rows, err := pg.db.Query(q, hash)
 	if err != nil {
@@ -264,7 +264,7 @@ func (pg *Postgres) createAnchorsTable() error {
 	_, err := pg.db.Exec(`CREATE TABLE public.anchors
 (
     merkle bytea NOT NULL UNIQUE,
-    tx_hash text COLLATE pg_catalog."default" UNIQUE,
+    tx_hash bytea UNIQUE,
     chain_timestamp bigint,
     flush_timestamp bigint,
     CONSTRAINT anchors_pkey PRIMARY KEY (merkle)
@@ -287,7 +287,7 @@ CREATE UNIQUE INDEX idx_merkle
 -- Index: idx_tx_hash
 CREATE UNIQUE INDEX idx_tx_hash
     ON public.anchors USING btree
-    (tx_hash COLLATE pg_catalog."default" ASC NULLS LAST)
+    (tx_hash ASC NULLS LAST)
     TABLESPACE pg_default;
 `)
 	if err != nil {
