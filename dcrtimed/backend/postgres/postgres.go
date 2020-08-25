@@ -356,12 +356,6 @@ func (pg *Postgres) Restore(*os.File, bool, string) error {
 	return nil
 }
 
-// Fsck walks all data and verifies its integrity. In addition it
-// verifies anchored timestamps' existence on the blockchain.
-func (pg *Postgres) Fsck(*backend.FsckOptions) error {
-	return nil
-}
-
 // GetBalance retrieves balance information for the wallet
 // backing this instance
 func (pg *Postgres) GetBalance() (*backend.GetBalanceResult, error) {

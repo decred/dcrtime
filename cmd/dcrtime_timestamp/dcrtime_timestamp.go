@@ -28,7 +28,7 @@ func _main() error {
 			continue
 		}
 
-		// Try timestam second
+		// Try timestamp second
 		timestamp, err := time.Parse(fStr, a)
 		if err == nil {
 			fmt.Printf("%v\n", timestamp.Unix())

@@ -9,6 +9,27 @@ import (
 	"github.com/decred/dcrtime/merkle"
 )
 
+func (pg *Postgres) getAllRecordsTimestamps() (*[]int64, error) {
+	q := `SELECT collection_timestamp FROM records`
+
+	rows, err := pg.db.Query(q)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var tss []int64
+	var ts int64
+	for rows.Next() {
+		err = rows.Scan(&ts)
+		if err != nil {
+			return nil, err
+		}
+		tss = append(tss, ts)
+	}
+	return &tss, nil
+}
+
 func (pg *Postgres) getLatestAnchoredTimestamp() (int64, *[sha256.Size]byte, *chainhash.Hash, error) {
 	q := `SELECT r.collection_timestamp, r.anchor_merkle, an.tx_hash
 				FROM records as r
@@ -25,11 +46,10 @@ func (pg *Postgres) getLatestAnchoredTimestamp() (int64, *[sha256.Size]byte, *ch
 	defer rows.Close()
 
 	var (
-		serverTs int64
-		txHash   []byte
-		mr       []byte
-		merkle   [sha256.Size]byte
-		tx       *chainhash.Hash
+		serverTs   int64
+		txHash, mr []byte
+		merkle     [sha256.Size]byte
+		tx         *chainhash.Hash
 	)
 	for rows.Next() {
 		err = rows.Scan(&serverTs, &mr, &txHash)
