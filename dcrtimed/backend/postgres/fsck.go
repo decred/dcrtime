@@ -153,9 +153,13 @@ func (pg *Postgres) fsckTimestamp(options *backend.FsckOptions, ts int64) error 
 			fr.Root = r.MerkleRoot
 			fr.Tx = r.Tx
 		}
+		if options.PrintHashes {
+			fmt.Printf("Hash           : %v\n", hex.EncodeToString(r.Digest[:]))
+		}
 		fr.Hashes = append(fr.Hashes, &r.Digest)
 	}
-
+	fmt.Printf("No duplicates found\n")
+	fmt.Printf("Anchored       : %v\n", anchored)
 	// If anchored generate merkle and compare against merkle in anchors
 	// table
 	if anchored {
@@ -167,6 +171,11 @@ func (pg *Postgres) fsckTimestamp(options *backend.FsckOptions, ts int64) error 
 			return fmt.Errorf("   *** ERROR mismatched merkle "+
 				"root: %x %x", root, fr.Root)
 		}
+		if options.PrintHashes {
+			fmt.Printf("Anchor's Calculated merkle: %x\n", root[:])
+			fmt.Printf("Anchor's merkle from db: %x\n", fr.Root[:])
+		}
+		fmt.Printf("Verfied anchor's merkle root\n")
 	}
 
 	// 3.3 Verify merkle root in tx
@@ -220,6 +229,12 @@ func (pg *Postgres) fsckTimestamp(options *backend.FsckOptions, ts int64) error 
 	if !done {
 		return fmt.Errorf("   *** ERROR merkle root not "+
 			"found: tx %v merkle %x", fr.Tx, fr.Root)
+	}
+
+	if options.PrintHashes {
+		fmt.Printf("Anchor's tx: %v found on the blockchain\n", fr.Tx)
+	} else {
+		fmt.Printf("Anchor's tx found on the blockchain\n")
 	}
 
 	return nil
