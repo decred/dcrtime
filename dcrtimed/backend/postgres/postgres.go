@@ -194,7 +194,7 @@ func (pg *Postgres) GetTimestamps(timestamps []int64) ([]backend.TimestampResult
 			Timestamp: ts,
 		}
 		if pg.enableCollections {
-			exists, tsDigests, err := pg.getRecordsByServerTs(ts)
+			exists, tsDigests, _, err := pg.getRecordsByServerTs(ts)
 			if err != nil {
 				return nil, err
 			}
@@ -339,13 +339,6 @@ func (pg *Postgres) Close() {
 		pg.wallet.Close()
 	}
 	pg.db.Close()
-}
-
-// Dump dumps database to the provided file descriptor. If the
-// human flag is set to true it pretty prints the database content
-// otherwise it dumps a JSON stream.
-func (pg *Postgres) Dump(*os.File, bool) error {
-	return nil
 }
 
 // Restore recreates the the database from the provided file

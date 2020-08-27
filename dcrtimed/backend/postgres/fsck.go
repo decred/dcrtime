@@ -125,7 +125,7 @@ func journal(filename, action string, payload interface{}) error {
 //     anchor's merkle root from db
 // 3.2 Verify that the anchor merkle root on db exists on the blockchain.
 func (pg *Postgres) fsckTimestamp(options *backend.FsckOptions, ts int64) error {
-	exists, records, err := pg.getRecordsByServerTs(ts)
+	exists, records, flushTs, err := pg.getRecordsByServerTs(ts)
 	if err != nil {
 		return err
 	}
@@ -148,10 +148,11 @@ func (pg *Postgres) fsckTimestamp(options *backend.FsckOptions, ts int64) error 
 			return fmt.Errorf("    *** ERROR duplicate key: %v", k)
 		}
 		digests[k] = ts
-		if r.MerkleRoot != [sha256.Size]byte{} {
+		if r.MerkleRoot != [sha256.Size]byte{} && !anchored {
 			anchored = true
 			fr.Root = r.MerkleRoot
 			fr.Tx = r.Tx
+			fr.FlushTimestamp = flushTs
 		}
 		if options.PrintHashes {
 			fmt.Printf("Hash           : %v\n", hex.EncodeToString(r.Digest[:]))

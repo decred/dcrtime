@@ -175,8 +175,9 @@ func (pg *Postgres) getUnflushedTimestamps(current int64) ([]int64, error) {
 	return tss, nil
 }
 
-func (pg *Postgres) getRecordsByServerTs(ts int64) (bool, []*backend.GetResult, error) {
-	q := `SELECT r.anchor_merkle, an.tx_hash, an.chain_timestamp, r.digest
+func (pg *Postgres) getRecordsByServerTs(ts int64) (bool, []*backend.GetResult, int64, error) {
+	q := `SELECT r.anchor_merkle, an.tx_hash, an.chain_timestamp, r.digest,
+        an.flush_timestamp
 				FROM records as r
 				LEFT JOIN anchors as an
 				on r.anchor_merkle = an.merkle
@@ -184,7 +185,7 @@ func (pg *Postgres) getRecordsByServerTs(ts int64) (bool, []*backend.GetResult, 
 
 	rows, err := pg.db.Query(q, ts)
 	if err != nil {
-		return false, nil, err
+		return false, nil, 0, err
 	}
 	defer rows.Close()
 	var (
@@ -192,21 +193,22 @@ func (pg *Postgres) getRecordsByServerTs(ts int64) (bool, []*backend.GetResult, 
 		digest  []byte
 		txHash  []byte
 		chainTs sql.NullInt64
+		flushTs int64
 	)
 	r := []*backend.GetResult{}
 	for rows.Next() {
 		rr := backend.GetResult{
 			Timestamp: ts,
 		}
-		err = rows.Scan(&mr, &txHash, &chainTs, &digest)
+		err = rows.Scan(&mr, &txHash, &chainTs, &digest, &flushTs)
 		if err != nil {
-			return false, nil, err
+			return false, nil, 0, err
 		}
 		rr.Timestamp = ts
 		copy(rr.MerkleRoot[:], mr[:sha256.Size])
 		tx, err := chainhash.NewHash(txHash[:])
 		if err != nil {
-			return false, nil, err
+			return false, nil, 0, err
 		}
 		rr.Tx = *tx
 		// chainTs can be NULL - handle safely
@@ -218,7 +220,7 @@ func (pg *Postgres) getRecordsByServerTs(ts int64) (bool, []*backend.GetResult, 
 		r = append(r, &rr)
 	}
 
-	return len(r) > 0, r, nil
+	return len(r) > 0, r, flushTs, nil
 }
 
 func (pg *Postgres) getRecordByDigest(hash []byte, r *backend.GetResult) (bool, error) {

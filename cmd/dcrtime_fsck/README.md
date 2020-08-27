@@ -1,6 +1,8 @@
 dcrtime_fsck
 ============
 
+// XXX: update docs and mention postgres
+
 The filesystem backend can under rare circumstances become incoherent. This
 tool iterates over all timestamp directories and corrects known failures.
 
