@@ -26,23 +26,14 @@ var (
 func _main() error {
 	flag.Parse()
 
-	loadedCfg, err := loadConfig()
-	if err != nil {
-		return fmt.Errorf("Could not load configuration file: %v", err)
-	}
-
 	if *restore {
 		if *destination == "" {
 			return fmt.Errorf("-destination must be set")
 		}
-
-		fs, err := filesystem.NewRestore(*destination)
-		if err != nil {
-			return err
-		}
-		defer fs.Close()
-
-		return fs.Restore(os.Stdin, true, *destination)
+	}
+	loadedCfg, err := loadConfig()
+	if err != nil {
+		return fmt.Errorf("Could not load configuration file: %v", err)
 	}
 
 	root := *fsRoot
@@ -55,13 +46,12 @@ func _main() error {
 		}
 	}
 
-	// Dump
-
-	fmt.Printf("=== Root: %v\n", root)
-
 	var b backend.Backend
 	switch (*loadedCfg).Backend {
 	case "filesystem":
+		if *restore {
+			b, err = filesystem.NewRestore(*destination)
+		}
 		b, err = filesystem.NewDump(root)
 	case "postgres":
 		var net string
@@ -70,6 +60,9 @@ func _main() error {
 			net = "testnet"
 		default:
 			net = "mainnet"
+		}
+		if *restore {
+			b, err = filesystem.NewRestore(*destination)
 		}
 		b, err = postgres.NewDump(loadedCfg.PostgresHost,
 			net,
@@ -84,6 +77,10 @@ func _main() error {
 	}
 	defer b.Close()
 
+	fmt.Printf("=== Root: %v\n", root)
+	if *restore {
+		return b.Restore(os.Stdin, true, *destination)
+	}
 	return b.Dump(os.Stdout, !*dumpJSON)
 }
 

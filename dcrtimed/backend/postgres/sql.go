@@ -10,7 +10,7 @@ import (
 )
 
 func (pg *Postgres) getAllRecordsTimestamps() (*[]int64, error) {
-	q := `SELECT collection_timestamp FROM records`
+	q := `SELECT DISTINCT collection_timestamp FROM records`
 
 	rows, err := pg.db.Query(q)
 	if err != nil {
