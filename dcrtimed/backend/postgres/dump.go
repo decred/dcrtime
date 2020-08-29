@@ -269,5 +269,4 @@ func (pg *Postgres) Restore(f *os.File, verbose bool, location string) error {
 			return fmt.Errorf("invalid state %v", state)
 		}
 	}
-	return nil
 }
