@@ -51,6 +51,7 @@ func _main() error {
 	case "filesystem":
 		if *restore {
 			b, err = filesystem.NewRestore(*destination)
+			break
 		}
 		b, err = filesystem.NewDump(root)
 	case "postgres":
@@ -63,6 +64,7 @@ func _main() error {
 		}
 		if *restore {
 			b, err = filesystem.NewRestore(*destination)
+			break
 		}
 		b, err = postgres.NewDump(loadedCfg.PostgresHost,
 			net,
