@@ -16,7 +16,7 @@ import (
 	"github.com/decred/dcrtime/dcrtimed/backend"
 )
 
-func NewDump(host, net, rootCert, cert, key string) (*Postgres, error) {
+func NewDB(host, net, rootCert, cert, key string) (*Postgres, error) {
 	// Connect to database
 	dbName := net + "_dcrtime"
 	h := "postgresql://" + dbUser + "@" + host + "/" + dbName
@@ -175,4 +175,99 @@ func dumpFlushRecord(f *os.File, flushRecord *backend.FlushRecord) {
 	for _, v := range flushRecord.Hashes {
 		fmt.Fprintf(f, "  Flushed      : %x\n", *v)
 	}
+}
+
+func (pg *Postgres) restoreFlushRecord(verbose bool, fr backend.FlushRecordJSON) error {
+	frOld := backend.FlushRecord{
+		Root:           fr.Root,
+		Hashes:         fr.Hashes,
+		Tx:             fr.Tx,
+		ChainTimestamp: fr.ChainTimestamp,
+		FlushTimestamp: fr.FlushTimestamp,
+	}
+
+	err := pg.insertAnchor(frOld)
+	if err != nil {
+		return err
+	}
+	if verbose {
+		fmt.Printf("Restored flushed anchor: (merkle:%v)\n", hex.EncodeToString(
+			fr.Root[:]))
+	}
+	return nil
+}
+
+// Restore reads JSON encoded database contents and recreates the postgres
+// database.
+func (pg *Postgres) Restore(f *os.File, verbose bool, location string) error {
+	d := json.NewDecoder(f)
+
+	// we store each flushed timestamp merkle root in order to insert it
+	// when restoring digests to the records table
+	tssMerkles := make(map[int64][sha256.Size]byte)
+
+	state := 0
+	for {
+		switch state {
+		case 0:
+			// Type
+			var t backend.RecordType
+			err := d.Decode(&t)
+			if err != nil {
+				return err
+			}
+
+			// Check version we understand
+			if t.Version != backend.RecordTypeVersion {
+				return fmt.Errorf("unknown version %v",
+					t.Version)
+			}
+
+			// Determine record type
+			switch t.Type {
+			case backend.RecordTypeDigestReceived:
+				state = 1
+			case backend.RecordTypeFlushRecord:
+				state = 2
+			default:
+				return fmt.Errorf("invalid record type: %v",
+					t.Type)
+			}
+		case 1:
+			// DigestReceived
+			var dr backend.DigestReceived
+			err := d.Decode(&dr)
+			if err != nil {
+				return err
+			}
+			// if digest' timestamp was anchored, get anchor' merkle root
+			// to insert it into records table
+			anchorRoot := tssMerkles[dr.Timestamp]
+			err = pg.insertRestoredDigest(dr, anchorRoot)
+			if err != nil {
+				return err
+			}
+			state = 0
+		case 2:
+			// Flushrecord
+			var fr backend.FlushRecordJSON
+			err := d.Decode(&fr)
+			if err != nil {
+				return err
+			}
+			err = pg.restoreFlushRecord(verbose, fr)
+			if err != nil {
+				return err
+			}
+			_, ok := tssMerkles[fr.Timestamp]
+			if !ok {
+				tssMerkles[fr.Timestamp] = fr.Root
+			}
+			state = 0
+		default:
+			// Illegal
+			return fmt.Errorf("invalid state %v", state)
+		}
+	}
+	return nil
 }

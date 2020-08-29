@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"os"
 	"path/filepath"
 	"sync"
 	"time"
@@ -339,14 +338,6 @@ func (pg *Postgres) Close() {
 		pg.wallet.Close()
 	}
 	pg.db.Close()
-}
-
-// Restore recreates the the database from the provided file
-// descriptor. The verbose flag is set to true to indicate that this
-// call may parint to stdout. The provided string describes the target
-// location and is implementation specific.
-func (pg *Postgres) Restore(*os.File, bool, string) error {
-	return nil
 }
 
 // GetBalance retrieves balance information for the wallet

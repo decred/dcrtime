@@ -3,11 +3,29 @@ package postgres
 import (
 	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 
 	"github.com/decred/dcrd/chaincfg/chainhash"
 	"github.com/decred/dcrtime/dcrtimed/backend"
 	"github.com/decred/dcrtime/merkle"
 )
+
+func (pg *Postgres) insertRestoredDigest(dr backend.DigestReceived, merkle [sha256.Size]byte) error {
+	q := `INSERT INTO records (collection_timestamp, digest, anchor_merkle)
+				VALUES($1, $2, $3)`
+
+	digest, err := hex.DecodeString(dr.Digest)
+	err = pg.db.QueryRow(q, dr.Timestamp, digest, merkle[:]).Scan()
+	if err != nil {
+		// The insert command won't return any value, the following error is
+		// expected and means anchor row inserted successfully
+		if err.Error() == "sql: no rows in result set" {
+			return nil
+		}
+		return err
+	}
+	return nil
+}
 
 func (pg *Postgres) getAllRecordsTimestamps() (*[]int64, error) {
 	q := `SELECT DISTINCT collection_timestamp FROM records`
@@ -71,11 +89,6 @@ func (pg *Postgres) updateAnchorChainTs(fr *backend.FlushRecord) error {
 
 	err := pg.db.QueryRow(q, fr.ChainTimestamp, fr.Root[:]).Scan()
 	if err != nil {
-		// The insert command won't return any value, the following error is
-		// expected and means anchor row inserted successfully
-		if err.Error() == "sql: no rows in result set" {
-			return nil
-		}
 		return err
 	}
 	return nil
@@ -93,11 +106,11 @@ func (pg *Postgres) updateRecordsAnchor(ts int64, merkleRoot [sha256.Size]byte) 
 }
 
 func (pg *Postgres) insertAnchor(fr backend.FlushRecord) error {
-	q := `INSERT INTO anchors (merkle, tx_hash, flush_timestamp)
-				VALUES($1, $2, $3)`
+	q := `INSERT INTO anchors (merkle, tx_hash, flush_timestamp, chain_timestamp)
+				VALUES($1, $2, $3, $4)`
 
 	err := pg.db.QueryRow(q, fr.Root[:], fr.Tx[:],
-		fr.FlushTimestamp).Scan()
+		fr.FlushTimestamp, fr.ChainTimestamp).Scan()
 	if err != nil {
 		// The insert command won't return any value, the following error is
 		// expected and means anchor row inserted successfully

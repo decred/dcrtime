@@ -70,7 +70,7 @@ func _main() error {
 		default:
 			net = "mainnet"
 		}
-		b, err = postgres.NewDump(loadedCfg.PostgresHost,
+		b, err = postgres.NewDB(loadedCfg.PostgresHost,
 			net,
 			loadedCfg.PostgresRootCert,
 			loadedCfg.PostgresCert,
