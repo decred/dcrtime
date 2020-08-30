@@ -26,11 +26,6 @@ var (
 func _main() error {
 	flag.Parse()
 
-	if *restore {
-		if *destination == "" {
-			return fmt.Errorf("-destination must be set")
-		}
-	}
 	loadedCfg, err := loadConfig()
 	if err != nil {
 		return fmt.Errorf("Could not load configuration file: %v", err)
@@ -50,6 +45,9 @@ func _main() error {
 	switch (*loadedCfg).Backend {
 	case "filesystem":
 		if *restore {
+			if *destination == "" {
+				return fmt.Errorf("-destination must be set")
+			}
 			b, err = filesystem.NewRestore(*destination)
 			break
 		}
