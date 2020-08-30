@@ -54,6 +54,9 @@ func _main() error {
 			break
 		}
 		b, err = filesystem.NewDump(root)
+		if !*dumpJSON {
+			fmt.Printf("=== Root: %v\n", root)
+		}
 	case "postgres":
 		var net string
 		switch loadedCfg.TestNet {
@@ -75,7 +78,6 @@ func _main() error {
 	}
 	defer b.Close()
 
-	fmt.Printf("=== Root: %v\n", root)
 	if *restore {
 		return b.Restore(os.Stdin, true, *destination)
 	}

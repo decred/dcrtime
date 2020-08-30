@@ -1,10 +1,12 @@
 dcrtime_fsck
 ============
 
-// XXX: update docs and mention postgres
-
 The filesystem backend can under rare circumstances become incoherent. This
 tool iterates over all timestamp directories and corrects known failures.
+
+PostgreSQL backend also supported, `dcrtime_fsck` digs in `dcrtimed.conf`
+file to determine which backend to run, and uses the provided db params 
+in case postgres backend is running.
 
 ## Flags
 
