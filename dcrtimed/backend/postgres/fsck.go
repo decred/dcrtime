@@ -15,6 +15,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/decred/dcrd/chaincfg/chainhash"
 	"github.com/decred/dcrd/txscript/v2"
 	"github.com/decred/dcrdata/api/types/v4"
 	"github.com/decred/dcrtime/dcrtimed/backend"
@@ -125,7 +126,7 @@ func journal(filename, action string, payload interface{}) error {
 //     anchor's merkle root from db
 // 3.2 Verify that the anchor merkle root on db exists on the blockchain.
 func (pg *Postgres) fsckTimestamp(options *backend.FsckOptions, ts int64) error {
-	exists, records, flushTs, err := pg.getRecordsByServerTs(ts)
+	exists, records, err := pg.getRecordsByServerTs(ts)
 	if err != nil {
 		return err
 	}
@@ -140,7 +141,7 @@ func (pg *Postgres) fsckTimestamp(options *backend.FsckOptions, ts int64) error 
 	)
 	digests := make(map[string]int64)
 	for _, r := range records {
-		k := hex.EncodeToString(r.Digest[:])
+		k := hex.EncodeToString(r.Record.Digest[:])
 		if _, ok := digests[k]; ok {
 			// This really can't happen but we check it so that we
 			// can equate lengths later to determine if the map and
@@ -148,16 +149,23 @@ func (pg *Postgres) fsckTimestamp(options *backend.FsckOptions, ts int64) error 
 			return fmt.Errorf("    *** ERROR duplicate key: %v", k)
 		}
 		digests[k] = ts
-		if r.MerkleRoot != [sha256.Size]byte{} && !anchored {
+		if !bytes.Equal(r.Anchor.Merkle, []byte{}) && !anchored {
 			anchored = true
-			fr.Root = r.MerkleRoot
-			fr.Tx = r.Tx
-			fr.FlushTimestamp = flushTs
+			copy(fr.Root[:], r.Anchor.Merkle[:sha256.Size])
+			tx, err := chainhash.NewHash(r.Anchor.TxHash[:])
+			if err != nil {
+				return err
+			}
+			fr.Tx = *tx
+			fr.FlushTimestamp = r.Anchor.FlushTimestamp
 		}
 		if options.PrintHashes {
-			fmt.Printf("Hash           : %v\n", hex.EncodeToString(r.Digest[:]))
+			fmt.Printf("Hash           : %v\n",
+				hex.EncodeToString(r.Record.Digest[:]))
 		}
-		fr.Hashes = append(fr.Hashes, &r.Digest)
+		var digest [sha256.Size]byte
+		copy(digest[:], r.Record.Digest[:])
+		fr.Hashes = append(fr.Hashes, &digest)
 	}
 	fmt.Printf("No duplicates found\n")
 	fmt.Printf("Anchored       : %v\n", anchored)

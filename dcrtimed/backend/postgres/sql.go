@@ -1,21 +1,21 @@
 package postgres
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"database/sql"
-	"encoding/hex"
 
-	"github.com/decred/dcrd/chaincfg/chainhash"
-	"github.com/decred/dcrtime/dcrtimed/backend"
 	"github.com/decred/dcrtime/merkle"
 )
 
-func (pg *Postgres) insertRestoredDigest(dr backend.DigestReceived, merkle [sha256.Size]byte) error {
+// insertRestoredDigest accepts a Record model and inserts it to the db
+//
+// this func used when restoring a backup
+func (pg *Postgres) insertRestoredDigest(r Record) error {
 	q := `INSERT INTO records (collection_timestamp, digest, anchor_merkle)
 				VALUES($1, $2, $3)`
 
-	digest, err := hex.DecodeString(dr.Digest)
-	err = pg.db.QueryRow(q, dr.Timestamp, digest, merkle[:]).Scan()
+	err := pg.db.QueryRow(q, r.CollectionTimestamp, r.Digest, r.AnchorMerkle).Scan()
 	if err != nil {
 		// The insert command won't return any value, the following error is
 		// expected and means anchor row inserted successfully
@@ -27,6 +27,7 @@ func (pg *Postgres) insertRestoredDigest(dr backend.DigestReceived, merkle [sha2
 	return nil
 }
 
+// getAllRecordsTimestamps returns all timestamps found in records table
 func (pg *Postgres) getAllRecordsTimestamps() (*[]int64, error) {
 	q := `SELECT DISTINCT collection_timestamp FROM records`
 
@@ -48,7 +49,9 @@ func (pg *Postgres) getAllRecordsTimestamps() (*[]int64, error) {
 	return &tss, nil
 }
 
-func (pg *Postgres) getLatestAnchoredTimestamp() (int64, *[sha256.Size]byte, *chainhash.Hash, error) {
+// getLatestAnchoredTimestamp returns latest anchor information - tx hash and
+// merkle root, additionally it returns anchor's collection timestamp
+func (pg *Postgres) getLatestAnchoredTimestamp() (int64, Anchor, error) {
 	q := `SELECT r.collection_timestamp, r.anchor_merkle, an.tx_hash
 				FROM records as r
 				LEFT JOIN anchors as an
@@ -58,59 +61,60 @@ func (pg *Postgres) getLatestAnchoredTimestamp() (int64, *[sha256.Size]byte, *ch
 				LIMIT 1`
 
 	rows, err := pg.db.Query(q)
+	a := Anchor{}
 	if err != nil {
-		return 0, nil, nil, err
+		return 0, a, err
 	}
 	defer rows.Close()
 
 	var (
 		serverTs   int64
 		txHash, mr []byte
-		merkle     [sha256.Size]byte
-		tx         *chainhash.Hash
 	)
 	for rows.Next() {
 		err = rows.Scan(&serverTs, &mr, &txHash)
 		if err != nil {
-			return 0, nil, nil, err
+			return 0, a, err
 		}
-		copy(merkle[:], mr[:sha256.Size])
-		tx, err = chainhash.NewHash(txHash)
-		if err != nil {
-			return 0, nil, nil, err
-		}
+		a.Merkle = mr
+		a.TxHash = txHash
 	}
-	return serverTs, &merkle, tx, nil
+	return serverTs, a, nil
 }
 
-func (pg *Postgres) updateAnchorChainTs(fr *backend.FlushRecord) error {
+// updateAnchorChainTs accepts an anchor and updates it's chain timestamp
+// on db
+func (pg *Postgres) updateAnchorChainTs(a Anchor) error {
 	q := `UPDATE anchors SET chain_timestamp = $1
 				WHERE merkle = $2`
 
-	err := pg.db.QueryRow(q, fr.ChainTimestamp, fr.Root[:]).Scan()
+	err := pg.db.QueryRow(q, a.ChainTimestamp, a.Merkle).Scan()
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (pg *Postgres) updateRecordsAnchor(ts int64, merkleRoot [sha256.Size]byte) error {
+// updateRecordsAnchor accepts a timestamp and anchor's merkle root and
+// updates all digests in records table with given merkle
+func (pg *Postgres) updateRecordsAnchor(ts int64, merkleRoot []byte) error {
 	q := `UPDATE records SET anchor_merkle = $1
 				WHERE collection_timestamp = $2`
 
-	err := pg.db.QueryRow(q, merkleRoot[:], ts).Scan()
+	err := pg.db.QueryRow(q, merkleRoot, ts).Scan()
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (pg *Postgres) insertAnchor(fr backend.FlushRecord) error {
+// insertAnchor accepts an anchor and inserts it to db
+func (pg *Postgres) insertAnchor(a Anchor) error {
 	q := `INSERT INTO anchors (merkle, tx_hash, flush_timestamp, chain_timestamp)
 				VALUES($1, $2, $3, $4)`
 
-	err := pg.db.QueryRow(q, fr.Root[:], fr.Tx[:],
-		fr.FlushTimestamp, fr.ChainTimestamp).Scan()
+	err := pg.db.QueryRow(q, a.Merkle, a.TxHash,
+		a.FlushTimestamp, a.ChainTimestamp).Scan()
 	if err != nil {
 		// The insert command won't return any value, the following error is
 		// expected and means anchor row inserted successfully
@@ -122,6 +126,9 @@ func (pg *Postgres) insertAnchor(fr backend.FlushRecord) error {
 	return nil
 }
 
+// getDigestsByMerkleRoot accepts a merkle root, selects all digests from
+// records table using given merkle, converts them to arrays([sha256.Size])
+// and then finally returns the result as array of pointers
 func (pg *Postgres) getDigestsByMerkleRoot(merkle []byte) ([]*[sha256.Size]byte, error) {
 	q := `SELECT digest from records WHERE anchor_merkle = $1`
 
@@ -147,6 +154,9 @@ func (pg *Postgres) getDigestsByMerkleRoot(merkle []byte) ([]*[sha256.Size]byte,
 	return digests, nil
 }
 
+// getDigestsByTimestamp accepts a timestamp, selects all digests from
+// records table using given timestamp, converts them to arrays([sha256.Size])
+// and then finally returns the result as array of pointers
 func (pg *Postgres) getDigestsByTimestamp(ts int64) ([]*[sha256.Size]byte, error) {
 	q := `SELECT digest from records WHERE collection_timestamp = $1`
 
@@ -168,6 +178,9 @@ func (pg *Postgres) getDigestsByTimestamp(ts int64) ([]*[sha256.Size]byte, error
 	return digests, nil
 }
 
+// getUnflushedTimestamps accepts current server timestamp and queries records
+// table to find all timestamps which aren't flushed yet - has no anchoring
+// information
 func (pg *Postgres) getUnflushedTimestamps(current int64) ([]int64, error) {
 	q := `SELECT DISTINCT collection_timestamp FROM records 
 				WHERE collection_timestamp != $1 AND anchor_merkle IS NULL`
@@ -188,7 +201,11 @@ func (pg *Postgres) getUnflushedTimestamps(current int64) ([]int64, error) {
 	return tss, nil
 }
 
-func (pg *Postgres) getRecordsByServerTs(ts int64) (bool, []*backend.GetResult, int64, error) {
+// getRecordsByServerTs accepts a server collection timestamps and returns
+// all records timetamped during that timestamp cycle, additionally it returns
+// the anchor information in case the timestamp's digests anchored on the
+// blockchain
+func (pg *Postgres) getRecordsByServerTs(ts int64) (bool, []*AnchoredRecord, error) {
 	q := `SELECT r.anchor_merkle, an.tx_hash, an.chain_timestamp, r.digest,
         an.flush_timestamp
 				FROM records as r
@@ -198,7 +215,7 @@ func (pg *Postgres) getRecordsByServerTs(ts int64) (bool, []*backend.GetResult, 
 
 	rows, err := pg.db.Query(q, ts)
 	if err != nil {
-		return false, nil, 0, err
+		return false, nil, err
 	}
 	defer rows.Close()
 	var (
@@ -208,35 +225,39 @@ func (pg *Postgres) getRecordsByServerTs(ts int64) (bool, []*backend.GetResult, 
 		chainTs sql.NullInt64
 		flushTs int64
 	)
-	r := []*backend.GetResult{}
+	r := []*AnchoredRecord{}
 	for rows.Next() {
-		rr := backend.GetResult{
-			Timestamp: ts,
+		ar := AnchoredRecord{
+			Record: Record{
+				CollectionTimestamp: ts,
+			},
 		}
 		err = rows.Scan(&mr, &txHash, &chainTs, &digest, &flushTs)
 		if err != nil {
-			return false, nil, 0, err
+			return false, nil, err
 		}
-		rr.Timestamp = ts
-		copy(rr.MerkleRoot[:], mr[:sha256.Size])
-		tx, err := chainhash.NewHash(txHash[:])
-		if err != nil {
-			return false, nil, 0, err
+		ar.Record.Digest = digest
+		ar.Anchor = Anchor{
+			Merkle:         mr,
+			TxHash:         txHash,
+			FlushTimestamp: flushTs,
 		}
-		rr.Tx = *tx
 		// chainTs can be NULL - handle safely
 		if chainTs.Valid {
-			rr.AnchoredTimestamp = chainTs.Int64
+			ar.Anchor.ChainTimestamp = chainTs.Int64
 		}
-		copy(rr.Digest[:], digest[:])
 
-		r = append(r, &rr)
+		r = append(r, &ar)
 	}
 
-	return len(r) > 0, r, flushTs, nil
+	return len(r) > 0, r, nil
 }
 
-func (pg *Postgres) getRecordByDigest(hash []byte, r *backend.GetResult) (bool, error) {
+// getRecordByDigest accepts apointer to an AnchoredRecord which initially
+// includes only the record hash, it queries the db to get digest's data
+// including anchor's data if hash is anchored, it returns a bool to indicate
+// wether digest was found on db or not
+func (pg *Postgres) getRecordByDigest(ar *AnchoredRecord) (bool, error) {
 	q := `SELECT r.anchor_merkle, r.collection_timestamp, an.tx_hash, 
 				an.chain_timestamp
 				FROM records as r
@@ -244,51 +265,39 @@ func (pg *Postgres) getRecordByDigest(hash []byte, r *backend.GetResult) (bool, 
 				ON r.anchor_merkle = an.merkle
 				WHERE r.digest = $1`
 
-	rows, err := pg.db.Query(q, hash)
+	rows, err := pg.db.Query(q, ar.Record.Digest)
 	if err != nil {
 		return false, err
 	}
 	defer rows.Close()
-	var (
-		mr       []byte
-		txHash   []byte
-		chainTs  sql.NullInt64
-		serverTs int64
-	)
+	var chainTs sql.NullInt64
 	for rows.Next() {
-		err = rows.Scan(&mr, &serverTs, &txHash, &chainTs)
+		err = rows.Scan(&ar.Anchor.Merkle, &ar.Record.CollectionTimestamp, &ar.Anchor.TxHash, &chainTs)
 		if err != nil {
 			return false, err
 		}
-		r.Timestamp = serverTs
-		copy(r.MerkleRoot[:], mr[:sha256.Size])
-		tx, err := chainhash.NewHash(txHash[:])
-		if err != nil {
-			return false, err
-		}
-		r.Tx = *tx
 		// chainTs can be NULL - handle safely
 		if chainTs.Valid {
-			r.AnchoredTimestamp = chainTs.Int64
+			ar.Anchor.ChainTimestamp = chainTs.Int64
 		}
-		if mr != nil {
-			hashes, err := pg.getDigestsByMerkleRoot(mr)
+		if !bytes.Equal(ar.Anchor.Merkle, []byte{}) {
+			hashes, err := pg.getDigestsByMerkleRoot(ar.Anchor.Merkle)
 			if err != nil {
 				return false, err
 			}
 			var digest [sha256.Size]byte
-			copy(digest[:], hash[:])
+			copy(digest[:], ar.Record.Digest[:])
 
 			// That pointer better not be nil!
-			r.MerklePath = *merkle.AuthPath(hashes, &digest)
+			ar.MerklePath = *merkle.AuthPath(hashes, &digest)
 		}
-		r.ErrorCode = backend.ErrorOK
 		return true, nil
 	}
 
 	return false, nil
 }
 
+// hasTable accepts a table name and checks if it was created
 func (pg *Postgres) hasTable(name string) (bool, error) {
 	q := `SELECT EXISTS (SELECT 
 				FROM information_schema.tables 
@@ -309,7 +318,9 @@ func (pg *Postgres) hasTable(name string) (bool, error) {
 	return exists, nil
 }
 
-func (pg *Postgres) checkIfDigestExists(hash []byte) (bool, error) {
+// isDigestExists accept a digest and checks if it's already exists in
+// records table
+func (pg *Postgres) isDigestExists(hash []byte) (bool, error) {
 	q := `SELECT EXISTS 
 			  (SELECT FROM records WHERE digest = $1)`
 
@@ -328,6 +339,7 @@ func (pg *Postgres) checkIfDigestExists(hash []byte) (bool, error) {
 	return exists, nil
 }
 
+// createAnchorsTable creates anchors table
 func (pg *Postgres) createAnchorsTable() error {
 	_, err := pg.db.Exec(`CREATE TABLE public.anchors
 (
@@ -365,6 +377,7 @@ CREATE UNIQUE INDEX idx_tx_hash
 	return nil
 }
 
+// createRecordsTable creates records table
 func (pg *Postgres) createRecordsTable() error {
 	_, err := pg.db.Exec(`CREATE TABLE public.records
 (
@@ -402,6 +415,8 @@ CREATE UNIQUE INDEX idx_digest
 	return nil
 }
 
+// createsTables creates db tables needed for our postgres backend
+// implementation
 func (pg *Postgres) createTables() error {
 	exists, err := pg.hasTable(tableAnchors)
 	if err != nil {

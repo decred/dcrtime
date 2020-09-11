@@ -5,6 +5,7 @@
 package postgres
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"database/sql"
 	"errors"
@@ -14,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/decred/dcrd/chaincfg/chainhash"
 	"github.com/decred/dcrtime/dcrtimed/backend"
 	"github.com/decred/dcrtime/dcrtimed/dcrtimewallet"
 	"github.com/decred/dcrtime/merkle"
@@ -109,7 +111,10 @@ func (pg *Postgres) lazyFlush(fr *backend.FlushRecord) (*dcrtimewallet.TxLookupR
 	fr.ChainTimestamp = res.Timestamp
 
 	// Update anchor row in database
-	err = pg.updateAnchorChainTs(fr)
+	err = pg.updateAnchorChainTs(Anchor{
+		ChainTimestamp: fr.ChainTimestamp,
+		Merkle:         fr.Root[:],
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +125,7 @@ func (pg *Postgres) lazyFlush(fr *backend.FlushRecord) (*dcrtimewallet.TxLookupR
 	return res, nil
 }
 
-// Return timestamp information for given digests.
+// Get returns timestamp information for given digests.
 func (pg *Postgres) Get(digests [][sha256.Size]byte) ([]backend.GetResult, error) {
 	gdmes := make([]backend.GetResult, 0, len(digests))
 
@@ -135,7 +140,12 @@ func (pg *Postgres) Get(digests [][sha256.Size]byte) ([]backend.GetResult, error
 		gdme := backend.GetResult{
 			Digest: d,
 		}
-		found, err := pg.getRecordByDigest(d[:], &gdme)
+		ar := AnchoredRecord{
+			Record: Record{
+				Digest: d[:],
+			},
+		}
+		found, err := pg.getRecordByDigest(&ar)
 		if err != nil {
 			return nil, err
 		}
@@ -144,9 +154,18 @@ func (pg *Postgres) Get(digests [][sha256.Size]byte) ([]backend.GetResult, error
 			gdme.ErrorCode = backend.ErrorNotFound
 		} else {
 			// Override error code during testing
+			gdme.ErrorCode = backend.ErrorOK
+			gdme.MerklePath = ar.MerklePath
+			copy(gdme.MerkleRoot[:], ar.Anchor.Merkle[:])
+			tx, err := chainhash.NewHash(ar.Anchor.TxHash[:])
+			if err != nil {
+				return nil, err
+			}
+			gdme.Tx = *tx
 			if pg.testing {
 				gdme.ErrorCode = digestFound
-			} else if gdme.MerkleRoot != [sha256.Size]byte{} && gdme.AnchoredTimestamp == 0 {
+			} else if !bytes.Equal(ar.Anchor.Merkle, []byte{}) &&
+				gdme.AnchoredTimestamp == 0 {
 				// Lazyflush record if it was anchored but blockchain timestamp
 				// isn't avialable yet
 				fr := backend.FlushRecord{
@@ -193,7 +212,7 @@ func (pg *Postgres) GetTimestamps(timestamps []int64) ([]backend.TimestampResult
 			Timestamp: ts,
 		}
 		if pg.enableCollections {
-			exists, tsDigests, _, err := pg.getRecordsByServerTs(ts)
+			exists, records, err := pg.getRecordsByServerTs(ts)
 			if err != nil {
 				return nil, err
 			}
@@ -202,12 +221,18 @@ func (pg *Postgres) GetTimestamps(timestamps []int64) ([]backend.TimestampResult
 				gtme.ErrorCode = backend.ErrorNotFound
 			}
 			// copy ts digests
-			gtme.Digests = make([][sha256.Size]byte, 0, len(tsDigests))
-			for _, digest := range tsDigests {
-				gtme.Digests = append(gtme.Digests, (*digest).Digest)
-				gtme.Tx = (*digest).Tx
-				gtme.AnchoredTimestamp = (*digest).AnchoredTimestamp
-				gtme.MerkleRoot = (*digest).MerkleRoot
+			gtme.Digests = make([][sha256.Size]byte, 0, len(records))
+			for _, r := range records {
+				var d [sha256.Size]byte
+				copy(d[:], r.Record.Digest[:])
+				gtme.Digests = append(gtme.Digests, d)
+				tx, err := chainhash.NewHash(r.Anchor.TxHash)
+				if err != nil {
+					return nil, err
+				}
+				gtme.Tx = *tx
+				gtme.AnchoredTimestamp = r.Anchor.ChainTimestamp
+				copy(gtme.MerkleRoot[:], r.Anchor.Merkle[:sha256.Size])
 			}
 			// Lazyflush record if it was anchored but blockchain timestamp
 			// isn't avialable yet
@@ -239,7 +264,7 @@ func (pg *Postgres) GetTimestamps(timestamps []int64) ([]backend.TimestampResult
 	return gtmes, nil
 }
 
-// Store hashes and return timestamp and associated errors.  Put is
+// Put stores hashes and return timestamp and associated errors.  Put is
 // allowed to return transient errors.
 func (pg *Postgres) Put(hashes [][sha256.Size]byte) (int64, []backend.PutResult, error) {
 	// Two-phase commit.
@@ -267,7 +292,7 @@ func (pg *Postgres) Put(hashes [][sha256.Size]byte) (int64, []backend.PutResult,
 
 	for _, hash := range hashes {
 		// Check if digest exists
-		exists, err := pg.checkIfDigestExists(hash[:])
+		exists, err := pg.isDigestExists(hash[:])
 		if err != nil {
 			return 0, []backend.PutResult{}, err
 		}
@@ -356,15 +381,23 @@ func (pg *Postgres) GetBalance() (*backend.GetBalanceResult, error) {
 
 // LastAnchor retrieves last successful anchor details
 func (pg *Postgres) LastAnchor() (*backend.LastAnchorResult, error) {
-	ts, merkle, tx, err := pg.getLatestAnchoredTimestamp()
+	ts, a, err := pg.getLatestAnchoredTimestamp()
 	if err != nil {
 		return nil, err
 	}
-
 	if ts == 0 {
 		return &backend.LastAnchorResult{}, nil
 	}
 
+	var (
+		merkle [sha256.Size]byte
+		tx     *chainhash.Hash
+	)
+	copy(merkle[:], a.Merkle[:sha256.Size])
+	tx, err = chainhash.NewHash(a.TxHash)
+	if err != nil {
+		return nil, err
+	}
 	var me backend.LastAnchorResult
 	me.Tx = *tx
 
@@ -372,7 +405,7 @@ func (pg *Postgres) LastAnchor() (*backend.LastAnchorResult, error) {
 	// and update db if info changed.
 	fr := backend.FlushRecord{
 		Tx:   *tx,
-		Root: *merkle,
+		Root: merkle,
 	}
 	txWalletInfo, err := pg.lazyFlush(&fr)
 
@@ -500,9 +533,8 @@ func (pg *Postgres) flush(ts int64) error {
 	mt := merkle.Tree(digests)
 	// Last element is root
 	root := *mt[len(mt)-1]
-	fr := backend.FlushRecord{
-		Root:           root,
-		Hashes:         mt[:len(digests)], // Only store hashes
+	a := Anchor{
+		Merkle:         root[:],
 		FlushTimestamp: time.Now().Unix(),
 	}
 	if !pg.testing {
@@ -513,17 +545,17 @@ func (pg *Postgres) flush(ts int64) error {
 		}
 		log.Infof("Flush timestamp: %v digests %v merkle: %x tx: %v",
 			ts, len(digests), root, tx.String())
-		fr.Tx = *tx
+		a.TxHash = (*tx)[:]
 	}
 
 	// Insert anchor data into db
-	err = pg.insertAnchor(fr)
+	err = pg.insertAnchor(a)
 	if err != nil {
 		return err
 	}
 
 	// Update timestamp's records merkle root
-	pg.updateRecordsAnchor(ts, fr.Root)
+	pg.updateRecordsAnchor(ts, a.Merkle)
 
 	// Update commit.
 	pg.commit++

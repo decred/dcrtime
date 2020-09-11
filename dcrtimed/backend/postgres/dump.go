@@ -5,6 +5,7 @@
 package postgres
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
@@ -13,6 +14,7 @@ import (
 	"net/url"
 	"os"
 
+	"github.com/decred/dcrd/chaincfg/chainhash"
 	"github.com/decred/dcrtime/dcrtimed/backend"
 )
 
@@ -70,7 +72,7 @@ func (pg *Postgres) dumpTimestamps(f *os.File, verbose bool) error {
 }
 
 func (pg *Postgres) dumpTimestamp(f *os.File, verbose bool, ts int64) error {
-	exists, records, flushTs, err := pg.getRecordsByServerTs(ts)
+	exists, records, err := pg.getRecordsByServerTs(ts)
 	if err != nil {
 		return err
 	}
@@ -84,18 +86,24 @@ func (pg *Postgres) dumpTimestamp(f *os.File, verbose bool, ts int64) error {
 		fr       backend.FlushRecord
 		digests  = make([]backend.DigestReceived, 0, 10000)
 	)
-	for _, r := range records {
-		if r.MerkleRoot != [sha256.Size]byte{} && !anchored {
+	for _, ar := range records {
+		if !bytes.Equal(ar.Anchor.Merkle, []byte{}) && !anchored {
 			anchored = true
-			fr.Root = r.MerkleRoot
-			fr.Tx = r.Tx
-			fr.ChainTimestamp = r.AnchoredTimestamp
-			fr.FlushTimestamp = flushTs
+			copy(fr.Root[:], ar.Anchor.Merkle[:sha256.Size])
+			tx, err := chainhash.NewHash(ar.Anchor.TxHash[:])
+			if err != nil {
+				return err
+			}
+			fr.Tx = *tx
+			fr.ChainTimestamp = ar.Anchor.ChainTimestamp
+			fr.FlushTimestamp = ar.Anchor.FlushTimestamp
 		}
-		fr.Hashes = append(fr.Hashes, &r.Digest)
+		var digest [sha256.Size]byte
+		copy(digest[:], ar.Record.Digest[:])
+		fr.Hashes = append(fr.Hashes, &digest)
 		digests = append(digests, backend.DigestReceived{
-			Digest:    hex.EncodeToString(r.Digest[:]),
-			Timestamp: r.Timestamp,
+			Digest:    hex.EncodeToString(ar.Record.Digest[:]),
+			Timestamp: ar.Record.CollectionTimestamp,
 		})
 	}
 
@@ -178,21 +186,20 @@ func dumpFlushRecord(f *os.File, flushRecord *backend.FlushRecord) {
 }
 
 func (pg *Postgres) restoreFlushRecord(verbose bool, fr backend.FlushRecordJSON) error {
-	frOld := backend.FlushRecord{
-		Root:           fr.Root,
-		Hashes:         fr.Hashes,
-		Tx:             fr.Tx,
+	a := Anchor{
+		Merkle:         fr.Root[:],
+		TxHash:         fr.Tx[:],
 		ChainTimestamp: fr.ChainTimestamp,
 		FlushTimestamp: fr.FlushTimestamp,
 	}
 
-	err := pg.insertAnchor(frOld)
+	err := pg.insertAnchor(a)
 	if err != nil {
 		return err
 	}
 	if verbose {
 		fmt.Printf("Restored flushed anchor: (merkle:%v)\n", hex.EncodeToString(
-			fr.Root[:]))
+			a.Merkle))
 	}
 	return nil
 }
@@ -243,7 +250,16 @@ func (pg *Postgres) Restore(f *os.File, verbose bool, location string) error {
 			// if digest' timestamp was anchored, get anchor' merkle root
 			// to insert it into records table
 			anchorRoot := tssMerkles[dr.Timestamp]
-			err = pg.insertRestoredDigest(dr, anchorRoot)
+			digest, err := hex.DecodeString(dr.Digest)
+			if err != nil {
+				return err
+			}
+			r := Record{
+				CollectionTimestamp: dr.Timestamp,
+				Digest:              digest,
+				AnchorMerkle:        anchorRoot[:],
+			}
+			err = pg.insertRestoredDigest(r)
 			if err != nil {
 				return err
 			}
