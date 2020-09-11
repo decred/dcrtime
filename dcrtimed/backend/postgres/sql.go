@@ -147,10 +147,6 @@ func (pg *Postgres) getDigestsByMerkleRoot(merkle []byte) ([]*[sha256.Size]byte,
 		copy(digest[:], rawDigest[:])
 		digests = append(digests, &digest)
 	}
-	// Reverse hashes
-	for i, j := 0, len(digests)-1; i < j; i, j = i+1, j-1 {
-		digests[i], digests[j] = digests[j], digests[i]
-	}
 	return digests, nil
 }
 

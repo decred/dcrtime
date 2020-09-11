@@ -41,6 +41,7 @@ var (
 	// matching we mean both are hourly or every so many minutes.
 	//
 	// Seconds Minutes Hours Days Months DayOfWeek
+	// XXX XXX XXX revert minute cycles local dev change XXX XXX XXX
 	flushSchedule = "10 * * * * *" // On the hour + 10 seconds
 	duration      = time.Minute    // Default how often we combine digests
 
@@ -153,15 +154,16 @@ func (pg *Postgres) Get(digests [][sha256.Size]byte) ([]backend.GetResult, error
 		if !found {
 			gdme.ErrorCode = backend.ErrorNotFound
 		} else {
-			// Override error code during testing
 			gdme.ErrorCode = backend.ErrorOK
 			gdme.MerklePath = ar.MerklePath
 			copy(gdme.MerkleRoot[:], ar.Anchor.Merkle[:])
 			tx, err := chainhash.NewHash(ar.Anchor.TxHash[:])
+			gdme.AnchoredTimestamp = ar.Anchor.ChainTimestamp
 			if err != nil {
 				return nil, err
 			}
 			gdme.Tx = *tx
+			// Override error code during testing
 			if pg.testing {
 				gdme.ErrorCode = digestFound
 			} else if !bytes.Equal(ar.Anchor.Merkle, []byte{}) &&
