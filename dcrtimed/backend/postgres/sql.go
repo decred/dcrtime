@@ -141,6 +141,8 @@ func (pg *Postgres) getDigestsByMerkleRoot(merkle []byte) ([]*[sha256.Size]byte,
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
+
 	var digests []*[sha256.Size]byte
 	for rows.Next() {
 		var rawDigest []byte
@@ -165,6 +167,8 @@ func (pg *Postgres) getDigestsByTimestamp(ts int64) ([]*[sha256.Size]byte, error
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
+
 	var digests []*[sha256.Size]byte
 	for rows.Next() {
 		var rawDigest []byte
@@ -176,7 +180,7 @@ func (pg *Postgres) getDigestsByTimestamp(ts int64) ([]*[sha256.Size]byte, error
 		copy(digest[:], rawDigest[:])
 		digests = append(digests, &digest)
 	}
-	return digests, nil
+	return digests, rows.Err()
 }
 
 // getUnflushedTimestamps accepts current server timestamp and queries records
@@ -190,6 +194,8 @@ func (pg *Postgres) getUnflushedTimestamps(current int64) ([]int64, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
+
 	var ts int64
 	tss := []int64{}
 	for rows.Next() {
@@ -199,7 +205,7 @@ func (pg *Postgres) getUnflushedTimestamps(current int64) ([]int64, error) {
 		}
 		tss = append(tss, ts)
 	}
-	return tss, nil
+	return tss, rows.Err()
 }
 
 // getRecordsByServerTs accepts a server collection timestamps and returns
@@ -219,6 +225,7 @@ func (pg *Postgres) getRecordsByServerTs(ts int64) (bool, []*AnchoredRecord, err
 		return false, nil, err
 	}
 	defer rows.Close()
+
 	var (
 		mr      []byte
 		digest  []byte
@@ -251,7 +258,7 @@ func (pg *Postgres) getRecordsByServerTs(ts int64) (bool, []*AnchoredRecord, err
 		r = append(r, &ar)
 	}
 
-	return len(r) > 0, r, nil
+	return len(r) > 0, r, rows.Err()
 }
 
 // getRecordByDigest accepts apointer to an AnchoredRecord which initially
@@ -271,6 +278,7 @@ func (pg *Postgres) getRecordByDigest(ar *AnchoredRecord) (bool, error) {
 		return false, err
 	}
 	defer rows.Close()
+
 	var chainTs sql.NullInt64
 	for rows.Next() {
 		err = rows.Scan(&ar.Anchor.Merkle, &ar.Record.CollectionTimestamp, &ar.Anchor.TxHash, &chainTs)
@@ -295,7 +303,7 @@ func (pg *Postgres) getRecordByDigest(ar *AnchoredRecord) (bool, error) {
 		return true, nil
 	}
 
-	return false, nil
+	return false, rows.Err()
 }
 
 // hasTable accepts a table name and checks if it was created
@@ -309,6 +317,7 @@ func (pg *Postgres) hasTable(name string) (bool, error) {
 		return false, err
 	}
 	defer rows.Close()
+
 	var exists bool
 	for rows.Next() {
 		err = rows.Scan(&exists)
@@ -316,7 +325,7 @@ func (pg *Postgres) hasTable(name string) (bool, error) {
 			return false, err
 		}
 	}
-	return exists, nil
+	return exists, rows.Err()
 }
 
 // isDigestExists accept a digest and checks if it's already exists in
@@ -330,6 +339,7 @@ func (pg *Postgres) isDigestExists(hash []byte) (bool, error) {
 		return false, err
 	}
 	defer rows.Close()
+
 	var exists bool
 	for rows.Next() {
 		err = rows.Scan(&exists)
@@ -337,7 +347,7 @@ func (pg *Postgres) isDigestExists(hash []byte) (bool, error) {
 			return false, err
 		}
 	}
-	return exists, nil
+	return exists, rows.Err()
 }
 
 // createAnchorsTable creates anchors table
