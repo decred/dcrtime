@@ -28,10 +28,6 @@ const (
 	tableAnchors  = "anchors"
 	dbUser        = "dcrtimed"
 	confirmations = 6
-
-	// error codes that are overridden during tests only.
-	// digestFound is thrown if digest was found in records table
-	digestFound = 1001
 )
 
 var (
@@ -63,9 +59,7 @@ type Postgres struct {
 
 	wallet *dcrtimewallet.DcrtimeWallet // Wallet context.
 
-	// testing only entries
-	myNow   func() time.Time // Override time.Now()
-	testing bool             // Enabled during test
+	myNow func() time.Time // Override time.Now()
 }
 
 // now returns current time stamp rounded down to 1 hour.  All timestamps are
@@ -163,13 +157,11 @@ func (pg *Postgres) Get(digests [][sha256.Size]byte) ([]backend.GetResult, error
 				return nil, err
 			}
 			gdme.Tx = *tx
-			// Override error code during testing
-			if pg.testing {
-				gdme.ErrorCode = digestFound
-			} else if !bytes.Equal(ar.Anchor.Merkle, []byte{}) &&
+
+			// Lazyflush record if it was anchored but blockchain timestamp
+			// isn't avialable yet
+			if !bytes.Equal(ar.Anchor.Merkle, []byte{}) &&
 				gdme.AnchoredTimestamp == 0 {
-				// Lazyflush record if it was anchored but blockchain timestamp
-				// isn't avialable yet
 				fr := backend.FlushRecord{
 					Tx:   gdme.Tx,
 					Root: gdme.MerkleRoot,
@@ -303,11 +295,6 @@ func (pg *Postgres) Put(hashes [][sha256.Size]byte) (int64, []backend.PutResult,
 				Digest:    hash,
 				ErrorCode: backend.ErrorExists,
 			})
-
-			// Override error code during testing
-			if pg.testing {
-				me[len(me)-1].ErrorCode = digestFound
-			}
 			continue
 		}
 		// Insert record
@@ -488,9 +475,6 @@ func (pg *Postgres) doFlush() (int, error) {
 		err = pg.flush(ts)
 		if err != nil {
 			e := fmt.Sprintf("flush %v: %v", ts, err)
-			if pg.testing {
-				panic(e)
-			}
 			log.Error(e)
 		} else {
 			count++
@@ -539,16 +523,14 @@ func (pg *Postgres) flush(ts int64) error {
 		Merkle:         root[:],
 		FlushTimestamp: time.Now().Unix(),
 	}
-	if !pg.testing {
-		tx, err := pg.wallet.Construct(root)
-		if err != nil {
-			// XXX do something with unsufficient funds here.
-			return fmt.Errorf("flush Construct tx: %v", err)
-		}
-		log.Infof("Flush timestamp: %v digests %v merkle: %x tx: %v",
-			ts, len(digests), root, tx.String())
-		a.TxHash = (*tx)[:]
+	tx, err := pg.wallet.Construct(root)
+	if err != nil {
+		// XXX do something with unsufficient funds here.
+		return fmt.Errorf("flush Construct tx: %v", err)
 	}
+	log.Infof("Flush timestamp: %v digests %v merkle: %x tx: %v",
+		ts, len(digests), root, tx.String())
+	a.TxHash = (*tx)[:]
 
 	// Insert anchor data into db
 	err = pg.insertAnchor(a)
