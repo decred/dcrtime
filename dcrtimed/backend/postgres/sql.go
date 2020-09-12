@@ -90,6 +90,11 @@ func (pg *Postgres) updateAnchorChainTs(a Anchor) error {
 
 	err := pg.db.QueryRow(q, a.ChainTimestamp, a.Merkle).Scan()
 	if err != nil {
+		// The update command won't return any value, the following error is
+		// expected and means anchor row updated successfully
+		if err.Error() == "sql: no rows in result set" {
+			return nil
+		}
 		return err
 	}
 	return nil
