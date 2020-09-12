@@ -86,7 +86,9 @@ func (pg *Postgres) dumpTimestamp(f *os.File, verbose bool, ts int64) error {
 		fr       backend.FlushRecord
 		digests  = make([]backend.DigestReceived, 0, 10000)
 	)
-	for _, ar := range records {
+	// Iterate over records in reverse to keep the order they were inserted in
+	for i := len(records) - 1; i >= 0; i-- {
+		ar := records[i]
 		if !bytes.Equal(ar.Anchor.Merkle, []byte{}) && !anchored {
 			anchored = true
 			copy(fr.Root[:], ar.Anchor.Merkle[:sha256.Size])
