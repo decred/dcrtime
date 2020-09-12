@@ -46,7 +46,7 @@ func (pg *Postgres) getAllRecordsTimestamps() (*[]int64, error) {
 		}
 		tss = append(tss, ts)
 	}
-	return &tss, nil
+	return &tss, rows.Err()
 }
 
 // getLatestAnchoredTimestamp returns latest anchor information - tx hash and
@@ -79,7 +79,7 @@ func (pg *Postgres) getLatestAnchoredTimestamp() (int64, Anchor, error) {
 		a.Merkle = mr
 		a.TxHash = txHash
 	}
-	return serverTs, a, nil
+	return serverTs, a, rows.Err()
 }
 
 // updateAnchorChainTs accepts an anchor and updates it's chain timestamp
@@ -152,7 +152,7 @@ func (pg *Postgres) getDigestsByMerkleRoot(merkle []byte) ([]*[sha256.Size]byte,
 		copy(digest[:], rawDigest[:])
 		digests = append(digests, &digest)
 	}
-	return digests, nil
+	return digests, rows.Err()
 }
 
 // getDigestsByTimestamp accepts a timestamp, selects all digests from
