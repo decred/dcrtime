@@ -283,6 +283,7 @@ func (pg *Postgres) Put(hashes [][sha256.Size]byte) (int64, []backend.PutResult,
 	if err != nil {
 		return 0, []backend.PutResult{}, err
 	}
+	defer stmt.Close()
 
 	for _, hash := range hashes {
 		// Check if digest exists
