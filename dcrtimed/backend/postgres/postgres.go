@@ -210,45 +210,47 @@ func (pg *Postgres) GetTimestamps(timestamps []int64) ([]backend.TimestampResult
 			if err != nil {
 				return nil, err
 			}
-			gtme.ErrorCode = backend.ErrorOK
 			if !exists {
 				gtme.ErrorCode = backend.ErrorNotFound
-			}
-			// copy ts digests
-			gtme.Digests = make([][sha256.Size]byte, 0, len(records))
-			for _, r := range records {
-				var d [sha256.Size]byte
-				copy(d[:], r.Record.Digest[:])
-				gtme.Digests = append(gtme.Digests, d)
-				tx, err := chainhash.NewHash(r.Anchor.TxHash)
-				if err != nil {
-					return nil, err
-				}
-				gtme.Tx = *tx
-				gtme.AnchoredTimestamp = r.Anchor.ChainTimestamp
-				copy(gtme.MerkleRoot[:], r.Anchor.Merkle[:sha256.Size])
-			}
-			// Lazyflush record if it was anchored but blockchain timestamp
-			// isn't avialable yet
-			if gtme.MerkleRoot != [sha256.Size]byte{} && gtme.AnchoredTimestamp == 0 {
-				fr := backend.FlushRecord{
-					Tx:   gtme.Tx,
-					Root: gtme.MerkleRoot,
-				}
-				_, err = pg.lazyFlush(&fr)
-				if err != nil {
-					switch err {
-					case errNotEnoughConfirmation:
-						// All good, continue without blockchain timestamp
-					case errInvalidConfirmations:
-						log.Errorf("%v: Confirmations = -1",
-							gtme.Tx.String())
-						return nil, err
-					default:
+			} else {
+				gtme.ErrorCode = backend.ErrorOK
+				// copy ts digests
+				gtme.Digests = make([][sha256.Size]byte, 0, len(records))
+				for _, r := range records {
+					var d [sha256.Size]byte
+					copy(d[:], r.Record.Digest[:])
+					gtme.Digests = append(gtme.Digests, d)
+					tx, err := chainhash.NewHash(r.Anchor.TxHash)
+					if err != nil {
 						return nil, err
 					}
+					gtme.Tx = *tx
+					gtme.AnchoredTimestamp = r.Anchor.ChainTimestamp
+					copy(gtme.MerkleRoot[:], r.Anchor.Merkle[:sha256.Size])
 				}
-				gtme.AnchoredTimestamp = fr.ChainTimestamp
+				// Lazyflush record if it was anchored but blockchain timestamp
+				// isn't avialable yet
+				if gtme.MerkleRoot != [sha256.Size]byte{} &&
+					gtme.AnchoredTimestamp == 0 {
+					fr := backend.FlushRecord{
+						Tx:   gtme.Tx,
+						Root: gtme.MerkleRoot,
+					}
+					_, err = pg.lazyFlush(&fr)
+					if err != nil {
+						switch err {
+						case errNotEnoughConfirmation:
+							// All good, continue without blockchain timestamp
+						case errInvalidConfirmations:
+							log.Errorf("%v: Confirmations = -1",
+								gtme.Tx.String())
+							return nil, err
+						default:
+							return nil, err
+						}
+					}
+					gtme.AnchoredTimestamp = fr.ChainTimestamp
+				}
 			}
 		} else {
 			gtme.ErrorCode = backend.ErrorNotAllowed
