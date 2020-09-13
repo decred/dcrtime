@@ -324,10 +324,6 @@ func (pg *Postgres) Put(hashes [][sha256.Size]byte) (int64, []backend.PutResult,
 	if err != nil {
 		return 0, []backend.PutResult{}, err
 	}
-	defer stmt.Close()
-	if err != nil {
-		return 0, []backend.PutResult{}, err
-	}
 	err = txn.Commit()
 	if err != nil {
 		return 0, []backend.PutResult{}, err
