@@ -93,6 +93,45 @@ func TestGetTimestamp(t *testing.T) {
 	if len(exists) != count {
 		t.Fatalf("expected %v exists got %v", count, len(exists))
 	}
+
+	// Move time forward and flush
+	tp.myNow = func() time.Time {
+		return time.Unix(timestamp, 0).Add(tp.duration)
+	}
+
+	// Flush current container to global database.
+	err = tp.flush(timestamp)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Get timestamp again despite not being current
+	gtmes, err = tp.GetTimestamps([]int64{timestamp})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(gtmes) != 1 {
+		t.Fatalf("expected 1 gtmes got %v", len(gtmes))
+	}
+	gtme = gtmes[0]
+
+	// Verify we got all the bits back.
+	if len(gtme.Digests) != count {
+		t.Fatalf("expected %v digests got %v", count, len(gtme.Digests))
+	}
+	if bytes.Equal(gtme.MerkleRoot[:], []byte{}) {
+		t.Fatalf("expected non empty merkle root got %x", gtme.MerkleRoot)
+	}
+	exists = make(map[byte]struct{})
+	for _, digest := range gtme.Digests {
+		if _, ok := exists[digest[0]]; ok {
+			t.Fatalf("dup %v", digest[0])
+		}
+		exists[digest[0]] = struct{}{}
+	}
+	if len(exists) != count {
+		t.Fatalf("expected %v exists got %v", count, len(exists))
+	}
 }
 
 func TestGetDigests(t *testing.T) {
@@ -156,6 +195,35 @@ func TestGetDigests(t *testing.T) {
 			t.Fatalf("invalid digest got %x want %x ErrorCode "+
 				"got %v want %v", gr.Digest[:], hashes[i][:],
 				gr.ErrorCode, backend.ErrorOK)
+		}
+		if i >= count && gr.ErrorCode != backend.ErrorNotFound {
+			t.Fatalf("invalid ErrorCode got %x want %x",
+				gr.ErrorCode, backend.ErrorNotFound)
+		}
+	}
+
+	// Flush and repeat mixed success and failure
+
+	// Flush current container
+	err = tp.flush(timestamp)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	grs, err = tp.Get(hashes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(grs) != count*2 {
+		t.Fatalf("expected %v GetResult", count*2)
+	}
+
+	// Validate returned merkle root
+	for i, gr := range grs {
+		if i < count-1 && (!bytes.Equal(gr.Digest[:], hashes[i][:]) ||
+			bytes.Equal(gr.MerkleRoot[:], []byte{})) {
+			t.Fatalf("invalid digest got %x want %x Merkle %x", gr.Digest[:],
+				hashes[i][:], gr.MerkleRoot[:])
 		}
 		if i >= count && gr.ErrorCode != backend.ErrorNotFound {
 			t.Fatalf("invalid ErrorCode got %x want %x",

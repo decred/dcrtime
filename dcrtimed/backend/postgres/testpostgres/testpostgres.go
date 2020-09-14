@@ -7,11 +7,13 @@ package testpostgres
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"os"
 	"sync"
 	"time"
 
 	"github.com/decred/dcrtime/dcrtimed/backend"
 	"github.com/decred/dcrtime/dcrtimed/backend/postgres"
+	"github.com/decred/dcrtime/merkle"
 )
 
 var duration = time.Minute // Default how often we combine digests
@@ -47,6 +49,56 @@ func (tp *TestPostgres) getRecordByDigest(hash []byte) (postgres.Record, bool) {
 	return r, exists
 }
 
+func (tp *TestPostgres) insertAnchor(a postgres.Anchor) {
+	tp.anchors[hex.EncodeToString(a.Merkle)] = a
+}
+
+func (tp *TestPostgres) updateRecordsAnchor(ts int64, merkle []byte) {
+	for _, r := range tp.records {
+		if r.CollectionTimestamp == ts {
+			r.AnchorMerkle = merkle
+		}
+	}
+}
+
+// flush flushes all records associated with given timestamp.
+// returns nil iff ts records flushed successfully
+//
+// This function must be called with the WRITE lock held
+func (tp *TestPostgres) flush(ts int64) error {
+	// Get timestamp's digests
+	_, rs := tp.getRecordsByServerTs(ts)
+
+	if len(rs) == 0 {
+		// This really should not happen
+	}
+
+	// Convert bytes slices to sha256 arrays
+	var digests []*[sha256.Size]byte
+	for _, r := range rs {
+		var digest [sha256.Size]byte
+		copy(digest[:], r.Digest[:])
+		digests = append(digests, &digest)
+	}
+
+	// Generate merkle
+	mt := merkle.Tree(digests)
+	// Last element is root
+	root := *mt[len(mt)-1]
+	a := postgres.Anchor{
+		Merkle:         root[:],
+		FlushTimestamp: time.Now().Unix(),
+	}
+
+	// Insert anchor data into db
+	tp.insertAnchor(a)
+
+	// Update timestamp's records merkle root
+	tp.updateRecordsAnchor(ts, a.Merkle)
+
+	return nil
+}
+
 // GetTimestamps retrieves the digests for a given timestamp.
 func (tp *TestPostgres) GetTimestamps(timestamps []int64) ([]backend.TimestampResult, error) {
 	gtmes := make([]backend.TimestampResult, 0, len(timestamps))
@@ -70,6 +122,7 @@ func (tp *TestPostgres) GetTimestamps(timestamps []int64) ([]backend.TimestampRe
 					var d [sha256.Size]byte
 					copy(d[:], r.Digest[:])
 					gtme.Digests = append(gtme.Digests, d)
+					copy(gtme.MerkleRoot[:], r.AnchorMerkle[:])
 				}
 			}
 		} else {
@@ -98,6 +151,7 @@ func (tp *TestPostgres) Get(digests [][sha256.Size]byte) ([]backend.GetResult, e
 		} else {
 			gdme.ErrorCode = backend.ErrorOK
 			gdme.Timestamp = r.CollectionTimestamp
+			copy(gdme.MerkleRoot[:], r.AnchorMerkle[:])
 		}
 		gdmes = append(gdmes, gdme)
 	}
@@ -159,6 +213,31 @@ func (tp *TestPostgres) truncate(t time.Time, d time.Duration) time.Time {
 
 // Close is a stub to satisfy the backend interface.
 func (tp *TestPostgres) Close() {}
+
+// Dump is a stub to satisfy the backend interface.
+func (tp *TestPostgres) Dump(f *os.File, verbose bool) error {
+	return nil
+}
+
+// Restore is a stub to satisfy the backend interface.
+func Restore(f *os.File, verbose bool, location string) error {
+	return nil
+}
+
+// Fsck is a stub to satisfy the backend interface.
+func Fsck(options *backend.FsckOptions) error {
+	return nil
+}
+
+// GetBalance is a stub to satisfy the backend interface.
+func GetBalance() (*backend.GetBalanceResult, error) {
+	return nil, nil
+}
+
+// LastAnchor is a stub to satisfy the backend interface.
+func LastAnchor() (*backend.LastAnchorResult, error) {
+	return nil, nil
+}
 
 // New returns a new testcache context.
 func New() *TestPostgres {
