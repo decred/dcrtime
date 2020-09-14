@@ -934,33 +934,34 @@ func (fs *FileSystem) LastAnchor() (*backend.LastAnchorResult, error) {
 	var fr *backend.FlushRecord
 	var me backend.LastAnchorResult
 	payload, err := db.Get([]byte(flushedKey), nil)
-	if err == nil {
-		fr, err = DecodeFlushRecord(payload)
-		if err != nil {
-			return &me, err
-		}
-		me.Tx = fr.Tx
-
-		// Close db conection as we may
-		// write & update it
-		db.Close()
-
-		// Lookup anchored tx info,
-		// and update db if info changed.
-		txWalletInfo, err := fs.lazyFlush(flushedTs, fr)
-
-		// If no error, or no enough confirmations
-		// err continue, else return err.
-		if err != nil && err != errNotEnoughConfirmation {
-			return &backend.LastAnchorResult{}, err
-		}
-		me.ChainTimestamp = fr.ChainTimestamp
-		me.BlockHash = txWalletInfo.BlockHash.String()
-		me.BlockHeight = txWalletInfo.BlockHeight
-		return &me, nil
+	if err != nil {
+		return &backend.LastAnchorResult{}, err
 	}
 
-	return &backend.LastAnchorResult{}, err
+	fr, err = DecodeFlushRecord(payload)
+	if err != nil {
+		return &me, err
+	}
+	me.Tx = fr.Tx
+
+	// Close db conection as we may
+	// write & update it
+	db.Close()
+
+	// Lookup anchored tx info,
+	// and update db if info changed.
+	txWalletInfo, err := fs.lazyFlush(flushedTs, fr)
+
+	// If no error, or no enough confirmations
+	// err continue, else return err.
+	if err != nil && err != errNotEnoughConfirmation {
+		return &backend.LastAnchorResult{}, err
+	}
+
+	me.ChainTimestamp = fr.ChainTimestamp
+	me.BlockHash = txWalletInfo.BlockHash.String()
+	me.BlockHeight = txWalletInfo.BlockHeight
+	return &me, nil
 }
 
 // GetBalance provides the balance of the wallet and satisfies the

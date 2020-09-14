@@ -26,6 +26,7 @@ import (
 	v2 "github.com/decred/dcrtime/api/v2"
 	"github.com/decred/dcrtime/dcrtimed/backend"
 	"github.com/decred/dcrtime/dcrtimed/backend/filesystem"
+	"github.com/decred/dcrtime/dcrtimed/backend/postgres"
 	"github.com/decred/dcrtime/util"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -1118,7 +1119,7 @@ func (d *DcrtimeStore) verifyV2(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Translate digest results.
+	// Translate digest result.
 	var dReply v2.VerifyDigest
 	if len(drs) != 0 {
 		dr := drs[len(drs)-1]
@@ -1364,15 +1365,40 @@ func _main() error {
 		}
 	} else {
 		// Setup backend.
-		filesystem.UseLogger(fsbeLog)
-		b, err := filesystem.New(loadedCfg.DataDir,
-			loadedCfg.WalletCert,
-			loadedCfg.WalletHost,
-			loadedCfg.EnableCollections,
-			[]byte(loadedCfg.WalletPassphrase))
-
-		if err != nil {
-			return err
+		var b backend.Backend
+		switch loadedCfg.Backend {
+		case "filesystem":
+			filesystem.UseLogger(fsbeLog)
+			b, err = filesystem.New(loadedCfg.DataDir,
+				loadedCfg.WalletCert,
+				loadedCfg.WalletHost,
+				loadedCfg.EnableCollections,
+				[]byte(loadedCfg.WalletPassphrase))
+			if err != nil {
+				return err
+			}
+		case "postgres":
+			postgres.UseLogger(pgbeLog)
+			var net string
+			switch loadedCfg.TestNet {
+			case true:
+				net = "testnet"
+			default:
+				net = "mainnet"
+			}
+			b, err = postgres.New(
+				loadedCfg.PostgresHost,
+				net,
+				loadedCfg.PostgresRootCert,
+				loadedCfg.PostgresCert,
+				loadedCfg.PostgresKey,
+				loadedCfg.WalletCert,
+				loadedCfg.WalletHost,
+				loadedCfg.EnableCollections,
+				[]byte(loadedCfg.WalletPassphrase))
+			if err != nil {
+				return err
+			}
 		}
 
 		d.backend = b

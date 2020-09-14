@@ -42,12 +42,14 @@ var (
 
 	log     = backendLog.Logger("DCRT")
 	fsbeLog = backendLog.Logger("FSBE")
+	pgbeLog = backendLog.Logger("PGBE")
 )
 
 // subsystemLoggers maps each subsystem identifier to its associated logger.
 var subsystemLoggers = map[string]slog.Logger{
 	"DCRT": log,
 	"FSBE": fsbeLog,
+	"PGBE": pgbeLog,
 }
 
 // initLogRotator initializes the logging rotater to write logs to logFile and

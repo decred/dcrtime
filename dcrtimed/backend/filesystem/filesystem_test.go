@@ -178,7 +178,7 @@ func TestGetDigests(t *testing.T) {
 			gr.ErrorCode != foundGlobal) {
 			t.Fatalf("invalid digest got %x want %x ErrorCode "+
 				"got %v want %v", gr.Digest[:], hashes[i][:],
-				gr.ErrorCode, foundLocal)
+				gr.ErrorCode, foundGlobal)
 		}
 		if i >= count && gr.ErrorCode != backend.ErrorNotFound {
 			t.Fatalf("invalid ErrorCode got %x want %x",
