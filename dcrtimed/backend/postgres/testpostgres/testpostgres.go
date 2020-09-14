@@ -7,7 +7,6 @@ package testpostgres
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"fmt"
 	"sync"
 	"time"
 
@@ -117,6 +116,7 @@ func (tp *TestPostgres) Put(hashes [][sha256.Size]byte) (int64, []backend.PutRes
 	defer tp.Unlock()
 
 	for _, hash := range hashes {
+		d := hex.EncodeToString(hash[:])
 		// Check if digest exists
 		_, exists := tp.getRecordByDigest(hash[:])
 		if exists {
@@ -126,20 +126,23 @@ func (tp *TestPostgres) Put(hashes [][sha256.Size]byte) (int64, []backend.PutRes
 			})
 			continue
 		}
-		// Add record to map
-		r := postgres.Record{
-			CollectionTimestamp: ts,
-			Digest:              hash[:],
+
+		dslice, err := hex.DecodeString(d)
+		if err != nil {
+			return 0, nil, err
 		}
-		tp.records[hex.EncodeToString(hash[:])] = r
-		fmt.Println(r)
+		// Add record to map
+		tp.records[d] = postgres.Record{
+			CollectionTimestamp: ts,
+			Digest:              dslice,
+		}
+
 		// Mark as successful
 		me = append(me, backend.PutResult{
 			Digest:    hash,
 			ErrorCode: backend.ErrorOK,
 		})
 	}
-	fmt.Println("recordssss", tp.records)
 	return ts, me, nil
 }
 
