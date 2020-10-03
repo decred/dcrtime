@@ -510,10 +510,10 @@ func (fs *FileSystem) getTimestamp(timestamp int64) (backend.TimestampResult, er
 }
 
 // getDigest tries to return the timestamp information of the provided digest.
-// It tries the global database and if that fails it tries the current
-// timestamp database (if it exists).  This function must be called with the
-// READ lock held.
-func (fs *FileSystem) getDigest(ts int64, current *leveldb.DB, digest [sha256.Size]byte) (backend.GetResult, error) {
+// It tries the global database and if that fails it tries the current or any
+// previous not anchored yet database(if exists).  This function must be called
+// with the READ lock held.
+func (fs *FileSystem) getDigest(ts int64, digest [sha256.Size]byte) (backend.GetResult, error) {
 	gdme := backend.GetResult{
 		Digest:    digest,
 		Timestamp: ts,
@@ -570,6 +570,17 @@ func (fs *FileSystem) getDigest(ts int64, current *leveldb.DB, digest [sha256.Si
 		return gdme, nil
 	}
 
+	// Open current timestamp database
+	current, err := fs.openRead(ts)
+	if err != nil {
+		// Everything that isn't "doesn't exist" is a fatal error.
+		if !os.IsNotExist(err) {
+			return gdme, err
+		}
+	} else {
+		defer current.Close()
+	}
+
 	// Lookup in current timestamp database, if it exists
 	if current != nil {
 		found, err := current.Has(digest[:], nil)
@@ -586,6 +597,70 @@ func (fs *FileSystem) getDigest(ts int64, current *leveldb.DB, digest [sha256.Si
 			}
 			return gdme, nil
 		}
+	}
+
+	// Lookup in previous not flushed dirs
+	// Get Dirs.
+	files, err := ioutil.ReadDir(fs.root)
+	if err != nil {
+		return gdme, err
+	}
+	// Collect relevant dirs.
+	now := fs.now().Format(fStr)
+	dirs := make([]string, 0, len(files))
+	for _, file := range files {
+		// Skip global db.
+		if file.Name() == globalDBDir {
+			continue
+		}
+		if !file.IsDir() {
+			continue
+		}
+		// Skip current timestamp.
+		if file.Name() == now {
+			continue
+		}
+
+		dirs = append(dirs, file.Name())
+	}
+
+	// Reverse sort work.
+	sort.Sort(sort.Reverse(sort.StringSlice(dirs)))
+
+	// Walk directories backwards until we find a flushed database. At
+	// this point we know we are caught up.
+	foundP := false
+	for _, dir := range dirs {
+		timestamp, err := time.Parse(fStr, dir)
+		if err != nil {
+			continue
+		}
+		dirTs := timestamp.Unix()
+		if fs.isFlushed(dirTs) {
+			// We hit a flushed dir so we should be done.
+			break
+		}
+
+		// Open dir database
+		dirDb, err := fs.openRead(dirTs)
+		if err != nil {
+			return gdme, err
+		}
+		foundP, err = dirDb.Has(digest[:], nil)
+		if err != nil {
+			return gdme, err
+		}
+		if foundP {
+			gdme.ErrorCode = backend.ErrorOK
+			gdme.AnchoredTimestamp = 0 // Dir not anchored yet
+
+			// Override error code during testing
+			if fs.testing {
+				gdme.ErrorCode = foundPrevious
+			}
+			return gdme, nil
+		}
+		dirDb.Close()
 	}
 
 	// Not found.
@@ -609,20 +684,9 @@ func (fs *FileSystem) Get(digests [][sha256.Size]byte) ([]backend.GetResult, err
 	// Get current time rounded down.
 	ts := fs.now().Unix()
 
-	// Open current timestamp database
-	current, err := fs.openRead(ts)
-	if err != nil {
-		// Everything that isn't "doesn't exist" is a fatal error.
-		if !os.IsNotExist(err) {
-			return nil, err
-		}
-	} else {
-		defer current.Close()
-	}
-
 	// Iterate over digests and translate results to backend interface.
 	for _, d := range digests {
-		gdme, err := fs.getDigest(ts, current, d)
+		gdme, err := fs.getDigest(ts, d)
 		if err != nil {
 			gdme = backend.GetResult{
 				Digest:    d,
