@@ -513,10 +513,10 @@ func (fs *FileSystem) getTimestamp(timestamp int64) (backend.TimestampResult, er
 // It tries the global database and if that fails it tries the current or any
 // previous not anchored yet database(if exists).  This function must be called
 // with the READ lock held.
-func (fs *FileSystem) getDigest(ts int64, current *leveldb.DB, digest [sha256.Size]byte) (backend.GetResult, error) {
+func (fs *FileSystem) getDigest(now time.Time, current *leveldb.DB, digest [sha256.Size]byte) (backend.GetResult, error) {
 	gdme := backend.GetResult{
 		Digest:    digest,
-		Timestamp: ts,
+		Timestamp: now.Unix(),
 	}
 
 	// Lookup in global database if there are dups.
@@ -595,7 +595,7 @@ func (fs *FileSystem) getDigest(ts int64, current *leveldb.DB, digest [sha256.Si
 		return gdme, err
 	}
 	// Collect relevant dirs.
-	now := fs.now().Format(fStr)
+	nowDir := now.Format(fStr)
 	dirs := make([]string, 0, len(files))
 	for _, file := range files {
 		// Skip global db.
@@ -606,7 +606,7 @@ func (fs *FileSystem) getDigest(ts int64, current *leveldb.DB, digest [sha256.Si
 			continue
 		}
 		// Skip current timestamp.
-		if file.Name() == now {
+		if file.Name() == nowDir {
 			continue
 		}
 
@@ -635,6 +635,7 @@ func (fs *FileSystem) getDigest(ts int64, current *leveldb.DB, digest [sha256.Si
 		if err != nil {
 			return gdme, err
 		}
+		defer dirDb.Close()
 		foundP, err = dirDb.Has(digest[:], nil)
 		if err != nil {
 			return gdme, err
@@ -671,10 +672,10 @@ func (fs *FileSystem) Get(digests [][sha256.Size]byte) ([]backend.GetResult, err
 	defer fs.RUnlock()
 
 	// Get current time rounded down.
-	ts := fs.now().Unix()
+	ts := fs.now()
 
 	// Open current timestamp database
-	current, err := fs.openRead(ts)
+	current, err := fs.openRead(ts.Unix())
 	if err != nil {
 		// Everything that isn't "doesn't exist" is a fatal error.
 		if !os.IsNotExist(err) {
