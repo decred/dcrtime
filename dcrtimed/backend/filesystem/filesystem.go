@@ -513,7 +513,7 @@ func (fs *FileSystem) getTimestamp(timestamp int64) (backend.TimestampResult, er
 // It tries the global database and if that fails it tries the current or any
 // previous not anchored yet database(if exists).  This function must be called
 // with the READ lock held.
-func (fs *FileSystem) getDigest(ts int64, digest [sha256.Size]byte) (backend.GetResult, error) {
+func (fs *FileSystem) getDigest(ts int64, current *leveldb.DB, digest [sha256.Size]byte) (backend.GetResult, error) {
 	gdme := backend.GetResult{
 		Digest:    digest,
 		Timestamp: ts,
@@ -568,17 +568,6 @@ func (fs *FileSystem) getDigest(ts int64, digest [sha256.Size]byte) (backend.Get
 		}
 
 		return gdme, nil
-	}
-
-	// Open current timestamp database
-	current, err := fs.openRead(ts)
-	if err != nil {
-		// Everything that isn't "doesn't exist" is a fatal error.
-		if !os.IsNotExist(err) {
-			return gdme, err
-		}
-	} else {
-		defer current.Close()
 	}
 
 	// Lookup in current timestamp database, if it exists
@@ -684,9 +673,20 @@ func (fs *FileSystem) Get(digests [][sha256.Size]byte) ([]backend.GetResult, err
 	// Get current time rounded down.
 	ts := fs.now().Unix()
 
+	// Open current timestamp database
+	current, err := fs.openRead(ts)
+	if err != nil {
+		// Everything that isn't "doesn't exist" is a fatal error.
+		if !os.IsNotExist(err) {
+			return nil, err
+		}
+	} else {
+		defer current.Close()
+	}
+
 	// Iterate over digests and translate results to backend interface.
 	for _, d := range digests {
-		gdme, err := fs.getDigest(ts, d)
+		gdme, err := fs.getDigest(ts, current, d)
 		if err != nil {
 			gdme = backend.GetResult{
 				Digest:    d,
