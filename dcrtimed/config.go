@@ -15,7 +15,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/decred/dcrd/dcrutil/v2"
+	"github.com/decred/dcrd/dcrutil/v3"
 	v1 "github.com/decred/dcrtime/api/v1"
 	v2 "github.com/decred/dcrtime/api/v2"
 	flags "github.com/jessevdk/go-flags"

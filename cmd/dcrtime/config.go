@@ -8,13 +8,11 @@ import (
 	"fmt"
 	"os"
 	"os/user"
+	"path/filepath"
 	"runtime"
 	"strings"
 
-	"path/filepath"
-
-	"github.com/decred/dcrd/dcrutil/v2"
-
+	"github.com/decred/dcrd/dcrutil/v3"
 	flags "github.com/jessevdk/go-flags"
 )
 

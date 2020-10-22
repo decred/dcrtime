@@ -18,9 +18,8 @@ import (
 	"os"
 	"strings"
 
-	"google.golang.org/grpc/grpclog"
-
 	"github.com/decred/slog"
+	"google.golang.org/grpc/grpclog"
 )
 
 // log is a logger that is initialized with no output filters.  This
