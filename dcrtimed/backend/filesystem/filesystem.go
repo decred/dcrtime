@@ -998,7 +998,7 @@ func internalNew(root string) (*FileSystem, error) {
 
 // New creates a new backend instance.  The caller should issue a Close once
 // the FileSystem backend is no longer needed.
-func New(root, cert, host string, enableCollections bool, passphrase []byte) (*FileSystem, error) {
+func New(root, cert, host, clientCert, clientKey string, enableCollections bool, passphrase []byte) (*FileSystem, error) {
 	fs, err := internalNew(root)
 	if err != nil {
 		return nil, err
@@ -1007,7 +1007,7 @@ func New(root, cert, host string, enableCollections bool, passphrase []byte) (*F
 
 	// Runtime bits
 	dcrtimewallet.UseLogger(log)
-	fs.wallet, err = dcrtimewallet.New(cert, host, passphrase)
+	fs.wallet, err = dcrtimewallet.New(cert, host, clientCert, clientKey, passphrase)
 	if err != nil {
 		return nil, err
 	}

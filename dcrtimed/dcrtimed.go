@@ -1368,6 +1368,8 @@ func _main() error {
 		b, err := filesystem.New(loadedCfg.DataDir,
 			loadedCfg.WalletCert,
 			loadedCfg.WalletHost,
+			loadedCfg.WalletClientCert,
+			loadedCfg.WalletClientKey,
 			loadedCfg.EnableCollections,
 			[]byte(loadedCfg.WalletPassphrase))
 
