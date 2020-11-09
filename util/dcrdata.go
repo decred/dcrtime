@@ -8,8 +8,8 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/decred/dcrd/txscript/v2"
-	"github.com/decred/dcrdata/api/types/v4"
+	"github.com/decred/dcrd/txscript/v3"
+	"github.com/decred/dcrdata/api/types/v5"
 )
 
 // VerifyAnchor verifies proof of existence of the supplied merkle root on the

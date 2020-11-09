@@ -9,12 +9,11 @@ import (
 	"crypto/sha256"
 	"fmt"
 
+	pb "decred.org/dcrwallet/rpc/walletrpc"
+	"github.com/decred/dcrd/chaincfg/chainhash"
+	"github.com/decred/dcrd/txscript/v3"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-
-	"github.com/decred/dcrd/chaincfg/chainhash"
-	"github.com/decred/dcrd/txscript/v2"
-	pb "github.com/decred/dcrwallet/rpc/walletrpc"
 )
 
 type DcrtimeWallet struct {
