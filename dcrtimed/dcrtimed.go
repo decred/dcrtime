@@ -26,6 +26,7 @@ import (
 	v2 "github.com/decred/dcrtime/api/v2"
 	"github.com/decred/dcrtime/dcrtimed/backend"
 	"github.com/decred/dcrtime/dcrtimed/backend/filesystem"
+	"github.com/decred/dcrtime/dcrtimed/dcrtimewallet"
 	"github.com/decred/dcrtime/util"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -1317,6 +1318,9 @@ func _main() error {
 	log.Infof("Mode    : %v", mode)
 	log.Infof("Network : %v", activeNetParams.Params.Name)
 	log.Infof("Home dir: %v", loadedCfg.HomeDir)
+
+	// Sets subsystem loggers
+	dcrtimewallet.UseLogger(walletLog)
 
 	// Create the data directory in case it does not exist.
 	err = os.MkdirAll(loadedCfg.DataDir, 0700)

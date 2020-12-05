@@ -8,6 +8,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"time"
 
 	pb "decred.org/dcrwallet/rpc/walletrpc"
 	"github.com/decred/dcrd/chaincfg/chainhash"
@@ -103,7 +104,7 @@ func (d *DcrtimeWallet) Lookup(tx chainhash.Hash) (*TxLookupResult, error) {
 	}, nil
 }
 
-// Construct creates aand submits an anchored tx with the provided merkle root.
+// Construct creates and submits an anchored tx with the provided merkle root.
 func (d *DcrtimeWallet) Construct(merkleRoot [sha256.Size]byte) (*chainhash.Hash, error) {
 	// Generate script that contains OP_RETURN followed by the merkle root.
 	script, err := txscript.NewScriptBuilder().AddOp(txscript.OP_RETURN).
@@ -189,6 +190,37 @@ func (d *DcrtimeWallet) Close() {
 	d.conn.Close()
 }
 
+// getWalletGrpcConnection tries to estabilish a wallet connection. If it fails,
+// it keeps retrying to connect until max retry attempts is reached.
+func getWalletGrpcConnection(creds credentials.TransportCredentials, host string) (*grpc.ClientConn, error) {
+	var (
+		maxRetries = 100
+		duration   = 5 * time.Second
+		conn       *grpc.ClientConn
+		err        error
+		done       bool
+	)
+
+	for retries := 0; !done; retries++ {
+		if retries == maxRetries {
+			return nil, fmt.Errorf("Max retries exceeded")
+		}
+		conn, err = grpc.Dial(host, grpc.WithBlock(),
+			grpc.WithTransportCredentials(creds),
+			grpc.WithTimeout(duration))
+
+		if err != nil {
+			log.Warnf("Cannot estabilish a dcrwallet connection: %v", err)
+			log.Warnf("Retrying... attempt: %v", retries)
+			continue
+		}
+
+		done = true
+	}
+
+	return conn, nil
+}
+
 // New returns a DcrtimeWallet context.
 func New(cert, host string, passphrase []byte) (*DcrtimeWallet, error) {
 	d := &DcrtimeWallet{
@@ -204,11 +236,11 @@ func New(cert, host string, passphrase []byte) (*DcrtimeWallet, error) {
 	}
 
 	log.Infof("Wallet: %v", host)
-	d.conn, err = grpc.Dial(host, grpc.WithBlock(),
-		grpc.WithTransportCredentials(creds))
+	d.conn, err = getWalletGrpcConnection(creds, host)
 	if err != nil {
 		return nil, err
 	}
+
 	d.wallet = pb.NewWalletServiceClient(d.conn)
 
 	return d, nil
