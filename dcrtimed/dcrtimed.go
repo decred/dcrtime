@@ -228,7 +228,7 @@ func (d *DcrtimeStore) proxyTimestampV2(w http.ResponseWriter, r *http.Request) 
 	route := v2.TimestampRoute + "?digest=" + dig
 	r.Body.Close()
 
-	d.sendToBackend(r.Context(), w, "GET", route, r.Header.Get("Content-Type"),
+	d.sendToBackend(r.Context(), w, http.MethodGet, route, r.Header.Get("Content-Type"),
 		r.RemoteAddr, bytes.NewReader([]byte{}))
 
 	log.Infof("%v Timestamp %v", r.URL.Path, r.RemoteAddr)
@@ -1453,7 +1453,7 @@ func _main() error {
 	}
 
 	// Top-level route handler
-	d.addRoute("GET", v2.VersionRoute, d.version)
+	d.addRoute(http.MethodGet, v2.VersionRoute, d.version)
 
 	versions, _ := parseAndValidateAPIVersions(loadedCfg.APIVersions)
 
@@ -1462,20 +1462,20 @@ func _main() error {
 		switch v {
 		case v1.APIVersion:
 			// API v1 handlers
-			d.addRoute("POST", v1.StatusRoute, statusV1Route)
-			d.addRoute("POST", v1.TimestampRoute, timestampV1Route)
-			d.addRoute("POST", v1.VerifyRoute, verifyV1Route)
-			d.addRoute("GET", v1.WalletBalanceRoute, walletBalanceV1Route)
-			d.addRoute("GET", v1.LastAnchorRoute, lastAnchorV1Route)
+			d.addRoute(http.MethodPost, v1.StatusRoute, statusV1Route)
+			d.addRoute(http.MethodPost, v1.TimestampRoute, timestampV1Route)
+			d.addRoute(http.MethodPost, v1.VerifyRoute, verifyV1Route)
+			d.addRoute(http.MethodGet, v1.WalletBalanceRoute, walletBalanceV1Route)
+			d.addRoute(http.MethodGet, v1.LastAnchorRoute, lastAnchorV1Route)
 		case v2.APIVersion:
 			// API v2 handlers
-			d.addRoute("POST", v2.StatusRoute, statusV2Route)
-			d.addRoute("POST", v2.TimestampBatchRoute, timestampBatchV2Route)
-			d.addRoute("POST", v2.VerifyBatchRoute, verifyBatchV2Route)
-			d.addRoute("GET", v2.WalletBalanceRoute, walletBalanceV2Route)
-			d.addRoute("GET", v2.LastAnchorRoute, lastAnchorV2Route)
-			d.router.HandleFunc(v2.TimestampRoute, timestampV2Route).Methods("POST", "GET")
-			d.router.HandleFunc(v2.VerifyRoute, verifyV2Route).Methods("POST", "GET")
+			d.addRoute(http.MethodPost, v2.StatusRoute, statusV2Route)
+			d.addRoute(http.MethodPost, v2.TimestampBatchRoute, timestampBatchV2Route)
+			d.addRoute(http.MethodPost, v2.VerifyBatchRoute, verifyBatchV2Route)
+			d.addRoute(http.MethodGet, v2.WalletBalanceRoute, walletBalanceV2Route)
+			d.addRoute(http.MethodGet, v2.LastAnchorRoute, lastAnchorV2Route)
+			d.router.HandleFunc(v2.TimestampRoute, timestampV2Route).Methods(http.MethodPost, http.MethodGet)
+			d.router.HandleFunc(v2.VerifyRoute, verifyV2Route).Methods(http.MethodPost, http.MethodGet)
 		}
 	}
 
@@ -1486,7 +1486,7 @@ func _main() error {
 
 	// Pretty print web page for individual digest/timestamp
 	//d.router.HandleFunc(v1.TimestampRoute+"{id:[0-9a-zA-Z]+}",
-	//	d.getTimestamp).Methods("GET")
+	//	d.getTimestamp).Methods(http.MethodGet)
 
 	// Bind to a port and pass our router in
 	listenC := make(chan error)
@@ -1495,7 +1495,7 @@ func _main() error {
 		go func() {
 			// CORS options
 			origins := handlers.AllowedOrigins([]string{"*"})
-			methods := handlers.AllowedMethods([]string{"GET", "OPTIONS", "POST"})
+			methods := handlers.AllowedMethods([]string{http.MethodGet, http.MethodOptions, http.MethodPost})
 			headers := handlers.AllowedHeaders([]string{"Content-Type"})
 
 			log.Infof("Listen: %v", listen)
