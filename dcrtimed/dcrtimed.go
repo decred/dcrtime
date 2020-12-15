@@ -192,6 +192,13 @@ func (d *DcrtimeStore) proxyWalletBalanceV1(w http.ResponseWriter, r *http.Reque
 	log.Infof("%v WalletBalance %v", r.URL.Path, r.RemoteAddr)
 }
 
+func (d *DcrtimeStore) proxyLastAnchorV1(w http.ResponseWriter, r *http.Request) {
+	d.sendToBackend(w, r.Method, v1.LastAnchorRoute, r.Header.Get("Content-Type"),
+		r.RemoteAddr, bytes.NewReader([]byte{}))
+
+	log.Infof("%v LastAnchor %v", r.URL.Path, r.RemoteAddr)
+}
+
 func (d *DcrtimeStore) proxyStatusV2(w http.ResponseWriter, r *http.Request) {
 	b, err := ioutil.ReadAll(r.Body)
 	r.Body.Close()
@@ -299,6 +306,13 @@ func (d *DcrtimeStore) proxyWalletBalanceV2(w http.ResponseWriter, r *http.Reque
 		r.RemoteAddr, bytes.NewReader([]byte{}))
 
 	log.Infof("%v WalletBalance %v", r.URL.Path, r.RemoteAddr)
+}
+
+func (d *DcrtimeStore) proxyLastAnchorV2(w http.ResponseWriter, r *http.Request) {
+	d.sendToBackend(w, r.Method, v2.LastAnchorRoute, r.Header.Get("Content-Type"),
+		r.RemoteAddr, bytes.NewReader([]byte{}))
+
+	log.Infof("%v LastAnchor %v", r.URL.Path, r.RemoteAddr)
 }
 
 // version returns the supported API versions running on the server.
@@ -1413,6 +1427,7 @@ func _main() error {
 		timestampV1Route = d.proxyTimestampV1
 		verifyV1Route = d.proxyVerifyV1
 		walletBalanceV1Route = d.proxyWalletBalanceV1
+		lastAnchorV1Route = d.proxyLastAnchorV1
 
 		statusV2Route = d.proxyStatusV2
 		timestampBatchV2Route = d.proxyTimestampBatchV2
@@ -1420,6 +1435,7 @@ func _main() error {
 		timestampV2Route = d.proxyTimestampV2
 		verifyV2Route = d.proxyVerifyV2
 		walletBalanceV2Route = d.proxyWalletBalanceV2
+		lastAnchorV2Route = d.proxyLastAnchorV2
 	} else {
 		statusV1Route = d.statusV1
 		timestampV1Route = d.timestampV1
