@@ -51,11 +51,11 @@ type DcrtimeStore struct {
 	apiTokens  map[string]struct{}
 }
 
-func (d *DcrtimeStore) sendToBackend(w http.ResponseWriter, method, route,
-	contentType, remoteAddr string, body *bytes.Reader) {
-	storeHost := fmt.Sprintf("https://%s%s", d.cfg.StoreHost, route)
+func (d *DcrtimeStore) sendToBackend(ctx context.Context, w http.ResponseWriter,
+	method, route, contentType, remoteAddr string, body *bytes.Reader) {
 
-	req, err := http.NewRequest(method, storeHost, body)
+	storeHost := fmt.Sprintf("https://%s%s", d.cfg.StoreHost, route)
+	req, err := http.NewRequestWithContext(ctx, method, storeHost, body)
 	if err != nil {
 		log.Errorf("Error generating new http request: %v", err)
 		util.RespondWithError(w, http.StatusServiceUnavailable,
@@ -129,7 +129,7 @@ func (d *DcrtimeStore) proxyStatusV1(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	d.sendToBackend(w, r.Method, v1.StatusRoute, r.Header.Get("Content-Type"),
+	d.sendToBackend(r.Context(), w, r.Method, v1.StatusRoute, r.Header.Get("Content-Type"),
 		r.RemoteAddr, bytes.NewReader(b))
 
 	log.Infof("%v Status %v", r.URL.Path, r.RemoteAddr)
@@ -152,7 +152,7 @@ func (d *DcrtimeStore) proxyTimestampV1(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	d.sendToBackend(w, r.Method, v1.TimestampRoute, r.Header.Get("Content-Type"),
+	d.sendToBackend(r.Context(), w, r.Method, v1.TimestampRoute, r.Header.Get("Content-Type"),
 		r.RemoteAddr, bytes.NewReader(b))
 
 	for _, v := range t.Digests {
@@ -177,7 +177,7 @@ func (d *DcrtimeStore) proxyVerifyV1(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	d.sendToBackend(w, r.Method, v1.VerifyRoute, r.Header.Get("Content-Type"),
+	d.sendToBackend(r.Context(), w, r.Method, v1.VerifyRoute, r.Header.Get("Content-Type"),
 		r.RemoteAddr, bytes.NewReader(b))
 	log.Infof("%v Verify %v: Timestamps %v Digests %v",
 		r.URL.Path, r.RemoteAddr, len(v.Timestamps), len(v.Digests))
@@ -186,10 +186,17 @@ func (d *DcrtimeStore) proxyVerifyV1(w http.ResponseWriter, r *http.Request) {
 func (d *DcrtimeStore) proxyWalletBalanceV1(w http.ResponseWriter, r *http.Request) {
 	apiToken := r.URL.Query().Get("apitoken")
 	route := v1.WalletBalanceRoute + "?apitoken=" + apiToken
-	d.sendToBackend(w, r.Method, route, r.Header.Get("Content-Type"),
+	d.sendToBackend(r.Context(), w, r.Method, route, r.Header.Get("Content-Type"),
 		r.RemoteAddr, bytes.NewReader([]byte{}))
 
 	log.Infof("%v WalletBalance %v", r.URL.Path, r.RemoteAddr)
+}
+
+func (d *DcrtimeStore) proxyLastAnchorV1(w http.ResponseWriter, r *http.Request) {
+	d.sendToBackend(r.Context(), w, r.Method, v1.LastAnchorRoute, r.Header.Get("Content-Type"),
+		r.RemoteAddr, bytes.NewReader([]byte{}))
+
+	log.Infof("%v LastAnchor %v", r.URL.Path, r.RemoteAddr)
 }
 
 func (d *DcrtimeStore) proxyStatusV2(w http.ResponseWriter, r *http.Request) {
@@ -210,7 +217,7 @@ func (d *DcrtimeStore) proxyStatusV2(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	d.sendToBackend(w, r.Method, v2.StatusRoute, r.Header.Get("Content-Type"),
+	d.sendToBackend(r.Context(), w, r.Method, v2.StatusRoute, r.Header.Get("Content-Type"),
 		r.RemoteAddr, bytes.NewReader(b))
 	log.Infof("%v Status %v", r.URL.Path, r.RemoteAddr)
 }
@@ -221,7 +228,7 @@ func (d *DcrtimeStore) proxyTimestampV2(w http.ResponseWriter, r *http.Request) 
 	route := v2.TimestampRoute + "?digest=" + dig
 	r.Body.Close()
 
-	d.sendToBackend(w, "GET", route, r.Header.Get("Content-Type"),
+	d.sendToBackend(r.Context(), w, http.MethodGet, route, r.Header.Get("Content-Type"),
 		r.RemoteAddr, bytes.NewReader([]byte{}))
 
 	log.Infof("%v Timestamp %v", r.URL.Path, r.RemoteAddr)
@@ -233,7 +240,7 @@ func (d *DcrtimeStore) proxyVerifyV2(w http.ResponseWriter, r *http.Request) {
 	route := v2.VerifyRoute + "?digest=" + dig
 	r.Body.Close()
 
-	d.sendToBackend(w, r.Method, route, r.Header.Get("Content-Type"),
+	d.sendToBackend(r.Context(), w, r.Method, route, r.Header.Get("Content-Type"),
 		r.RemoteAddr, bytes.NewReader([]byte{}))
 
 	log.Infof("%v Verify %v", r.URL.Path, r.RemoteAddr)
@@ -257,7 +264,7 @@ func (d *DcrtimeStore) proxyTimestampBatchV2(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	d.sendToBackend(w, r.Method, v2.TimestampBatchRoute, r.Header.Get("Content-Type"),
+	d.sendToBackend(r.Context(), w, r.Method, v2.TimestampBatchRoute, r.Header.Get("Content-Type"),
 		r.RemoteAddr, bytes.NewReader(b))
 
 	for _, v := range t.Digests {
@@ -285,7 +292,7 @@ func (d *DcrtimeStore) proxyVerifyBatchV2(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	d.sendToBackend(w, r.Method, v2.VerifyBatchRoute, r.Header.Get("Content-Type"),
+	d.sendToBackend(r.Context(), w, r.Method, v2.VerifyBatchRoute, r.Header.Get("Content-Type"),
 		r.RemoteAddr, bytes.NewReader(b))
 
 	log.Infof("%v VerifyBatch %v: Timestamps %v Digests %v",
@@ -295,10 +302,17 @@ func (d *DcrtimeStore) proxyVerifyBatchV2(w http.ResponseWriter, r *http.Request
 func (d *DcrtimeStore) proxyWalletBalanceV2(w http.ResponseWriter, r *http.Request) {
 	apiToken := r.URL.Query().Get("apitoken")
 	route := v2.WalletBalanceRoute + "?apitoken=" + apiToken
-	d.sendToBackend(w, r.Method, route, r.Header.Get("Content-Type"),
+	d.sendToBackend(r.Context(), w, r.Method, route, r.Header.Get("Content-Type"),
 		r.RemoteAddr, bytes.NewReader([]byte{}))
 
 	log.Infof("%v WalletBalance %v", r.URL.Path, r.RemoteAddr)
+}
+
+func (d *DcrtimeStore) proxyLastAnchorV2(w http.ResponseWriter, r *http.Request) {
+	d.sendToBackend(r.Context(), w, r.Method, v2.LastAnchorRoute, r.Header.Get("Content-Type"),
+		r.RemoteAddr, bytes.NewReader([]byte{}))
+
+	log.Infof("%v LastAnchor %v", r.URL.Path, r.RemoteAddr)
 }
 
 // version returns the supported API versions running on the server.
@@ -1413,6 +1427,7 @@ func _main() error {
 		timestampV1Route = d.proxyTimestampV1
 		verifyV1Route = d.proxyVerifyV1
 		walletBalanceV1Route = d.proxyWalletBalanceV1
+		lastAnchorV1Route = d.proxyLastAnchorV1
 
 		statusV2Route = d.proxyStatusV2
 		timestampBatchV2Route = d.proxyTimestampBatchV2
@@ -1420,6 +1435,7 @@ func _main() error {
 		timestampV2Route = d.proxyTimestampV2
 		verifyV2Route = d.proxyVerifyV2
 		walletBalanceV2Route = d.proxyWalletBalanceV2
+		lastAnchorV2Route = d.proxyLastAnchorV2
 	} else {
 		statusV1Route = d.statusV1
 		timestampV1Route = d.timestampV1
@@ -1437,7 +1453,7 @@ func _main() error {
 	}
 
 	// Top-level route handler
-	d.addRoute("GET", v2.VersionRoute, d.version)
+	d.addRoute(http.MethodGet, v2.VersionRoute, d.version)
 
 	versions, _ := parseAndValidateAPIVersions(loadedCfg.APIVersions)
 
@@ -1446,20 +1462,20 @@ func _main() error {
 		switch v {
 		case v1.APIVersion:
 			// API v1 handlers
-			d.addRoute("POST", v1.StatusRoute, statusV1Route)
-			d.addRoute("POST", v1.TimestampRoute, timestampV1Route)
-			d.addRoute("POST", v1.VerifyRoute, verifyV1Route)
-			d.addRoute("GET", v1.WalletBalanceRoute, walletBalanceV1Route)
-			d.addRoute("GET", v1.LastAnchorRoute, lastAnchorV1Route)
+			d.addRoute(http.MethodPost, v1.StatusRoute, statusV1Route)
+			d.addRoute(http.MethodPost, v1.TimestampRoute, timestampV1Route)
+			d.addRoute(http.MethodPost, v1.VerifyRoute, verifyV1Route)
+			d.addRoute(http.MethodGet, v1.WalletBalanceRoute, walletBalanceV1Route)
+			d.addRoute(http.MethodGet, v1.LastAnchorRoute, lastAnchorV1Route)
 		case v2.APIVersion:
 			// API v2 handlers
-			d.addRoute("POST", v2.StatusRoute, statusV2Route)
-			d.addRoute("POST", v2.TimestampBatchRoute, timestampBatchV2Route)
-			d.addRoute("POST", v2.VerifyBatchRoute, verifyBatchV2Route)
-			d.addRoute("GET", v2.WalletBalanceRoute, walletBalanceV2Route)
-			d.addRoute("GET", v2.LastAnchorRoute, lastAnchorV2Route)
-			d.router.HandleFunc(v2.TimestampRoute, timestampV2Route).Methods("POST", "GET")
-			d.router.HandleFunc(v2.VerifyRoute, verifyV2Route).Methods("POST", "GET")
+			d.addRoute(http.MethodPost, v2.StatusRoute, statusV2Route)
+			d.addRoute(http.MethodPost, v2.TimestampBatchRoute, timestampBatchV2Route)
+			d.addRoute(http.MethodPost, v2.VerifyBatchRoute, verifyBatchV2Route)
+			d.addRoute(http.MethodGet, v2.WalletBalanceRoute, walletBalanceV2Route)
+			d.addRoute(http.MethodGet, v2.LastAnchorRoute, lastAnchorV2Route)
+			d.router.HandleFunc(v2.TimestampRoute, timestampV2Route).Methods(http.MethodPost, http.MethodGet)
+			d.router.HandleFunc(v2.VerifyRoute, verifyV2Route).Methods(http.MethodPost, http.MethodGet)
 		}
 	}
 
@@ -1470,7 +1486,7 @@ func _main() error {
 
 	// Pretty print web page for individual digest/timestamp
 	//d.router.HandleFunc(v1.TimestampRoute+"{id:[0-9a-zA-Z]+}",
-	//	d.getTimestamp).Methods("GET")
+	//	d.getTimestamp).Methods(http.MethodGet)
 
 	// Bind to a port and pass our router in
 	listenC := make(chan error)
@@ -1479,7 +1495,7 @@ func _main() error {
 		go func() {
 			// CORS options
 			origins := handlers.AllowedOrigins([]string{"*"})
-			methods := handlers.AllowedMethods([]string{"GET", "OPTIONS", "POST"})
+			methods := handlers.AllowedMethods([]string{http.MethodGet, http.MethodOptions, http.MethodPost})
 			headers := handlers.AllowedHeaders([]string{"Content-Type"})
 
 			log.Infof("Listen: %v", listen)

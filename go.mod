@@ -3,7 +3,7 @@ module github.com/decred/dcrtime
 go 1.12
 
 require (
-	decred.org/dcrwallet v1.6.0-rc1
+	decred.org/dcrwallet v1.6.0-rc4
 	github.com/davecgh/go-spew v1.1.1
 	github.com/decred/dcrd/certgen v1.1.1
 	github.com/decred/dcrd/chaincfg/chainhash v1.0.2
@@ -18,11 +18,9 @@ require (
 	github.com/gorilla/mux v1.7.3
 	github.com/jessevdk/go-flags v1.4.1-0.20200711081900-c17162fe8fd7
 	github.com/jrick/logrotate v1.0.0
-	github.com/kr/pretty v0.1.0 // indirect
 	github.com/robfig/cron v1.2.0
 	github.com/syndtr/goleveldb v1.0.1-0.20200815110645-5c35d600f0ca
 	google.golang.org/grpc v1.32.0
-	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 )
 
 replace github.com/decred/dcrtime/api/v2 => ./api/v2

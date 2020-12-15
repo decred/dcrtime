@@ -827,7 +827,7 @@ func showWalletBalanceV1() error {
 	}
 
 	url := fmt.Sprintf("%s?apitoken=%s", route, *apiToken)
-	request, err := http.NewRequest("GET", url, nil)
+	request, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return err
 	}
@@ -889,7 +889,7 @@ func showWalletBalanceV2() error {
 
 	url := fmt.Sprintf("%s?apitoken=%s", route, *apiToken)
 	fmt.Println(url)
-	request, err := http.NewRequest("GET", url, nil)
+	request, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return err
 	}
@@ -948,7 +948,7 @@ func lastAnchorV1() error {
 		fmt.Println(route)
 	}
 
-	request, err := http.NewRequest("GET", route, nil)
+	request, err := http.NewRequest(http.MethodGet, route, nil)
 	if err != nil {
 		return err
 	}
@@ -1003,7 +1003,7 @@ func lastAnchorV2() error {
 		fmt.Println(route)
 	}
 
-	request, err := http.NewRequest("GET", route, nil)
+	request, err := http.NewRequest(http.MethodGet, route, nil)
 	if err != nil {
 		return err
 	}
