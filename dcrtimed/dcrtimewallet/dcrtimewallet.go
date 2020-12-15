@@ -7,7 +7,10 @@ package dcrtimewallet
 import (
 	"context"
 	"crypto/sha256"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
+	"io/ioutil"
 
 	pb "decred.org/dcrwallet/rpc/walletrpc"
 	"github.com/decred/dcrd/chaincfg/chainhash"
@@ -190,7 +193,7 @@ func (d *DcrtimeWallet) Close() {
 }
 
 // New returns a DcrtimeWallet context.
-func New(cert, host string, passphrase []byte) (*DcrtimeWallet, error) {
+func New(cert, host, clientCert, clientKey string, passphrase []byte) (*DcrtimeWallet, error) {
 	d := &DcrtimeWallet{
 		account:    0,
 		minconf:    2,
@@ -198,10 +201,23 @@ func New(cert, host string, passphrase []byte) (*DcrtimeWallet, error) {
 		passphrase: passphrase,
 	}
 
-	creds, err := credentials.NewClientTLSFromFile(cert, "")
+	serverCAs := x509.NewCertPool()
+	serverCert, err := ioutil.ReadFile(cert)
 	if err != nil {
 		return nil, err
 	}
+	if !serverCAs.AppendCertsFromPEM(serverCert) {
+		return nil, fmt.Errorf("no certificates found in %s",
+			cert)
+	}
+	keypair, err := tls.LoadX509KeyPair(clientCert, clientKey)
+	if err != nil {
+		return nil, fmt.Errorf("read client keypair: %v", err)
+	}
+	creds := credentials.NewTLS(&tls.Config{
+		Certificates: []tls.Certificate{keypair},
+		RootCAs:      serverCAs,
+	})
 
 	log.Infof("Wallet: %v", host)
 	d.conn, err = grpc.Dial(host, grpc.WithBlock(),

@@ -66,6 +66,16 @@ apitoken=sometoken
 
 ```
 
+**Note:** Dcrtimed requires access to wallet GRPC. Therefore it needs the wallet's
+server certificate to authenticate the server, as well as a local client keypair
+to authenticate the client to `dcrwallet`.  The server certificate by default
+will be found in `~/.dcrwallet/rpc.cert`, and this can be modified to another
+path using the `--walletcert` flag.  Client certs can be generated using
+[`gencerts`](https://github.com/decred/dcrd/blob/master/cmd/gencerts/) and
+`dcrtimed` will read `client.pem` and `client-key.pem` from its application
+directory by default.  The certificate (`client.pem`) must be appended to
+`~/.dcrwallet/clients.pem` in order for `dcrwallet` to trust the client.
+
 **Note:** `apitoken` key is used to access privileged http endpoints in the daemon.
 Multiple values may be provided by providing multiple apitoken values, each on
 a separate line with each line starting with "apitoken=".

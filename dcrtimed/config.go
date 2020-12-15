@@ -30,6 +30,9 @@ const (
 
 	defaultMainnetPort = "49152"
 	defaultTestnetPort = "59152"
+
+	walletClientCertFile = "client.pem"
+	walletClientKeyFile  = "client-key.pem"
 )
 
 var (
@@ -65,6 +68,8 @@ type config struct {
 	WalletHost        string   `long:"wallethost" description:"Hostname for wallet server"`
 	WalletCert        string   `long:"walletcert" description:"Certificate path for wallet server"`
 	WalletPassphrase  string   `long:"walletpassphrase" description:"Passphrase for wallet server"`
+	WalletClientCert  string   `long:"cert" description:"Path to TLS certificate for wallet gprc client authentication"`
+	WalletClientKey   string   `long:"key" description:"Path to TLS client authentication key for wallet gprc"`
 	Version           string
 	HTTPSCert         string   `long:"httpscert" description:"File containing the https certificate file"`
 	HTTPSKey          string   `long:"httpskey" description:"File containing the https certificate key"`
@@ -519,6 +524,14 @@ func loadConfig() (*config, []string, error) {
 		}
 
 		cfg.WalletCert = path
+	}
+
+	// Set path for the client key/cert depending on if they are set in options
+	if cfg.WalletClientCert == "" {
+		cfg.WalletClientCert = filepath.Join(cfg.HomeDir, walletClientCertFile)
+	}
+	if cfg.WalletClientKey == "" {
+		cfg.WalletClientKey = filepath.Join(cfg.HomeDir, walletClientKeyFile)
 	}
 
 	if len(cfg.StoreHost) == 0 {
