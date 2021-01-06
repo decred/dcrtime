@@ -187,6 +187,15 @@ func TestGetDigests(t *testing.T) {
 	}
 }
 
+// TestGetDigestsFoundInPrevious covers the possible digests' codes returned
+// from fs.Get(hashes).
+//
+// Firstly, It puts batch of digests, then it retrieves them using Get func and
+// ensures  all digests returned with ErrorCode = foundLocal which means digests
+// were found in current container.
+// Secondly, it moves time forward, fetchs the digests again and ensures
+// all existing returned with ErrorCode = foundPrevious which means digests
+// were found in previous container.
 func TestGetDigestsFoundInPrevious(t *testing.T) {
 	dir, err := ioutil.TempDir("", "dcrtimed.test")
 	if err != nil {
@@ -275,7 +284,7 @@ func TestGetDigestsFoundInPrevious(t *testing.T) {
 	}
 
 	// Try again, now we expect count ErrorExists from previous
-	//container(foundPrevious).
+	// container(foundPrevious).
 	grs, err = fs.Get(hashes)
 	if err != nil {
 		t.Fatal(err)
