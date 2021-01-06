@@ -178,7 +178,127 @@ func TestGetDigests(t *testing.T) {
 			gr.ErrorCode != foundGlobal) {
 			t.Fatalf("invalid digest got %x want %x ErrorCode "+
 				"got %v want %v", gr.Digest[:], hashes[i][:],
+				gr.ErrorCode, foundGlobal)
+		}
+		if i >= count && gr.ErrorCode != backend.ErrorNotFound {
+			t.Fatalf("invalid ErrorCode got %x want %x",
+				gr.ErrorCode, backend.ErrorNotFound)
+		}
+	}
+}
+
+// TestGetDigestsFoundInPrevious covers the possible digests' codes returned
+// from fs.Get(hashes).
+//
+// Firstly, It puts batch of digests, then it retrieves them using Get func and
+// ensures  all digests returned with ErrorCode = foundLocal which means digests
+// were found in current container.
+// Secondly, it moves time forward, fetchs the digests again and ensures
+// all existing returned with ErrorCode = foundPrevious which means digests
+// were found in previous container.
+func TestGetDigestsFoundInPrevious(t *testing.T) {
+	dir, err := ioutil.TempDir("", "dcrtimed.test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer os.RemoveAll(dir)
+
+	fs, err := internalNew(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Set testing flag.
+	fs.testing = true
+
+	// Override timestampper so that we don't race during test.
+	timestamp := fs.now().Unix()
+	fs.myNow = func() time.Time {
+		return time.Unix(timestamp, 0)
+	}
+
+	// Put batch success in current time
+	var hashes [][sha256.Size]byte
+	count := 10
+	for i := 0; i < count; i++ {
+		hash := [sha256.Size]byte{}
+		hash[0] = byte(i)
+		hashes = append(hashes, hash)
+	}
+
+	_, me, err := fs.Put(hashes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(me) != count {
+		t.Fatalf("expected %v multi error", count)
+	}
+
+	grs, err := fs.Get(hashes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(grs) != count {
+		t.Fatalf("expected %v GetResult", count)
+	}
+
+	for i, gr := range grs {
+		if !bytes.Equal(gr.Digest[:], hashes[i][:]) {
+			t.Fatalf("invalid digest got %x want %x",
+				gr.Digest[:], hashes[i][:])
+		}
+	}
+
+	// Get mixed success and failure
+	for i := count; i < count*2; i++ {
+		hash := [sha256.Size]byte{}
+		hash[0] = byte(i)
+		hashes = append(hashes, hash)
+	}
+
+	grs, err = fs.Get(hashes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(grs) != count*2 {
+		t.Fatalf("expected %v GetResult", count*2)
+	}
+
+	for i, gr := range grs {
+		if i < count-1 && (!bytes.Equal(gr.Digest[:], hashes[i][:]) ||
+			gr.ErrorCode != foundLocal) {
+			t.Fatalf("invalid digest got %x want %x ErrorCode "+
+				"got %v want %v", gr.Digest[:], hashes[i][:],
 				gr.ErrorCode, foundLocal)
+		}
+		if i >= count && gr.ErrorCode != backend.ErrorNotFound {
+			t.Fatalf("invalid ErrorCode got %x want %x",
+				gr.ErrorCode, backend.ErrorNotFound)
+		}
+	}
+
+	// Move time forward.
+	fs.myNow = func() time.Time {
+		return time.Unix(timestamp, 0).Add(fs.duration)
+	}
+
+	// Try again, now we expect count ErrorExists from previous
+	// container(foundPrevious).
+	grs, err = fs.Get(hashes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(grs) != count*2 {
+		t.Fatalf("expected %v GetResult", count*2)
+	}
+
+	for i, gr := range grs {
+		if i < count-1 && (!bytes.Equal(gr.Digest[:], hashes[i][:]) ||
+			gr.ErrorCode != foundPrevious) {
+			t.Fatalf("invalid digest got %x want %x ErrorCode "+
+				"got %v want %v", gr.Digest[:], hashes[i][:],
+				gr.ErrorCode, foundPrevious)
 		}
 		if i >= count && gr.ErrorCode != backend.ErrorNotFound {
 			t.Fatalf("invalid ErrorCode got %x want %x",
