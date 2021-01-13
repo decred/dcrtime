@@ -531,20 +531,22 @@ func (fs *FileSystem) getDigest(now time.Time, current *leveldb.DB, digest [sha2
 		if err != nil {
 			return gdme, err
 		}
-
+		defer db.Close()
 		var fr *backend.FlushRecord
 		payload, err := db.Get([]byte(flushedKey), nil)
-		if err == nil {
-			fr, err = DecodeFlushRecord(payload)
-			if err != nil {
-				return gdme, err
-			}
-			gdme.AnchoredTimestamp = fr.ChainTimestamp
-			gdme.Tx = fr.Tx
-			gdme.MerkleRoot = fr.Root
-			// That pointer better not be nil!
-			gdme.MerklePath = *merkle.AuthPath(fr.Hashes, &digest)
+		if err != nil {
+			return gdme, err
 		}
+
+		fr, err = DecodeFlushRecord(payload)
+		if err != nil {
+			return gdme, err
+		}
+		gdme.AnchoredTimestamp = fr.ChainTimestamp
+		gdme.Tx = fr.Tx
+		gdme.MerkleRoot = fr.Root
+		// That pointer better not be nil!
+		gdme.MerklePath = *merkle.AuthPath(fr.Hashes, &digest)
 		db.Close()
 
 		// Override error code during testing
@@ -864,6 +866,7 @@ func (fs *FileSystem) Put(hashes [][sha256.Size]byte) (int64, []backend.PutResul
 			if err != nil {
 				return 0, []backend.PutResult{}, err
 			}
+			defer dirDb.Close()
 			foundP, err = dirDb.Has(hash[:], nil)
 			if err != nil {
 				return 0, []backend.PutResult{}, err
