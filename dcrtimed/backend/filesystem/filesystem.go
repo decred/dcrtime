@@ -430,9 +430,6 @@ func (fs *FileSystem) getTimestamp(timestamp int64) (backend.TimestampResult, er
 	// Try opening database.
 	db, err := fs.openRead(timestamp)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return gtme, nil
-		}
 		return gtme, err
 	}
 
@@ -481,7 +478,6 @@ func (fs *FileSystem) getTimestamp(timestamp int64) (backend.TimestampResult, er
 
 		return gtme, nil
 	}
-
 	defer db.Close()
 
 	// Iterate over all hashes for given timestamp.
@@ -642,6 +638,7 @@ func (fs *FileSystem) getDigest(now time.Time, current *leveldb.DB, digest [sha2
 		if err != nil {
 			return gdme, err
 		}
+		dirDb.Close()
 		if foundP {
 			gdme.ErrorCode = backend.ErrorOK
 			gdme.AnchoredTimestamp = 0 // Dir not anchored yet
@@ -652,7 +649,6 @@ func (fs *FileSystem) getDigest(now time.Time, current *leveldb.DB, digest [sha2
 			}
 			return gdme, nil
 		}
-		dirDb.Close()
 	}
 
 	// Not found.
@@ -733,6 +729,7 @@ func (fs *FileSystem) GetTimestamps(timestamps []int64) ([]backend.TimestampResu
 					Timestamp: ts,
 					ErrorCode: backend.ErrorOK,
 				}
+				// Everything that isn't "doesn't exist" is a fatal error.
 				if os.IsNotExist(err) {
 					gtme.ErrorCode = backend.ErrorNotFound
 				} else {
@@ -862,7 +859,7 @@ func (fs *FileSystem) Put(hashes [][sha256.Size]byte) (int64, []backend.PutResul
 			}
 
 			// Open dir database
-			dirDb, err := fs.openWrite(dirTs, true)
+			dirDb, err := fs.openRead(dirTs)
 			if err != nil {
 				return 0, []backend.PutResult{}, err
 			}
@@ -871,6 +868,7 @@ func (fs *FileSystem) Put(hashes [][sha256.Size]byte) (int64, []backend.PutResul
 			if err != nil {
 				return 0, []backend.PutResult{}, err
 			}
+			dirDb.Close()
 			if foundP {
 				me = append(me, backend.PutResult{
 					Digest:    hash,
@@ -885,10 +883,8 @@ func (fs *FileSystem) Put(hashes [][sha256.Size]byte) (int64, []backend.PutResul
 				if fs.testing {
 					me[len(me)-1].ErrorCode = foundPrevious
 				}
-				dirDb.Close()
 				break
 			}
-			dirDb.Close()
 		}
 
 		// Accept only if doesn't exist
