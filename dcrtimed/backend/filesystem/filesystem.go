@@ -533,6 +533,7 @@ func (fs *FileSystem) getDigest(now time.Time, current *leveldb.DB, digest [sha2
 		if err != nil {
 			return gdme, err
 		}
+		db.Close()
 
 		fr, err = DecodeFlushRecord(payload)
 		if err != nil {
@@ -543,7 +544,6 @@ func (fs *FileSystem) getDigest(now time.Time, current *leveldb.DB, digest [sha2
 		gdme.MerkleRoot = fr.Root
 		// That pointer better not be nil!
 		gdme.MerklePath = *merkle.AuthPath(fr.Hashes, &digest)
-		db.Close()
 
 		// Override error code during testing
 		if fs.testing {
@@ -552,7 +552,7 @@ func (fs *FileSystem) getDigest(now time.Time, current *leveldb.DB, digest [sha2
 			_, err = fs.lazyFlush(dbts, fr)
 			if err != nil {
 				if err == errNotEnoughConfirmation {
-					// fr.ChainTimestamp == 0
+					// No enough confirmations.
 				} else if err == errInvalidConfirmations {
 					log.Errorf("%v: Confirmations = -1",
 						fr.Tx.String())
@@ -754,10 +754,11 @@ func (fs *FileSystem) GetTimestamps(timestamps []int64) ([]backend.TimestampResu
 //
 // Put satisfies the backend interface.
 func (fs *FileSystem) Put(hashes [][sha256.Size]byte) (int64, []backend.PutResult, error) {
-	// Poor mans two-phase commit.
+	// Operation must be atomic as we look things up before timestamping
+	// which might be racy when having concurrent timestamp requests.
 	fs.Lock()
+	defer fs.Unlock()
 	commit := fs.commit
-	fs.Unlock()
 
 	// Get current time rounded down.
 	ts := fs.now().Unix()
@@ -775,10 +776,7 @@ func (fs *FileSystem) Put(hashes [][sha256.Size]byte) (int64, []backend.PutResul
 	}
 	defer current.Close()
 
-	// Create a Put batch for provided digests.  Obviously looking things
-	// up without a lock will make the lookups racy however when a
-	// container is committed it is locked and therefore overall an atomic
-	// operation.
+	// Create a Put batch for provided digests.
 	// We ignore duplicates in the same batch by simply overwriting them.
 	batch := new(leveldb.Batch)
 	for _, hash := range hashes {
@@ -899,10 +897,6 @@ func (fs *FileSystem) Put(hashes [][sha256.Size]byte) (int64, []backend.PutResul
 			})
 		}
 	}
-
-	// From this point on the operation must be atomic.
-	fs.Lock()
-	defer fs.Unlock()
 
 	// Make sure we are on the same commit.
 	if commit != fs.commit {
