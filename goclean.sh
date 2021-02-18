@@ -33,6 +33,7 @@ golangci-lint run --disable-all --deadline=10m \
   --enable=vet \
   --enable=gosimple \
   --enable=unconvert \
+  --enable=reassign \
   --enable=ineffassign \
   --enable=rowserrcheck \
   --enable=sqlclosecheck

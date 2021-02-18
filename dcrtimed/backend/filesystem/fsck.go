@@ -121,14 +121,17 @@ func journal(filename, action string, payload interface{}) error {
 }
 
 // fsckTimestamp verifies that a timestamp is coherent by doing the following:
-// 1.  Find flushRecord
-// 2.  If flushRecord doesn't exist ensure that the digests do not exist in the
+//  1. Find flushRecord
+//  2. If flushRecord doesn't exist ensure that the digests do not exist in the
 //     global database.
-// 3.  If flushRecord does exist ensure that all digests in the database are
+//  3. If flushRecord does exist ensure that all digests in the database are
 //     represented inside the flushRecord.
+//
 // 3.1 Verify merkle against flushRecord merkle
 // 3.2 Ensure that all digests in the database exist in the global database and
-//     the timestamps matches the global timestamp directory.
+//
+//	the timestamps matches the global timestamp directory.
+//
 // 3.3 Verify that the flushRecord timestamp exists on the blockchain.
 func (fs *FileSystem) fsckTimestamp(options *backend.FsckOptions, ts int64, empties map[int64]struct{}) error {
 	db, err := fs.openRead(ts)
