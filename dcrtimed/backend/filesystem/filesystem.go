@@ -430,9 +430,6 @@ func (fs *FileSystem) getTimestamp(timestamp int64) (backend.TimestampResult, er
 	// Try opening database.
 	db, err := fs.openRead(timestamp)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return gtme, nil
-		}
 		return gtme, err
 	}
 
@@ -481,7 +478,6 @@ func (fs *FileSystem) getTimestamp(timestamp int64) (backend.TimestampResult, er
 
 		return gtme, nil
 	}
-
 	defer db.Close()
 
 	// Iterate over all hashes for given timestamp.
@@ -531,21 +527,23 @@ func (fs *FileSystem) getDigest(now time.Time, current *leveldb.DB, digest [sha2
 		if err != nil {
 			return gdme, err
 		}
-
+		defer db.Close()
 		var fr *backend.FlushRecord
 		payload, err := db.Get([]byte(flushedKey), nil)
-		if err == nil {
-			fr, err = DecodeFlushRecord(payload)
-			if err != nil {
-				return gdme, err
-			}
-			gdme.AnchoredTimestamp = fr.ChainTimestamp
-			gdme.Tx = fr.Tx
-			gdme.MerkleRoot = fr.Root
-			// That pointer better not be nil!
-			gdme.MerklePath = *merkle.AuthPath(fr.Hashes, &digest)
+		if err != nil {
+			return gdme, err
 		}
 		db.Close()
+
+		fr, err = DecodeFlushRecord(payload)
+		if err != nil {
+			return gdme, err
+		}
+		gdme.AnchoredTimestamp = fr.ChainTimestamp
+		gdme.Tx = fr.Tx
+		gdme.MerkleRoot = fr.Root
+		// That pointer better not be nil!
+		gdme.MerklePath = *merkle.AuthPath(fr.Hashes, &digest)
 
 		// Override error code during testing
 		if fs.testing {
@@ -554,7 +552,7 @@ func (fs *FileSystem) getDigest(now time.Time, current *leveldb.DB, digest [sha2
 			_, err = fs.lazyFlush(dbts, fr)
 			if err != nil {
 				if err == errNotEnoughConfirmation {
-					// fr.ChainTimestamp == 0
+					// No enough confirmations.
 				} else if err == errInvalidConfirmations {
 					log.Errorf("%v: Confirmations = -1",
 						fr.Tx.String())
@@ -640,6 +638,7 @@ func (fs *FileSystem) getDigest(now time.Time, current *leveldb.DB, digest [sha2
 		if err != nil {
 			return gdme, err
 		}
+		dirDb.Close()
 		if foundP {
 			gdme.ErrorCode = backend.ErrorOK
 			gdme.AnchoredTimestamp = 0 // Dir not anchored yet
@@ -650,7 +649,6 @@ func (fs *FileSystem) getDigest(now time.Time, current *leveldb.DB, digest [sha2
 			}
 			return gdme, nil
 		}
-		dirDb.Close()
 	}
 
 	// Not found.
@@ -731,6 +729,7 @@ func (fs *FileSystem) GetTimestamps(timestamps []int64) ([]backend.TimestampResu
 					Timestamp: ts,
 					ErrorCode: backend.ErrorOK,
 				}
+				// Everything that isn't "doesn't exist" is a fatal error.
 				if os.IsNotExist(err) {
 					gtme.ErrorCode = backend.ErrorNotFound
 				} else {
@@ -755,10 +754,11 @@ func (fs *FileSystem) GetTimestamps(timestamps []int64) ([]backend.TimestampResu
 //
 // Put satisfies the backend interface.
 func (fs *FileSystem) Put(hashes [][sha256.Size]byte) (int64, []backend.PutResult, error) {
-	// Poor mans two-phase commit.
+	// Operation must be atomic as we look things up before timestamping
+	// which might be racy when having concurrent timestamp requests.
 	fs.Lock()
+	defer fs.Unlock()
 	commit := fs.commit
-	fs.Unlock()
 
 	// Get current time rounded down.
 	ts := fs.now().Unix()
@@ -776,10 +776,7 @@ func (fs *FileSystem) Put(hashes [][sha256.Size]byte) (int64, []backend.PutResul
 	}
 	defer current.Close()
 
-	// Create a Put batch for provided digests.  Obviously looking things
-	// up without a lock will make the lookups racy however when a
-	// container is committed it is locked and therefore overall an atomic
-	// operation.
+	// Create a Put batch for provided digests.
 	// We ignore duplicates in the same batch by simply overwriting them.
 	batch := new(leveldb.Batch)
 	for _, hash := range hashes {
@@ -860,14 +857,16 @@ func (fs *FileSystem) Put(hashes [][sha256.Size]byte) (int64, []backend.PutResul
 			}
 
 			// Open dir database
-			dirDb, err := fs.openWrite(dirTs, true)
+			dirDb, err := fs.openRead(dirTs)
 			if err != nil {
 				return 0, []backend.PutResult{}, err
 			}
+			defer dirDb.Close()
 			foundP, err = dirDb.Has(hash[:], nil)
 			if err != nil {
 				return 0, []backend.PutResult{}, err
 			}
+			dirDb.Close()
 			if foundP {
 				me = append(me, backend.PutResult{
 					Digest:    hash,
@@ -882,10 +881,8 @@ func (fs *FileSystem) Put(hashes [][sha256.Size]byte) (int64, []backend.PutResul
 				if fs.testing {
 					me[len(me)-1].ErrorCode = foundPrevious
 				}
-				dirDb.Close()
 				break
 			}
-			dirDb.Close()
 		}
 
 		// Accept only if doesn't exist
@@ -900,10 +897,6 @@ func (fs *FileSystem) Put(hashes [][sha256.Size]byte) (int64, []backend.PutResul
 			})
 		}
 	}
-
-	// From this point on the operation must be atomic.
-	fs.Lock()
-	defer fs.Unlock()
 
 	// Make sure we are on the same commit.
 	if commit != fs.commit {
