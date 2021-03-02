@@ -3,7 +3,7 @@ module github.com/decred/dcrtime
 go 1.12
 
 require (
-	decred.org/dcrwallet v1.6.0-rc4
+	decred.org/dcrwallet v1.6.0
 	github.com/davecgh/go-spew v1.1.1
 	github.com/decred/dcrd/certgen v1.1.1
 	github.com/decred/dcrd/chaincfg/chainhash v1.0.2
