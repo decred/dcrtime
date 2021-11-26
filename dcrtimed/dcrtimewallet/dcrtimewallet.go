@@ -115,6 +115,16 @@ func (d *DcrtimeWallet) Construct(merkleRoot [sha256.Size]byte) (*chainhash.Hash
 		return nil, err
 	}
 
+	// Request a change address while ignoring the gap policy.
+	nextAddressRequest := &pb.NextAddressRequest{
+		Account:   d.account,
+		GapPolicy: pb.NextAddressRequest_GAP_POLICY_IGNORE,
+	}
+	nextAddressResponse, err := d.wallet.NextAddress(d.ctx, nextAddressRequest)
+	if err != nil {
+		return nil, err
+	}
+
 	// Create transaction request.
 	constructRequest := &pb.ConstructTransactionRequest{
 		SourceAccount:            d.account,
@@ -129,6 +139,9 @@ func (d *DcrtimeWallet) Construct(merkleRoot [sha256.Size]byte) (*chainhash.Hash
 				},
 				Amount: 0,
 			},
+		},
+		ChangeDestination: &pb.ConstructTransactionRequest_OutputDestination{
+			Address: nextAddressResponse.Address,
 		},
 	}
 	constructResponse, err := d.wallet.ConstructTransaction(d.ctx,
