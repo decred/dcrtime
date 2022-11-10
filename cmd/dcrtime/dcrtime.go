@@ -47,10 +47,13 @@ var (
 		" wallet balance. An API Token is required")
 	lastAnchor = flag.Bool("lastanchor", false, "Display last anchored"+
 		" timestamp details")
+	lastDigests = flag.Bool("lastdigests", false, "Display last digests"+
+		"details. Sorted from newest to oldest. digestsnumber is required")
 	apiVersion = flag.Int("api", v2.APIVersion,
 		"Inform the API version to be used by the cli (1 or 2)")
 	skipVerify = flag.Bool("skipverify", false, "Skip TLS certificates"+
 		"verification (not recommended)")
+	digestsNumber = flag.Int("digestsnumber", 0, "The number of digests to get. Sorted from newest to oldest")
 )
 
 // normalizeAddress returns addr with the passed default port appended if
@@ -388,9 +391,9 @@ func downloadV2Batch(questions []string) error {
 		return fmt.Errorf("could node decode VerifyReply: %v", err)
 	}
 
-	verifyDigests(vbr.Digests)
+	verifyDigests(*vbr.Digests)
 
-	err = verifyTimestamps(vbr.Timestamps)
+	err = verifyTimestamps(*vbr.Timestamps)
 	if err != nil {
 		return err
 	}
@@ -457,13 +460,13 @@ func downloadV2Single(question string) error {
 	// Check if a digest was sent on the request, and therefore
 	// received a non-empty reply struct.
 	if !reflect.DeepEqual(vr.Digest, v2.VerifyDigest{}) {
-		verifyDigests([]v2.VerifyDigest{vr.Digest})
+		verifyDigests([]v2.VerifyDigest{*vr.Digest})
 	}
 
 	// Check if a timestamp was sent on the request, and therefore
 	// received a non-empty reply struct.
 	if !reflect.DeepEqual(vr.Timestamp, v2.VerifyTimestamp{}) {
-		err = verifyTimestamps([]v2.VerifyTimestamp{vr.Timestamp})
+		err = verifyTimestamps([]v2.VerifyTimestamp{*vr.Timestamp})
 		if err != nil {
 			return err
 		}
@@ -1048,8 +1051,82 @@ func lastAnchorV2() error {
 	return nil
 }
 
+func lastDigestsV2(n int32) error {
+	c := newClient(*skipVerify)
+	route := *host + v2.LastDigestsRoute
+
+	ld := v2.LastDigests{
+		N: n,
+	}
+
+	ldj, err := json.Marshal(ld)
+	if err != nil {
+		return err
+	}
+
+	if *debug {
+		fmt.Println(string(ldj))
+		fmt.Println(route)
+	}
+
+	r, err := c.Post(route, "application/json",
+		bytes.NewReader(ldj))
+
+	if err != nil {
+		return err
+	}
+	defer r.Body.Close()
+
+	if r.StatusCode != http.StatusOK {
+		e, err := getError(r.Body)
+		if err != nil {
+			return fmt.Errorf("%v", r.Status)
+		}
+		return fmt.Errorf("%v: %v", r.Status, e)
+	}
+
+	if *printJSON {
+		io.Copy(os.Stdout, r.Body)
+		fmt.Printf("\n")
+		return nil
+	}
+
+	if *printJSON {
+		io.Copy(os.Stdout, r.Body)
+		fmt.Printf("\n")
+		return nil
+	}
+
+	if r.StatusCode != http.StatusOK {
+		e, err := getError(r.Body)
+		if err != nil {
+			return fmt.Errorf("Retrieve last %d digests info failed: %v", n,
+				r.Status)
+		}
+		return fmt.Errorf("Retrieve last %d digests info failed - %v: %v",
+			n, r.Status, e)
+	}
+
+	// Decode the r from dcrtimed
+	var ldr v2.LastDigestsReply
+	jsonDecoder := json.NewDecoder(r.Body)
+	if err := jsonDecoder.Decode(&ldr); err != nil {
+		return fmt.Errorf("Could not decode LastDigestsReply: %v", err)
+	}
+
+	fmt.Printf(
+		"Digests:   %v\n",
+		ldr.Digests)
+
+	return nil
+}
+
 func hasDigestFlag() bool {
 	return digest != nil && *digest != ""
+}
+
+func hasDigestsNumberFlag() bool {
+	return digestsNumber != nil && *digestsNumber >= 0
 }
 
 // Ensures that there are no conflicting flags
@@ -1115,6 +1192,7 @@ func _main() error {
 	var download func([]string) error
 	var showWalletBalance func() error
 	var lastAnchorInfo func() error
+	var lastDigestsInfo func(n int32) error
 
 	// Set values according to selected API version. Default is v2.
 	switch *apiVersion {
@@ -1136,6 +1214,7 @@ func _main() error {
 		download = downloadV2
 		showWalletBalance = showWalletBalanceV2
 		lastAnchorInfo = lastAnchorV2
+		lastDigestsInfo = lastDigestsV2
 	default:
 		return fmt.Errorf("Invalid API version %v", *apiVersion)
 	}
@@ -1181,7 +1260,6 @@ func _main() error {
 		didRunCommand = true
 	}
 
-	// Print last anchor timestamp info
 	if *lastAnchor {
 		err := lastAnchorInfo()
 		if err != nil {
@@ -1189,6 +1267,21 @@ func _main() error {
 		}
 
 		didRunCommand = true
+	}
+
+	// Print last n digests info
+	if *lastDigests {
+		if hasDigestsNumberFlag() {
+			fmt.Println(int32(*digestsNumber))
+			err := lastDigestsInfo(int32(*digestsNumber))
+			if err != nil {
+				return err
+			}
+
+			didRunCommand = true
+		} else {
+			return fmt.Errorf("digestsnumber should be a positive integer")
+		}
 	}
 
 	// We attempt to open files first; if that doesn't work we treat the

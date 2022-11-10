@@ -87,6 +87,12 @@ var (
 	// timestamp, block height & tx id
 	LastAnchorRoute = RoutePrefix + "/last"
 
+	// LastDigestsRoute defines the API route for retriving
+	// the last last n digests the client wants. If n is bigger
+	// than the amount of digests in the backend, it will return
+	// all the digests
+	LastDigestsRoute = RoutePrefix + "/last-digests"
+
 	// Result defines legible string messages to a timestamping/query
 	// result code.
 	Result = map[ResultT]string{
@@ -150,9 +156,9 @@ type Verify struct {
 // VerifyReply is returned by the server with the status results for the requested
 // digest and/or timestamp.
 type VerifyReply struct {
-	ID        string          `json:"id"`
-	Digest    VerifyDigest    `json:"digest"`
-	Timestamp VerifyTimestamp `json:"timestamp"`
+	ID        string           `json:"id"`
+	Digest    *VerifyDigest    `json:"digest,omitempty"`
+	Timestamp *VerifyTimestamp `json:"timestamp,omitempty"`
 }
 
 // VerifyDigest is returned by the server after verifying the status of a
@@ -199,31 +205,40 @@ type VerifyBatch struct {
 	Timestamps []int64  `json:"timestamps"`
 }
 
+// LastDigests is used to ask the server the info about the N last digests
+type LastDigests struct {
+	N int32 `json:"number"`
+}
+
 // VerifyBatchReply is returned by the server with the status results for the
 // requested digests and timestamps.
 type VerifyBatchReply struct {
-	ID         string            `json:"id"`
-	Digests    []VerifyDigest    `json:"digests"`
-	Timestamps []VerifyTimestamp `json:"timestamps"`
+	ID         string             `json:"id"`
+	Digests    *[]VerifyDigest    `json:"digests,omitempty"`
+	Timestamps *[]VerifyTimestamp `json:"timestamps,omitempty"`
 }
 
 // ChainInformation is returned by the server on a verify digest request.
 // It contains the merkle path of that digest.
 type ChainInformation struct {
-	ChainTimestamp int64         `json:"chaintimestamp"`
-	Transaction    string        `json:"transaction"`
-	MerkleRoot     string        `json:"merkleroot"`
-	MerklePath     merkle.Branch `json:"merklepath"`
+	ChainTimestamp   int64         `json:"chaintimestamp"`
+	Confirmations    *int32        `json:"confirmations,omitempty"` // Using a pointer because we don't want to omit 0
+	MinConfirmations int32         `json:"minconfirmations,omitempty"`
+	Transaction      string        `json:"transaction"`
+	MerkleRoot       string        `json:"merkleroot"`
+	MerklePath       merkle.Branch `json:"merklepath"`
 }
 
 // CollectionInformation is returned by the server on a verify timestamp
 // request. It contains all digests grouped on the collection of the
 // requested block timestamp.
 type CollectionInformation struct {
-	ChainTimestamp int64    `json:"chaintimestamp"`
-	Transaction    string   `json:"transaction"`
-	MerkleRoot     string   `json:"merkleroot"`
-	Digests        []string `json:"digests"`
+	ChainTimestamp   int64    `json:"chaintimestamp"`
+	Confirmations    *int32   `json:"confirmations,omitempty"` // Using a pointer because we don't want to omit 0
+	MinConfirmations int32    `json:"minconfirmations,omitempty"`
+	Transaction      string   `json:"transaction"`
+	MerkleRoot       string   `json:"merkleroot"`
+	Digests          []string `json:"digests"`
 }
 
 // WalletBalanceReply is returned by server on a balance information of the
@@ -237,10 +252,17 @@ type WalletBalanceReply struct {
 // LastAnchorReply is returned by server on a last succcessful anchor info
 // request, it includes the id of the latest successfully broadcasted tx,
 // block hash & block height if the transaction was included in a block
-// and the chain timestamp if the tx block has more than 6 confirmations.
+// and the chain timestamp if the tx block has more than the number of
+// confirmations informed in the config file.
 type LastAnchorReply struct {
 	ChainTimestamp int64  `json:"chaintimestamp"`
 	Transaction    string `json:"transaction"`
 	BlockHash      string `json:"blockhash"`
 	BlockHeight    int32  `json:"blockheight"`
+}
+
+// LastDigestsReply is returned by server on a get last n digests
+// request, it includes a list of timestamps status results
+type LastDigestsReply struct {
+	Digests []VerifyDigest `json:"digests"`
 }

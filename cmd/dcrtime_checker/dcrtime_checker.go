@@ -35,7 +35,7 @@ func verifyV2(digest string, fProof *os.File) error {
 	// Ensure file digest exists in the proof and that the saved answer was
 	// correct
 	found := -1
-	for k, v := range vr.Digests {
+	for k, v := range *vr.Digests {
 		if v.Digest != digest {
 			continue
 		}
@@ -46,7 +46,7 @@ func verifyV2(digest string, fProof *os.File) error {
 	if found == -1 {
 		return fmt.Errorf("file digest not found in proof")
 	}
-	v := vr.Digests[found]
+	v := (*vr.Digests)[found]
 
 	// Verify result of matching digest
 	if _, ok := v2.Result[v.Result]; !ok {
@@ -81,7 +81,7 @@ func verifyV2(digest string, fProof *os.File) error {
 
 	// Verify against dcrdata
 	err = util.VerifyAnchor(*dcrdataHost,
-		vr.Digests[found].ChainInformation.Transaction, root[:])
+		(*vr.Digests)[found].ChainInformation.Transaction, root[:])
 	if err != nil {
 		return err
 	}
