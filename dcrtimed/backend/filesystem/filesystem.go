@@ -763,59 +763,61 @@ func (fs *FileSystem) LastDigests(n int32) ([]backend.GetResult, error) {
 		files[i], files[j] = files[j], files[i]
 	}
 
-	// Loop through files and use the getTimestamp function to get info about
-	// the digests in each folder
-	for _, fi := range files {
-		if len(results) >= int(n) {
-			break
-		}
-		if !fi.IsDir() {
-			return nil, fmt.Errorf("Unexpected file %v",
-				filepath.Join(fs.root, fi.Name()))
-		}
-
-		// We can skip global
-		if fi.Name() != "global" {
-			// Ensure it is a valid timestamp
-			t, err := time.Parse(fStr, fi.Name())
-			if err != nil {
-				return nil, fmt.Errorf("invalid timestamp: %v", fi.Name())
+	if fs.enableCollections {
+		// Loop through files and use the getTimestamp function to get info about
+		// the digests in each folder
+		for _, fi := range files {
+			if len(results) >= int(n) {
+				break
+			}
+			if !fi.IsDir() {
+				return nil, fmt.Errorf("Unexpected file %v",
+					filepath.Join(fs.root, fi.Name()))
 			}
 
-			log.Debugf("--- Checking: %v (%v)\n", fi.Name(),
-				t.Unix())
-
-			res, err := fs.getTimestamp(t.Unix())
-			if err != nil {
-				return nil, err
-			}
-
-			// Convert array of digests to array of pointers to digests so we
-			// can pass as a pram to merkle.AuthPath and get the MerklePath
-			ptDigests := make([]*[sha256.Size]byte, 0, len(res.Digests))
-			for _, d := range res.Digests {
-				ptDigests = append(ptDigests, &d)
-			}
-			for _, digest := range res.Digests {
-				gdme := backend.GetResult{
-					Digest:            digest,
-					Timestamp:         res.Timestamp,
-					ErrorCode:         res.ErrorCode,
-					Confirmations:     res.Confirmations,
-					MinConfirmations:  res.MinConfirmations,
-					AnchoredTimestamp: res.AnchoredTimestamp,
-					Tx:                res.Tx,
-					MerkleRoot:        res.MerkleRoot,
-					MerklePath:        *merkle.AuthPath(ptDigests, &digest),
+			// We can skip global
+			if fi.Name() != "global" {
+				// Ensure it is a valid timestamp
+				t, err := time.Parse(fStr, fi.Name())
+				if err != nil {
+					return nil, fmt.Errorf("invalid timestamp: %v", fi.Name())
 				}
-				results = append(results, gdme)
-				if len(results) >= int(n) {
-					break
-				}
-			}
 
-			log.Debugf("=== Finished: %v (%v)\n", fi.Name(),
-				t.Unix())
+				log.Debugf("--- Checking: %v (%v)\n", fi.Name(),
+					t.Unix())
+
+				res, err := fs.getTimestamp(t.Unix())
+				if err != nil {
+					return nil, err
+				}
+
+				// Convert array of digests to array of pointers to digests so we
+				// can pass as a pram to merkle.AuthPath and get the MerklePath
+				ptDigests := make([]*[sha256.Size]byte, 0, len(res.Digests))
+				for _, d := range res.Digests {
+					ptDigests = append(ptDigests, &d)
+				}
+				for _, digest := range res.Digests {
+					gdme := backend.GetResult{
+						Digest:            digest,
+						Timestamp:         res.Timestamp,
+						ErrorCode:         res.ErrorCode,
+						Confirmations:     res.Confirmations,
+						MinConfirmations:  res.MinConfirmations,
+						AnchoredTimestamp: res.AnchoredTimestamp,
+						Tx:                res.Tx,
+						MerkleRoot:        res.MerkleRoot,
+						MerklePath:        *merkle.AuthPath(ptDigests, &digest),
+					}
+					results = append(results, gdme)
+					if len(results) >= int(n) {
+						break
+					}
+				}
+
+				log.Debugf("=== Finished: %v (%v)\n", fi.Name(),
+					t.Unix())
+			}
 		}
 	}
 
