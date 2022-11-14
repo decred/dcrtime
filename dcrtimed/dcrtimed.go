@@ -949,8 +949,8 @@ func (d *DcrtimeStore) verifyBatchV2(w http.ResponseWriter, r *http.Request) {
 
 	util.RespondWithJSON(w, http.StatusOK, v2.VerifyBatchReply{
 		ID:         v.ID,
-		Timestamps: &tsReply,
-		Digests:    &dReply,
+		Timestamps: tsReply,
+		Digests:    dReply,
 	})
 }
 
@@ -1098,7 +1098,7 @@ func (d *DcrtimeStore) verifyV2(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Translate timestamp result.
-	var tsReply *v2.VerifyTimestamp = nil
+	var tsReply v2.VerifyTimestamp
 	if len(tsr) != 0 {
 		ts := tsr[len(tsr)-1]
 		vt := v2.VerifyTimestamp{
@@ -1144,7 +1144,7 @@ func (d *DcrtimeStore) verifyV2(w http.ResponseWriter, r *http.Request) {
 					hex.EncodeToString(digest[:]))
 		}
 
-		tsReply = &vt
+		tsReply = vt
 	}
 
 	// Digest.
@@ -1163,7 +1163,7 @@ func (d *DcrtimeStore) verifyV2(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Translate digest results.
-	var dReply *v2.VerifyDigest = nil
+	var dReply v2.VerifyDigest
 	if len(drs) != 0 {
 		dr := drs[len(drs)-1]
 		vd := v2.VerifyDigest{
@@ -1199,7 +1199,7 @@ func (d *DcrtimeStore) verifyV2(w http.ResponseWriter, r *http.Request) {
 					errorCode))
 			return
 		}
-		dReply = &vd
+		dReply = vd
 	}
 
 	util.RespondWithJSON(w, http.StatusOK, v2.VerifyReply{

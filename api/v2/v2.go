@@ -44,7 +44,7 @@ const (
 
 	// DefaultTestnetTimeHost indicates the default testnet time host
 	// server.
-	DefaultTestnetTimeHost = "time-testnet.decred.org"
+	DefaultTestnetTimeHost = "127.0.0.1"
 
 	// DefaultTestnetTimePort indicates the default testnet time host
 	// port.
@@ -156,9 +156,9 @@ type Verify struct {
 // VerifyReply is returned by the server with the status results for the requested
 // digest and/or timestamp.
 type VerifyReply struct {
-	ID        string           `json:"id"`
-	Digest    *VerifyDigest    `json:"digest,omitempty"`
-	Timestamp *VerifyTimestamp `json:"timestamp,omitempty"`
+	ID        string          `json:"id"`
+	Digest    VerifyDigest    `json:"digest"`
+	Timestamp VerifyTimestamp `json:"timestamp"`
 }
 
 // VerifyDigest is returned by the server after verifying the status of a
@@ -213,9 +213,9 @@ type LastDigests struct {
 // VerifyBatchReply is returned by the server with the status results for the
 // requested digests and timestamps.
 type VerifyBatchReply struct {
-	ID         string             `json:"id"`
-	Digests    *[]VerifyDigest    `json:"digests,omitempty"`
-	Timestamps *[]VerifyTimestamp `json:"timestamps,omitempty"`
+	ID         string            `json:"id"`
+	Digests    []VerifyDigest    `json:"digests"`
+	Timestamps []VerifyTimestamp `json:"timestamps"`
 }
 
 // ChainInformation is returned by the server on a verify digest request.

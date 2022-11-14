@@ -129,8 +129,7 @@ func journal(filename, action string, payload interface{}) error {
 //
 // 3.1 Verify merkle against flushRecord merkle
 // 3.2 Ensure that all digests in the database exist in the global database and
-//
-//	the timestamps matches the global timestamp directory.
+// the timestamps matches the global timestamp directory.
 //
 // 3.3 Verify that the flushRecord timestamp exists on the blockchain.
 func (fs *FileSystem) fsckTimestamp(options *backend.FsckOptions, ts int64, empties map[int64]struct{}) error {

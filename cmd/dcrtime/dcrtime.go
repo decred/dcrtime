@@ -391,9 +391,9 @@ func downloadV2Batch(questions []string) error {
 		return fmt.Errorf("could node decode VerifyReply: %v", err)
 	}
 
-	verifyDigests(*vbr.Digests)
+	verifyDigests(vbr.Digests)
 
-	err = verifyTimestamps(*vbr.Timestamps)
+	err = verifyTimestamps(vbr.Timestamps)
 	if err != nil {
 		return err
 	}
@@ -460,13 +460,13 @@ func downloadV2Single(question string) error {
 	// Check if a digest was sent on the request, and therefore
 	// received a non-empty reply struct.
 	if !reflect.DeepEqual(vr.Digest, v2.VerifyDigest{}) {
-		verifyDigests([]v2.VerifyDigest{*vr.Digest})
+		verifyDigests([]v2.VerifyDigest{vr.Digest})
 	}
 
 	// Check if a timestamp was sent on the request, and therefore
 	// received a non-empty reply struct.
 	if !reflect.DeepEqual(vr.Timestamp, v2.VerifyTimestamp{}) {
-		err = verifyTimestamps([]v2.VerifyTimestamp{*vr.Timestamp})
+		err = verifyTimestamps([]v2.VerifyTimestamp{vr.Timestamp})
 		if err != nil {
 			return err
 		}
