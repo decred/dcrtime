@@ -44,7 +44,7 @@ const (
 
 	// DefaultTestnetTimeHost indicates the default testnet time host
 	// server.
-	DefaultTestnetTimeHost = "127.0.0.1"
+	DefaultTestnetTimeHost = "time-testnet.decred.org"
 
 	// DefaultTestnetTimePort indicates the default testnet time host
 	// port.
