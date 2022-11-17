@@ -73,7 +73,7 @@ type FileSystem struct {
 
 	enableCollections bool  // Set to true to enable collection query
 	confirmations     int32 // Number of confirmations to return timestamp proof
-	maxDigestsNumber  int32 // Number of confirmations to return timestamp proof
+	maxDigests        int32 // Number of confirmations to return timestamp proof
 
 	wallet *dcrtimewallet.DcrtimeWallet // Wallet context.
 
@@ -752,48 +752,42 @@ func (fs *FileSystem) GetTimestamps(timestamps []int64) ([]backend.TimestampResu
 
 // Get the last n digests in the added to the Backend
 func (fs *FileSystem) LastDigests(n int32) ([]backend.GetResult, error) {
-
-	if n > fs.maxDigestsNumber {
-		return nil, fmt.Errorf("Invalid number %d of digests requested. Max is: %d", n, fs.maxDigestsNumber)
-	}
-
-	files, err := os.ReadDir(fs.root)
-	if err != nil {
-		return nil, err
+	if n > fs.maxDigests {
+		return nil, fmt.Errorf("Invalid number %d of digests requested. Max is: %d", n, fs.maxDigests)
 	}
 
 	// We need to be read locked from here on out.
 	fs.RLock()
 	defer fs.RUnlock()
 
-	results := make([]backend.GetResult, 0)
-
-	// Reverse slice so we look at the most recent files first
-	for i, j := 0, len(files)-1; i < j; i, j = i+1, j-1 {
-		files[i], files[j] = files[j], files[i]
+	files, err := os.ReadDir(fs.root)
+	if err != nil {
+		return nil, err
 	}
+
+	results := make([]backend.GetResult, 0)
 
 	if fs.enableCollections {
 		// Loop through files and use the getTimestamp function to get info about
 		// the digests in each folder
-		for _, fi := range files {
+		for i := len(files) - 1; i >= 0; i-- {
 			if len(results) >= int(n) {
 				break
 			}
-			if !fi.IsDir() {
+			if !files[i].IsDir() {
 				return nil, fmt.Errorf("Unexpected file %v",
-					filepath.Join(fs.root, fi.Name()))
+					filepath.Join(fs.root, files[i].Name()))
 			}
 
 			// We can skip global
-			if fi.Name() != "global" {
+			if files[i].Name() != "global" {
 				// Ensure it is a valid timestamp
-				t, err := time.Parse(fStr, fi.Name())
+				t, err := time.Parse(fStr, files[i].Name())
 				if err != nil {
-					return nil, fmt.Errorf("invalid timestamp: %v", fi.Name())
+					return nil, fmt.Errorf("invalid timestamp: %v", files[i].Name())
 				}
 
-				log.Debugf("--- Checking: %v (%v)\n", fi.Name(),
+				log.Debugf("--- Checking: %v (%v)\n", files[i].Name(),
 					t.Unix())
 
 				res, err := fs.getTimestamp(t.Unix())
@@ -825,7 +819,7 @@ func (fs *FileSystem) LastDigests(n int32) ([]backend.GetResult, error) {
 					}
 				}
 
-				log.Debugf("=== Finished: %v (%v)\n", fi.Name(),
+				log.Debugf("=== Finished: %v (%v)\n", files[i].Name(),
 					t.Unix())
 			}
 		}
@@ -1142,14 +1136,14 @@ func internalNew(root string) (*FileSystem, error) {
 
 // New creates a new backend instance.  The caller should issue a Close once
 // the FileSystem backend is no longer needed.
-func New(root, cert, host, clientCert, clientKey string, enableCollections bool, confirmations int32, maxDigestsNumber int32, passphrase []byte) (*FileSystem, error) {
+func New(root, cert, host, clientCert, clientKey string, enableCollections bool, confirmations int32, maxDigests int32, passphrase []byte) (*FileSystem, error) {
 	fs, err := internalNew(root)
 	if err != nil {
 		return nil, err
 	}
 	fs.enableCollections = enableCollections
 	fs.confirmations = confirmations
-	fs.maxDigestsNumber = maxDigestsNumber
+	fs.maxDigests = maxDigests
 
 	// Runtime bits
 	dcrtimewallet.UseLogger(log)

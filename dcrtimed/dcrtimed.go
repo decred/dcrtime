@@ -333,9 +333,9 @@ func (d *DcrtimeStore) proxyLastDigestsV2Route(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	if ld.N > d.cfg.MaxDigestsNumber {
+	if ld.N > d.cfg.MaxDigests {
 		util.RespondWithError(w, http.StatusUnprocessableEntity,
-			fmt.Sprintf("Invalid number %d of digests requested. Max is: %d", ld.N, d.cfg.MaxDigestsNumber))
+			fmt.Sprintf("Invalid number %d of digests requested. Max is: %d", ld.N, d.cfg.MaxDigests))
 		return
 	}
 
@@ -1252,9 +1252,9 @@ func (d *DcrtimeStore) lastDigestsV2(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if ld.N > d.cfg.MaxDigestsNumber {
+	if ld.N > d.cfg.MaxDigests {
 		util.RespondWithError(w, http.StatusUnprocessableEntity,
-			fmt.Sprintf("Invalid number %d of digests requested. Max is: %d", ld.N, d.cfg.MaxDigestsNumber))
+			fmt.Sprintf("Invalid number %d of digests requested. Max is: %d", ld.N, d.cfg.MaxDigests))
 		return
 	}
 
@@ -1501,7 +1501,7 @@ func _main() error {
 			loadedCfg.WalletClientKey,
 			loadedCfg.EnableCollections,
 			loadedCfg.Confirmations,
-			loadedCfg.MaxDigestsNumber,
+			loadedCfg.MaxDigests,
 			[]byte(loadedCfg.WalletPassphrase))
 
 		if err != nil {

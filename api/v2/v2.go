@@ -89,7 +89,7 @@ var (
 
 	// LastDigestsRoute defines the API route for retriving
 	// the last last n digests the client wants. Max n is defined
-	// via the maxdigestsnumber config option
+	// via the maxdigests config option
 	LastDigestsRoute = RoutePrefix + "/last-digests"
 
 	// Result defines legible string messages to a timestamping/query

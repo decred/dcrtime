@@ -555,7 +555,7 @@ Reply:
 
 #### Last Digests
 
-This method is used to ask the server the info about the last digests added. It receives a `number` as a parameter and returns an array with info about the last `number` digests in the server. **Note:** the max `number` of digests that can be queried is defined by a `maxdigestsnumber` config variable and its default value is 20.
+This method is used to ask the server the info about the last digests added. It receives a `number` as a parameter and returns an array with info about the last `number` digests in the server. **Note:** the max `number` of digests that can be queried is defined by a `maxdigests` config variable and its default value is 20.
 
 **URL:**
 
