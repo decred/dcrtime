@@ -73,6 +73,7 @@ type FileSystem struct {
 
 	enableCollections bool  // Set to true to enable collection query
 	confirmations     int32 // Number of confirmations to return timestamp proof
+	maxDigestsNumber  int32 // Number of confirmations to return timestamp proof
 
 	wallet *dcrtimewallet.DcrtimeWallet // Wallet context.
 
@@ -751,10 +752,19 @@ func (fs *FileSystem) GetTimestamps(timestamps []int64) ([]backend.TimestampResu
 
 // Get the last n digests in the added to the Backend
 func (fs *FileSystem) LastDigests(n int32) ([]backend.GetResult, error) {
-	files, err := ioutil.ReadDir(fs.root)
+
+	if n > fs.maxDigestsNumber {
+		return nil, fmt.Errorf("Invalid number %d of digests requested. Max is: %d", n, fs.maxDigestsNumber)
+	}
+
+	files, err := os.ReadDir(fs.root)
 	if err != nil {
 		return nil, err
 	}
+
+	// We need to be read locked from here on out.
+	fs.RLock()
+	defer fs.RUnlock()
 
 	results := make([]backend.GetResult, 0)
 
@@ -1132,13 +1142,14 @@ func internalNew(root string) (*FileSystem, error) {
 
 // New creates a new backend instance.  The caller should issue a Close once
 // the FileSystem backend is no longer needed.
-func New(root, cert, host, clientCert, clientKey string, enableCollections bool, confirmations int32, passphrase []byte) (*FileSystem, error) {
+func New(root, cert, host, clientCert, clientKey string, enableCollections bool, confirmations int32, maxDigestsNumber int32, passphrase []byte) (*FileSystem, error) {
 	fs, err := internalNew(root)
 	if err != nil {
 		return nil, err
 	}
 	fs.enableCollections = enableCollections
 	fs.confirmations = confirmations
+	fs.maxDigestsNumber = maxDigestsNumber
 
 	// Runtime bits
 	dcrtimewallet.UseLogger(log)

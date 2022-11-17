@@ -316,7 +316,7 @@ func (d *DcrtimeStore) proxyLastAnchorV2(w http.ResponseWriter, r *http.Request)
 }
 
 func (d *DcrtimeStore) proxyLastDigestsV2Route(w http.ResponseWriter, r *http.Request) {
-	b, err := ioutil.ReadAll(r.Body)
+	b, err := io.ReadAll(r.Body)
 	r.Body.Close()
 	if err != nil {
 		util.RespondWithError(w, http.StatusBadRequest,
@@ -332,6 +332,13 @@ func (d *DcrtimeStore) proxyLastDigestsV2Route(w http.ResponseWriter, r *http.Re
 			"Invalid request payload")
 		return
 	}
+
+	if ld.N > d.cfg.MaxDigestsNumber {
+		util.RespondWithError(w, http.StatusUnprocessableEntity,
+			fmt.Sprintf("Invalid number %d of digests requested. Max is: %d", ld.N, d.cfg.MaxDigestsNumber))
+		return
+	}
+
 	d.sendToBackend(r.Context(), w, r.Method, v2.VerifyBatchRoute, r.Header.Get("Content-Type"),
 		r.RemoteAddr, bytes.NewReader(b))
 
@@ -1245,12 +1252,17 @@ func (d *DcrtimeStore) lastDigestsV2(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if ld.N > d.cfg.MaxDigestsNumber {
+		util.RespondWithError(w, http.StatusUnprocessableEntity,
+			fmt.Sprintf("Invalid number %d of digests requested. Max is: %d", ld.N, d.cfg.MaxDigestsNumber))
+		return
+	}
+
 	log.Infof("%v LastDigests %v", r.URL.Path, r.RemoteAddr)
 
 	ldr, err := d.backend.LastDigests(ld.N)
 	if err != nil {
 		errorCode := time.Now().Unix()
-
 		log.Errorf("%v LastDigests error code %v: %v",
 			r.RemoteAddr, errorCode, err)
 		util.RespondWithError(w, http.StatusInternalServerError,
@@ -1489,6 +1501,7 @@ func _main() error {
 			loadedCfg.WalletClientKey,
 			loadedCfg.EnableCollections,
 			loadedCfg.Confirmations,
+			loadedCfg.MaxDigestsNumber,
 			[]byte(loadedCfg.WalletPassphrase))
 
 		if err != nil {

@@ -88,9 +88,8 @@ var (
 	LastAnchorRoute = RoutePrefix + "/last"
 
 	// LastDigestsRoute defines the API route for retriving
-	// the last last n digests the client wants. If n is bigger
-	// than the amount of digests in the backend, it will return
-	// all the digests
+	// the last last n digests the client wants. Max n is defined
+	// via the maxdigestsnumber config option
 	LastDigestsRoute = RoutePrefix + "/last-digests"
 
 	// Result defines legible string messages to a timestamping/query

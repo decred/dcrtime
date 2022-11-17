@@ -36,14 +36,15 @@ const (
 )
 
 var (
-	defaultHomeDir       = dcrutil.AppDataDir("dcrtimed", false)
-	defaultConfigFile    = filepath.Join(defaultHomeDir, defaultConfigFilename)
-	defaultDataDir       = filepath.Join(defaultHomeDir, defaultDataDirname)
-	defaultHTTPSKeyFile  = filepath.Join(defaultHomeDir, "https.key")
-	defaultHTTPSCertFile = filepath.Join(defaultHomeDir, "https.cert")
-	defaultLogDir        = filepath.Join(defaultHomeDir, defaultLogDirname)
-	defaultAPIVersions   = fmt.Sprintf("%v,%v", v1.APIVersion, v2.APIVersion)
-	defaultConfirmations = 6
+	defaultHomeDir          = dcrutil.AppDataDir("dcrtimed", false)
+	defaultConfigFile       = filepath.Join(defaultHomeDir, defaultConfigFilename)
+	defaultDataDir          = filepath.Join(defaultHomeDir, defaultDataDirname)
+	defaultHTTPSKeyFile     = filepath.Join(defaultHomeDir, "https.key")
+	defaultHTTPSCertFile    = filepath.Join(defaultHomeDir, "https.cert")
+	defaultLogDir           = filepath.Join(defaultHomeDir, defaultLogDirname)
+	defaultAPIVersions      = fmt.Sprintf("%v,%v", v1.APIVersion, v2.APIVersion)
+	defaultConfirmations    = 6
+	defaultMaxDigestsNumber = 20
 )
 
 // runServiceCommand is only set to a real function on Windows.  It is used
@@ -78,6 +79,7 @@ type config struct {
 	StoreCert         string   `long:"storecert" description:"File containing the https certificate file for storehost."`
 	EnableCollections bool     `long:"enablecollections" description:"Allow clients to query collection timestamps."`
 	Confirmations     int32    `long:"confirmations" description:"Amount of confirmations necessary to return timestamp proof."`
+	MaxDigestsNumber  int32    `long:"maxdigestsnumber" description:"Amount of confirmations necessary to return timestamp proof."`
 	APITokens         []string `long:"apitoken" description:"Token used to grant access to privileged API resources."`
 	APIVersions       string   `long:"apiversions" description:"Enables API versions on the daemon."`
 }
@@ -276,16 +278,17 @@ func parseAndValidateAPIVersions(vs string) ([]uint, error) {
 func loadConfig() (*config, []string, error) {
 	// Default config.
 	cfg := config{
-		HomeDir:       defaultHomeDir,
-		ConfigFile:    defaultConfigFile,
-		DebugLevel:    defaultLogLevel,
-		DataDir:       defaultDataDir,
-		LogDir:        defaultLogDir,
-		HTTPSKey:      defaultHTTPSKeyFile,
-		HTTPSCert:     defaultHTTPSCertFile,
-		Version:       version(),
-		APIVersions:   defaultAPIVersions,
-		Confirmations: int32(defaultConfirmations),
+		HomeDir:          defaultHomeDir,
+		ConfigFile:       defaultConfigFile,
+		DebugLevel:       defaultLogLevel,
+		DataDir:          defaultDataDir,
+		LogDir:           defaultLogDir,
+		HTTPSKey:         defaultHTTPSKeyFile,
+		HTTPSCert:        defaultHTTPSCertFile,
+		Version:          version(),
+		APIVersions:      defaultAPIVersions,
+		Confirmations:    int32(defaultConfirmations),
+		MaxDigestsNumber: int32(defaultMaxDigestsNumber),
 	}
 
 	// Service options which are only added on Windows.
