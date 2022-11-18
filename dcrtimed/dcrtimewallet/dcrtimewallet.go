@@ -12,7 +12,7 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	pb "decred.org/dcrwallet/rpc/walletrpc"
+	pb "decred.org/dcrwallet/v2/rpc/walletrpc"
 	"github.com/decred/dcrd/chaincfg/chainhash"
 	"github.com/decred/dcrd/txscript/v3"
 	"google.golang.org/grpc"
