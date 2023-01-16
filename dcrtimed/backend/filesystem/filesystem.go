@@ -756,18 +756,17 @@ func (fs *FileSystem) LastDigests(n int32) ([]backend.GetResult, error) {
 		return nil, fmt.Errorf("Invalid number %d of digests requested. Max is: %d", n, fs.maxDigests)
 	}
 
-	// We need to be read locked from here on out.
-	fs.RLock()
-	defer fs.RUnlock()
-
-	files, err := os.ReadDir(fs.root)
-	if err != nil {
-		return nil, err
-	}
-
 	results := make([]backend.GetResult, 0)
 
 	if fs.enableCollections {
+		// We need to be read locked from here on out.
+		fs.RLock()
+		defer fs.RUnlock()
+
+		files, err := os.ReadDir(fs.root)
+		if err != nil {
+			return nil, err
+		}
 		// Loop through files and use the getTimestamp function to get info about
 		// the digests in each folder
 		for i := len(files) - 1; i >= 0; i-- {
