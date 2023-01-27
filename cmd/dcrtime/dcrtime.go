@@ -17,7 +17,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"reflect"
 	"strconv"
 
 	v1 "github.com/decred/dcrtime/api/v1"
@@ -398,94 +397,6 @@ func downloadV2Batch(questions []string) error {
 		return err
 	}
 
-	return nil
-}
-
-func downloadV2Single(question string) error {
-	ver := v2.Verify{
-		ID: dcrtimeClientID,
-	}
-	formParam := url.Values{}
-
-	// Check if question is valid.
-	if ts, ok := convertTimestamp(question); ok {
-		ver.Timestamp = ts
-		formParam.Set("timestamp", strconv.FormatInt(ver.Timestamp, 10))
-	} else if isDigest(question) {
-		ver.Digest = question
-		formParam.Set("digest", ver.Digest)
-	} else {
-		return fmt.Errorf("not a digest or timestamp: %v", question)
-	}
-
-	if *trial {
-		return nil
-	}
-
-	route := *host + v2.VerifyRoute
-
-	if *debug {
-		fmt.Println(ver)
-		fmt.Println(route)
-	}
-
-	c := newClient(*skipVerify)
-	r, err := c.PostForm(route, formParam)
-	if err != nil {
-		return err
-	}
-	defer r.Body.Close()
-
-	if r.StatusCode != http.StatusOK {
-		e, err := getError(r.Body)
-		if err != nil {
-			return fmt.Errorf("%v", r.Status)
-		}
-		return fmt.Errorf("%v: %v", r.Status, e)
-	}
-
-	if *printJSON {
-		io.Copy(os.Stdout, r.Body)
-		fmt.Printf("\n")
-		return nil
-	}
-
-	// Decode response.
-	var vr v2.VerifyReply
-	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(&vr); err != nil {
-		return fmt.Errorf("could node decode VerifyReply: %v", err)
-	}
-
-	// Check if a digest was sent on the request, and therefore
-	// received a non-empty reply struct.
-	if !reflect.DeepEqual(vr.Digest, v2.VerifyDigest{}) {
-		verifyDigests([]v2.VerifyDigest{vr.Digest})
-	}
-
-	// Check if a timestamp was sent on the request, and therefore
-	// received a non-empty reply struct.
-	if !reflect.DeepEqual(vr.Timestamp, v2.VerifyTimestamp{}) {
-		err = verifyTimestamps([]v2.VerifyTimestamp{vr.Timestamp})
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func downloadV2(questions []string) error {
-	var err error
-	switch len(questions) {
-	case 1:
-		err = downloadV2Single(questions[0])
-	default:
-		err = downloadV2Batch(questions)
-	}
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -1211,7 +1122,7 @@ func _main() error {
 		mainnetPort = v2.DefaultMainnetTimePort
 		testnetPort = v2.DefaultTestnetTimePort
 		upload = uploadV2
-		download = downloadV2
+		download = downloadV2Batch
 		showWalletBalance = showWalletBalanceV2
 		lastAnchorInfo = lastAnchorV2
 		lastDigestsInfo = lastDigestsV2
