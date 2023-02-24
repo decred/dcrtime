@@ -42,6 +42,7 @@ type FlushRecord struct {
 	Tx             chainhash.Hash       // Tx that anchored merkle tree
 	ChainTimestamp int64                // Blockchain timestamp, if available
 	FlushTimestamp int64                // Time flush actually happened
+	Confirmations  *int32               // Number of Tx confirmations
 }
 
 // PutResult is a cooked error returned by the backend.
@@ -54,6 +55,8 @@ type PutResult struct {
 type TimestampResult struct {
 	Timestamp         int64               // Collection timestamp
 	ErrorCode         uint                // Overall result
+	Confirmations     *int32              // Tx confirmations
+	MinConfirmations  int32               // Mininum number of confirmations to return timestamp proof
 	AnchoredTimestamp int64               // Anchored timestamp
 	Tx                chainhash.Hash      // Anchor Tx
 	MerkleRoot        [sha256.Size]byte   // Merkle root
@@ -65,6 +68,8 @@ type GetResult struct {
 	Digest            [sha256.Size]byte // Digest
 	ErrorCode         uint              // Error code
 	Timestamp         int64             // Server timestamp
+	Confirmations     *int32            // Tx confirmations
+	MinConfirmations  int32             // Mininum number of confirmations to return timestamp proof
 	AnchoredTimestamp int64             // Anchored timestamp
 	Tx                chainhash.Hash    // Anchor Tx
 	MerkleRoot        [sha256.Size]byte // Merkle root
@@ -81,12 +86,13 @@ type DigestReceived struct {
 // capitalization. At some point the DB needs to start using this type instead
 // of broken one. Timestamp is optional based on the backend.
 type FlushRecordJSON struct {
-	Root           [sha256.Size]byte    `json:"root"`                // Merkle root
-	Hashes         []*[sha256.Size]byte `json:"hashes"`              // All digests
-	Tx             chainhash.Hash       `json:"tx"`                  // Tx that anchored merkle tree
-	ChainTimestamp int64                `json:"chaintimestamp"`      // Blockchain timestamp, if available
-	FlushTimestamp int64                `json:"flushtimestamp"`      // Time flush actually happened
-	Timestamp      int64                `json:"timestamp,omitempty"` // Timestamp received
+	Root           [sha256.Size]byte    `json:"root"`                    // Merkle root
+	Hashes         []*[sha256.Size]byte `json:"hashes"`                  // All digests
+	Tx             chainhash.Hash       `json:"tx"`                      // Tx that anchored merkle tree
+	ChainTimestamp int64                `json:"chaintimestamp"`          // Blockchain timestamp, if available
+	FlushTimestamp int64                `json:"flushtimestamp"`          // Time flush actually happened
+	Timestamp      int64                `json:"timestamp,omitempty"`     // Timestamp received
+	Confirmations  *int32               `json:"confirmations,omitempty"` // Timestamp received
 }
 
 // Record types.
@@ -141,6 +147,9 @@ type Backend interface {
 
 	// Return all hashes for given timestamps.
 	GetTimestamps([]int64) ([]TimestampResult, error)
+
+	// Return last n digests
+	LastDigests(n int32) ([]GetResult, error)
 
 	// Store hashes and return timestamp and associated errors.  Put is
 	// allowed to return transient errors.

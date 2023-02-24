@@ -315,6 +315,37 @@ func (d *DcrtimeStore) proxyLastAnchorV2(w http.ResponseWriter, r *http.Request)
 	log.Infof("%v LastAnchor %v", r.URL.Path, r.RemoteAddr)
 }
 
+func (d *DcrtimeStore) proxyLastDigestsV2Route(w http.ResponseWriter, r *http.Request) {
+	b, err := io.ReadAll(r.Body)
+	r.Body.Close()
+	if err != nil {
+		util.RespondWithError(w, http.StatusBadRequest,
+			"Unable to read request")
+		return
+	}
+
+	var ld v2.LastDigests
+	decoder := json.NewDecoder(bytes.NewReader(b))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&ld); err != nil {
+		util.RespondWithError(w, http.StatusBadRequest,
+			"Invalid request payload")
+		return
+	}
+
+	if ld.N > d.cfg.MaxDigests {
+		util.RespondWithError(w, http.StatusUnprocessableEntity,
+			fmt.Sprintf("Invalid number %d of digests requested. Max is: %d", ld.N, d.cfg.MaxDigests))
+		return
+	}
+
+	d.sendToBackend(r.Context(), w, r.Method, v2.VerifyBatchRoute, r.Header.Get("Content-Type"),
+		r.RemoteAddr, bytes.NewReader(b))
+
+	log.Infof("%v Last Digests %v: Number",
+		r.URL.Path, r.RemoteAddr, ld.N)
+}
+
 // version returns the supported API versions running on the server.
 // Handles /version
 func (d *DcrtimeStore) version(w http.ResponseWriter, r *http.Request) {
@@ -826,9 +857,11 @@ func (d *DcrtimeStore) verifyBatchV2(w http.ResponseWriter, r *http.Request) {
 		vt := v2.VerifyTimestamp{
 			ServerTimestamp: ts.Timestamp,
 			CollectionInformation: v2.CollectionInformation{
-				ChainTimestamp: ts.AnchoredTimestamp,
-				Transaction:    ts.Tx.String(),
-				MerkleRoot:     hex.EncodeToString(ts.MerkleRoot[:]),
+				ChainTimestamp:   ts.AnchoredTimestamp,
+				Confirmations:    ts.Confirmations,
+				MinConfirmations: ts.MinConfirmations,
+				Transaction:      ts.Tx.String(),
+				MerkleRoot:       hex.EncodeToString(ts.MerkleRoot[:]),
 			},
 			Result: -1,
 		}
@@ -889,10 +922,12 @@ func (d *DcrtimeStore) verifyBatchV2(w http.ResponseWriter, r *http.Request) {
 			Digest:          hex.EncodeToString(dr.Digest[:]),
 			ServerTimestamp: dr.Timestamp,
 			ChainInformation: v2.ChainInformation{
-				ChainTimestamp: dr.AnchoredTimestamp,
-				Transaction:    dr.Tx.String(),
-				MerkleRoot:     hex.EncodeToString(dr.MerkleRoot[:]),
-				MerklePath:     dr.MerklePath,
+				Confirmations:    dr.Confirmations,
+				MinConfirmations: dr.MinConfirmations,
+				ChainTimestamp:   dr.AnchoredTimestamp,
+				Transaction:      dr.Tx.String(),
+				MerkleRoot:       hex.EncodeToString(dr.MerkleRoot[:]),
+				MerklePath:       dr.MerklePath,
 			},
 			Result: -1,
 		}
@@ -1076,9 +1111,11 @@ func (d *DcrtimeStore) verifyV2(w http.ResponseWriter, r *http.Request) {
 		vt := v2.VerifyTimestamp{
 			ServerTimestamp: ts.Timestamp,
 			CollectionInformation: v2.CollectionInformation{
-				ChainTimestamp: ts.AnchoredTimestamp,
-				Transaction:    ts.Tx.String(),
-				MerkleRoot:     hex.EncodeToString(ts.MerkleRoot[:]),
+				ChainTimestamp:   ts.AnchoredTimestamp,
+				Confirmations:    ts.Confirmations,
+				MinConfirmations: ts.MinConfirmations,
+				Transaction:      ts.Tx.String(),
+				MerkleRoot:       hex.EncodeToString(ts.MerkleRoot[:]),
 			},
 			Result: -1,
 		}
@@ -1140,10 +1177,12 @@ func (d *DcrtimeStore) verifyV2(w http.ResponseWriter, r *http.Request) {
 			Digest:          hex.EncodeToString(dr.Digest[:]),
 			ServerTimestamp: dr.Timestamp,
 			ChainInformation: v2.ChainInformation{
-				ChainTimestamp: dr.AnchoredTimestamp,
-				Transaction:    dr.Tx.String(),
-				MerkleRoot:     hex.EncodeToString(dr.MerkleRoot[:]),
-				MerklePath:     dr.MerklePath,
+				Confirmations:    dr.Confirmations,
+				MinConfirmations: dr.MinConfirmations,
+				ChainTimestamp:   dr.AnchoredTimestamp,
+				Transaction:      dr.Tx.String(),
+				MerkleRoot:       hex.EncodeToString(dr.MerkleRoot[:]),
+				MerklePath:       dr.MerklePath,
 			},
 			Result: -1,
 		}
@@ -1198,6 +1237,82 @@ func (d *DcrtimeStore) lastAnchorV2(w http.ResponseWriter, r *http.Request) {
 		Transaction:    lastAnchorResult.Tx.String(),
 		BlockHash:      lastAnchorResult.BlockHash,
 		BlockHeight:    lastAnchorResult.BlockHeight,
+	})
+}
+
+func (d *DcrtimeStore) lastDigestsV2(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
+	var ld v2.LastDigests
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&ld); err != nil {
+		util.RespondWithError(w, http.StatusBadRequest,
+			"Invalid request payload")
+		return
+	}
+
+	if ld.N > d.cfg.MaxDigests {
+		util.RespondWithError(w, http.StatusUnprocessableEntity,
+			fmt.Sprintf("Invalid number %d of digests requested. Max is: %d", ld.N, d.cfg.MaxDigests))
+		return
+	}
+
+	log.Infof("%v LastDigests %v", r.URL.Path, r.RemoteAddr)
+
+	ldr, err := d.backend.LastDigests(ld.N)
+	if err != nil {
+		errorCode := time.Now().Unix()
+		log.Errorf("%v LastDigests error code %v: %v",
+			r.RemoteAddr, errorCode, err)
+		util.RespondWithError(w, http.StatusInternalServerError,
+			fmt.Sprintf("failed to retrieve latest %d digests info, "+
+				"contact administrator and provide "+
+				"the following error code: %v", ld.N, errorCode))
+		return
+	}
+
+	vdReply := make([]v2.VerifyDigest, 0, len(ldr))
+	for _, vr := range ldr {
+		vd := v2.VerifyDigest{
+			Digest:          hex.EncodeToString(vr.Digest[:]),
+			ServerTimestamp: vr.Timestamp,
+			ChainInformation: v2.ChainInformation{
+				ChainTimestamp:   vr.AnchoredTimestamp,
+				Confirmations:    vr.Confirmations,
+				MinConfirmations: vr.MinConfirmations,
+				Transaction:      vr.Tx.String(),
+				MerkleRoot:       hex.EncodeToString(vr.MerkleRoot[:]),
+				MerklePath:       vr.MerklePath,
+			},
+			Result: -1,
+		}
+
+		switch vr.ErrorCode {
+		case backend.ErrorOK:
+			vd.Result = v2.ResultOK
+		case backend.ErrorNotFound:
+			vd.Result = v2.ResultDoesntExistError
+		}
+
+		if vd.Result == -1 {
+			// Generic internal error.
+			errorCode := time.Now().Unix()
+			log.Errorf("%v digest ErrorCode translation error "+
+				"code %v: %v", r.RemoteAddr, errorCode, err)
+
+			util.RespondWithError(w, http.StatusInternalServerError,
+				fmt.Sprintf("Could not retrieve last %d digests, "+
+					"contact administrator and provide "+
+					"the following error code: %v",
+					ld.N, errorCode))
+			return
+		}
+		vdReply = append(vdReply, vd)
+	}
+
+	util.RespondWithJSON(w, http.StatusOK, v2.LastDigestsReply{
+		Digests: vdReply,
 	})
 }
 
@@ -1385,6 +1500,8 @@ func _main() error {
 			loadedCfg.WalletClientCert,
 			loadedCfg.WalletClientKey,
 			loadedCfg.EnableCollections,
+			loadedCfg.Confirmations,
+			loadedCfg.MaxDigests,
 			[]byte(loadedCfg.WalletPassphrase))
 
 		if err != nil {
@@ -1412,6 +1529,7 @@ func _main() error {
 	var verifyV2Route func(http.ResponseWriter, *http.Request)
 	var walletBalanceV2Route http.HandlerFunc
 	var lastAnchorV2Route http.HandlerFunc
+	var lastDigestsV2Route func(http.ResponseWriter, *http.Request)
 
 	if certPool != nil {
 		// PROXY ENABLED
@@ -1436,6 +1554,7 @@ func _main() error {
 		verifyV2Route = d.proxyVerifyV2
 		walletBalanceV2Route = d.proxyWalletBalanceV2
 		lastAnchorV2Route = d.proxyLastAnchorV2
+		lastDigestsV2Route = d.proxyLastDigestsV2Route
 	} else {
 		statusV1Route = d.statusV1
 		timestampV1Route = d.timestampV1
@@ -1450,6 +1569,7 @@ func _main() error {
 		verifyV2Route = d.verifyV2
 		walletBalanceV2Route = d.walletBalanceV2
 		lastAnchorV2Route = d.lastAnchorV2
+		lastDigestsV2Route = d.lastDigestsV2
 	}
 
 	// Top-level route handler
@@ -1474,6 +1594,7 @@ func _main() error {
 			d.addRoute(http.MethodPost, v2.VerifyBatchRoute, verifyBatchV2Route)
 			d.addRoute(http.MethodGet, v2.WalletBalanceRoute, walletBalanceV2Route)
 			d.addRoute(http.MethodGet, v2.LastAnchorRoute, lastAnchorV2Route)
+			d.addRoute(http.MethodPost, v2.LastDigestsRoute, lastDigestsV2Route)
 			d.router.HandleFunc(v2.TimestampRoute, timestampV2Route).Methods(http.MethodPost, http.MethodGet)
 			d.router.HandleFunc(v2.VerifyRoute, verifyV2Route).Methods(http.MethodPost, http.MethodGet)
 		}

@@ -27,10 +27,9 @@ import (
 )
 
 const (
-	fStr          = "20060102.150405"
-	globalDBDir   = "global"
-	flushedKey    = "flushed"
-	confirmations = 6
+	fStr        = "20060102.150405"
+	globalDBDir = "global"
+	flushedKey  = "flushed"
 
 	// error codes that are overridden during tests only.
 	// foundGlobal is thrown if digest was found in global db
@@ -72,7 +71,9 @@ type FileSystem struct {
 	duration time.Duration // How often we combine digests
 	commit   uint          // Current version, incremented during flush
 
-	enableCollections bool // Set to true to enable collection query
+	enableCollections bool  // Set to true to enable collection query
+	confirmations     int32 // Number of confirmations to return timestamp proof
+	maxDigests        int32 // Number of confirmations to return timestamp proof
 
 	wallet *dcrtimewallet.DcrtimeWallet // Wallet context.
 
@@ -388,7 +389,7 @@ func (fs *FileSystem) lazyFlush(dbts int64, fr *backend.FlushRecord) (*dcrtimewa
 
 	if res.Confirmations == -1 {
 		return nil, errInvalidConfirmations
-	} else if res.Confirmations < confirmations {
+	} else if res.Confirmations < fs.confirmations {
 		// Return error & wallet lookup res
 		// for error handling
 		return res, errNotEnoughConfirmation
@@ -460,10 +461,11 @@ func (fs *FileSystem) getTimestamp(timestamp int64) (backend.TimestampResult, er
 
 		// Do the lazy flush, note that fr.ChainTimestamp is updated.
 		if fr.ChainTimestamp == 0 && !fs.testing {
-			_, err = fs.lazyFlush(timestamp, fr)
+			lfr, err := fs.lazyFlush(timestamp, fr)
 			if err != nil {
 				if err == errNotEnoughConfirmation {
-					// fr.ChainTimestamp == 0
+					gtme.Confirmations = &lfr.Confirmations
+					gtme.MinConfirmations = fs.confirmations
 				} else if err == errInvalidConfirmations {
 					log.Errorf("%v: Confirmations = -1",
 						fr.Tx.String())
@@ -549,10 +551,11 @@ func (fs *FileSystem) getDigest(now time.Time, current *leveldb.DB, digest [sha2
 		if fs.testing {
 			gdme.ErrorCode = foundGlobal
 		} else if gdme.AnchoredTimestamp == 0 {
-			_, err = fs.lazyFlush(dbts, fr)
+			lfr, err := fs.lazyFlush(dbts, fr)
 			if err != nil {
 				if err == errNotEnoughConfirmation {
-					// No enough confirmations.
+					gdme.Confirmations = &lfr.Confirmations
+					gdme.MinConfirmations = fs.confirmations
 				} else if err == errInvalidConfirmations {
 					log.Errorf("%v: Confirmations = -1",
 						fr.Tx.String())
@@ -561,7 +564,6 @@ func (fs *FileSystem) getDigest(now time.Time, current *leveldb.DB, digest [sha2
 					return gdme, err
 				}
 			}
-
 			gdme.AnchoredTimestamp = fr.ChainTimestamp
 		}
 
@@ -746,6 +748,83 @@ func (fs *FileSystem) GetTimestamps(timestamps []int64) ([]backend.TimestampResu
 	}
 
 	return gtmes, nil
+}
+
+// Get the last n digests in the added to the Backend
+func (fs *FileSystem) LastDigests(n int32) ([]backend.GetResult, error) {
+	if n > fs.maxDigests {
+		return nil, fmt.Errorf("Invalid number %d of digests requested. Max is: %d", n, fs.maxDigests)
+	}
+
+	results := make([]backend.GetResult, 0)
+
+	if fs.enableCollections {
+		// We need to be read locked from here on out.
+		fs.RLock()
+		defer fs.RUnlock()
+
+		files, err := os.ReadDir(fs.root)
+		if err != nil {
+			return nil, err
+		}
+		// Loop through files and use the getTimestamp function to get info about
+		// the digests in each folder
+		for i := len(files) - 1; i >= 0; i-- {
+			if len(results) >= int(n) {
+				break
+			}
+			if !files[i].IsDir() {
+				return nil, fmt.Errorf("Unexpected file %v",
+					filepath.Join(fs.root, files[i].Name()))
+			}
+
+			// We can skip global
+			if files[i].Name() != "global" {
+				// Ensure it is a valid timestamp
+				t, err := time.Parse(fStr, files[i].Name())
+				if err != nil {
+					return nil, fmt.Errorf("invalid timestamp: %v", files[i].Name())
+				}
+
+				log.Debugf("--- Checking: %v (%v)\n", files[i].Name(),
+					t.Unix())
+
+				res, err := fs.getTimestamp(t.Unix())
+				if err != nil {
+					return nil, err
+				}
+
+				// Convert array of digests to array of pointers to digests so we
+				// can pass as a pram to merkle.AuthPath and get the MerklePath
+				ptDigests := make([]*[sha256.Size]byte, 0, len(res.Digests))
+				for _, d := range res.Digests {
+					ptDigests = append(ptDigests, &d)
+				}
+				for _, digest := range res.Digests {
+					gdme := backend.GetResult{
+						Digest:            digest,
+						Timestamp:         res.Timestamp,
+						ErrorCode:         res.ErrorCode,
+						Confirmations:     res.Confirmations,
+						MinConfirmations:  res.MinConfirmations,
+						AnchoredTimestamp: res.AnchoredTimestamp,
+						Tx:                res.Tx,
+						MerkleRoot:        res.MerkleRoot,
+						MerklePath:        *merkle.AuthPath(ptDigests, &digest),
+					}
+					results = append(results, gdme)
+					if len(results) >= int(n) {
+						break
+					}
+				}
+
+				log.Debugf("=== Finished: %v (%v)\n", files[i].Name(),
+					t.Unix())
+			}
+		}
+	}
+
+	return results, nil
 }
 
 // Put is a required interface function.  In our case it stores the provided
@@ -1056,12 +1135,14 @@ func internalNew(root string) (*FileSystem, error) {
 
 // New creates a new backend instance.  The caller should issue a Close once
 // the FileSystem backend is no longer needed.
-func New(root, cert, host, clientCert, clientKey string, enableCollections bool, passphrase []byte) (*FileSystem, error) {
+func New(root, cert, host, clientCert, clientKey string, enableCollections bool, confirmations int32, maxDigests int32, passphrase []byte) (*FileSystem, error) {
 	fs, err := internalNew(root)
 	if err != nil {
 		return nil, err
 	}
 	fs.enableCollections = enableCollections
+	fs.confirmations = confirmations
+	fs.maxDigests = maxDigests
 
 	// Runtime bits
 	dcrtimewallet.UseLogger(log)

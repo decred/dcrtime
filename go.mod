@@ -20,6 +20,7 @@ require (
 	github.com/jrick/logrotate v1.0.0
 	github.com/robfig/cron v1.2.0
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
+	golang.org/x/sys v0.1.0 // indirect
 	google.golang.org/grpc v1.32.0
 )
 
