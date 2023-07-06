@@ -1010,7 +1010,7 @@ func (fs *FileSystem) Close() {
 	fs.db.Close()
 }
 
-// LastAnchor provides the info of last successfull anchor
+// LastAnchor provides the info of last successful anchor
 // such as timestamp, tx id and block hash
 func (fs *FileSystem) LastAnchor() (*backend.LastAnchorResult, error) {
 	now := fs.now().Format(fStr)
@@ -1078,7 +1078,7 @@ func (fs *FileSystem) LastAnchor() (*backend.LastAnchorResult, error) {
 		}
 		me.Tx = fr.Tx
 
-		// Close db conection as we may
+		// Close db connection as we may
 		// write & update it
 		db.Close()
 

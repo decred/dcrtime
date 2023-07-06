@@ -12,9 +12,9 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	pb "decred.org/dcrwallet/v2/rpc/walletrpc"
+	pb "decred.org/dcrwallet/v3/rpc/walletrpc"
 	"github.com/decred/dcrd/chaincfg/chainhash"
-	"github.com/decred/dcrd/txscript/v3"
+	"github.com/decred/dcrd/txscript/v4"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )

@@ -8,9 +8,27 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/decred/dcrd/txscript/v3"
+	"github.com/decred/dcrd/txscript/v4"
 	"github.com/decred/dcrdata/api/types/v5"
 )
+
+func extractNullDataMerkleRootV0(script []byte) []byte {
+	// A null script is of the form:
+	//  OP_RETURN <optional data>
+	//
+	// Thus, it can either be a single OP_RETURN or an OP_RETURN followed by a
+	// canonical data push up to MaxDataCarrierSizeV0 bytes.
+	//
+	// When it houses a Merkle root, there will be a single push of 32 bytes.
+	if len(script) == 34 &&
+		script[0] == txscript.OP_RETURN &&
+		script[1] == txscript.OP_DATA_32 {
+
+		return script[2:34]
+	}
+
+	return nil
+}
 
 // VerifyAnchor verifies proof of existence of the supplied merkle root on the
 // blockchain.
@@ -47,11 +65,11 @@ func VerifyAnchor(url, tx string, mr []byte) error {
 		if err != nil {
 			return fmt.Errorf("invalid dcrdata script: %v", err)
 		}
-		data, err := txscript.PushedData(script)
-		if err != nil {
-			return fmt.Errorf("invalid script: %v", err)
+		data := extractNullDataMerkleRootV0(script)
+		if data == nil {
+			return fmt.Errorf("invalid script")
 		}
-		if !bytes.Equal(data[0], mr) {
+		if !bytes.Equal(data, mr) {
 			continue
 		}
 

@@ -28,12 +28,4 @@ fi
 # static checker.
 
 # check linters
-golangci-lint run --disable-all --deadline=10m \
-  --enable=gofmt \
-  --enable=vet \
-  --enable=gosimple \
-  --enable=unconvert \
-  --enable=reassign \
-  --enable=ineffassign \
-  --enable=rowserrcheck \
-  --enable=sqlclosecheck
+golangci-lint run

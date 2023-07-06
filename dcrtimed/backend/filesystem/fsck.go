@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/decred/dcrd/txscript/v3"
+	"github.com/decred/dcrd/txscript/v4"
 	"github.com/decred/dcrdata/api/types/v5"
 	"github.com/decred/dcrtime/dcrtimed/backend"
 	"github.com/decred/dcrtime/merkle"
@@ -78,6 +78,24 @@ func validJournalAction(action string) bool {
 		return false
 	}
 	return true
+}
+
+func extractNullDataMerkleRootV0(script []byte) []byte {
+	// A null script is of the form:
+	//  OP_RETURN <optional data>
+	//
+	// Thus, it can either be a single OP_RETURN or an OP_RETURN followed by a
+	// canonical data push up to MaxDataCarrierSizeV0 bytes.
+	//
+	// When it houses a Merkle root, there will be a single push of 32 bytes.
+	if len(script) == 34 &&
+		script[0] == txscript.OP_RETURN &&
+		script[1] == txscript.OP_DATA_32 {
+
+		return script[2:34]
+	}
+
+	return nil
 }
 
 // journal records what fix occurred at what time if filename != "".
@@ -261,13 +279,12 @@ func (fs *FileSystem) fsckTimestamp(options *backend.FsckOptions, ts int64, empt
 				return fmt.Errorf("   *** ERROR invalid "+
 					"dcrdata script: %v", err)
 			}
-			data, err := txscript.PushedData(script)
-			if err != nil {
-				// XXX bad error, fix
-				return fmt.Errorf("   *** ERROR invalid "+
-					"script: %v", err)
+			data := extractNullDataMerkleRootV0(script)
+			if data == nil {
+				return fmt.Errorf("invalid script")
 			}
-			if !bytes.Equal(data[0], flushRecord.Root[:]) {
+
+			if !bytes.Equal(data, flushRecord.Root[:]) {
 				continue
 			}
 

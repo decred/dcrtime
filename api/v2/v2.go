@@ -83,7 +83,7 @@ var (
 	WalletBalanceRoute = RoutePrefix + "/balance"
 
 	// LastAnchorRoute defines the API route for retrieving
-	// info about last successfull anchor, such as
+	// info about last successful anchor, such as
 	// timestamp, block height & tx id
 	LastAnchorRoute = RoutePrefix + "/last"
 
