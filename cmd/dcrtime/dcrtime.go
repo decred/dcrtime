@@ -410,7 +410,7 @@ func verifyDigests(vd []v2.VerifyDigest) {
 		}
 
 		// Verify merkle path.
-		root, err := merkle.VerifyAuthPath(&d.ChainInformation.MerklePath)
+		root, err := merkle.VerifyAuthPath((*merkle.Branch)(&d.ChainInformation.MerklePath))
 		if err != nil {
 			if err != merkle.ErrEmpty {
 				fmt.Printf("%v invalid auth path %v\n",

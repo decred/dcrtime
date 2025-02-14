@@ -927,7 +927,7 @@ func (d *DcrtimeStore) verifyBatchV2(w http.ResponseWriter, r *http.Request) {
 				ChainTimestamp:   dr.AnchoredTimestamp,
 				Transaction:      dr.Tx.String(),
 				MerkleRoot:       hex.EncodeToString(dr.MerkleRoot[:]),
-				MerklePath:       dr.MerklePath,
+				MerklePath:       v2.MerkleBranch(dr.MerklePath),
 			},
 			Result: -1,
 		}
@@ -1182,7 +1182,7 @@ func (d *DcrtimeStore) verifyV2(w http.ResponseWriter, r *http.Request) {
 				ChainTimestamp:   dr.AnchoredTimestamp,
 				Transaction:      dr.Tx.String(),
 				MerkleRoot:       hex.EncodeToString(dr.MerkleRoot[:]),
-				MerklePath:       dr.MerklePath,
+				MerklePath:       v2.MerkleBranch(dr.MerklePath),
 			},
 			Result: -1,
 		}
@@ -1283,7 +1283,7 @@ func (d *DcrtimeStore) lastDigestsV2(w http.ResponseWriter, r *http.Request) {
 				MinConfirmations: vr.MinConfirmations,
 				Transaction:      vr.Tx.String(),
 				MerkleRoot:       hex.EncodeToString(vr.MerkleRoot[:]),
-				MerklePath:       vr.MerklePath,
+				MerklePath:       v2.MerkleBranch(vr.MerklePath),
 			},
 			Result: -1,
 		}

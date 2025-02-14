@@ -5,10 +5,9 @@
 package v2
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"regexp"
-
-	"github.com/decred/dcrtime/merkle"
 )
 
 type ResultT int
@@ -217,15 +216,23 @@ type VerifyBatchReply struct {
 	Timestamps []VerifyTimestamp `json:"timestamps"`
 }
 
+// MerkleBranch shares the same struct definition as merkle.Branch.
+// This has known horrible JSON marshaling in /v2.
+type MerkleBranch struct {
+	NumLeaves uint32              // Nuber of leaves
+	Hashes    [][sha256.Size]byte // Merkle branch
+	Flags     []byte              // Bitmap of merkle tree
+}
+
 // ChainInformation is returned by the server on a verify digest request.
 // It contains the merkle path of that digest.
 type ChainInformation struct {
-	ChainTimestamp   int64         `json:"chaintimestamp"`
-	Confirmations    *int32        `json:"confirmations,omitempty"` // Using a pointer because we don't want to omit 0
-	MinConfirmations int32         `json:"minconfirmations,omitempty"`
-	Transaction      string        `json:"transaction"`
-	MerkleRoot       string        `json:"merkleroot"`
-	MerklePath       merkle.Branch `json:"merklepath"`
+	ChainTimestamp   int64        `json:"chaintimestamp"`
+	Confirmations    *int32       `json:"confirmations,omitempty"` // Using a pointer because we don't want to omit 0
+	MinConfirmations int32        `json:"minconfirmations,omitempty"`
+	Transaction      string       `json:"transaction"`
+	MerkleRoot       string       `json:"merkleroot"`
+	MerklePath       MerkleBranch `json:"merklepath"`
 }
 
 // CollectionInformation is returned by the server on a verify timestamp
