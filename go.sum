@@ -112,6 +112,8 @@ github.com/decred/dcrdata/semver v1.0.0 h1:DBqYU/x+4LqHq/3r4xKdF6xG5ewktG2KDC+g/
 github.com/decred/dcrdata/semver v1.0.0/go.mod h1:z+nQqiAd9fYkHhBLbejysZ2FPHtgkrErWDgMf+JlZWE=
 github.com/decred/dcrdata/txhelpers/v4 v4.0.1 h1:jNPPSP5HzE4cfddj5zIJhrIEus/Tvd28Xvl/uVGjrMI=
 github.com/decred/dcrdata/txhelpers/v4 v4.0.1/go.mod h1:cUJbgsIzzI42llHDS0nkPlG49vPJ0cW6IZGbfu5sFrA=
+github.com/decred/dcrtime/api/v2 v2.0.0 h1:UB2CBvQslooQc22YF6Bqf/yTMwfxva+DOi2s7bEoJ18=
+github.com/decred/dcrtime/api/v2 v2.0.0/go.mod h1:WJshmls13ONj+9KaBwvjGIDsg/NDZa7SLWTb2foYhRc=
 github.com/decred/dcrwallet/rpc/jsonrpc/types v1.3.0 h1:yCxtFqK7X6GvZWQzHXjCwoGCy9YVe3tGEwxCjW5rYQk=
 github.com/decred/dcrwallet/rpc/jsonrpc/types v1.3.0/go.mod h1:Xvekb43GtfMiRbyIY4ZJ9Uhd9HRIAcnp46f3q2eIExU=
 github.com/decred/go-socks v1.1.0 h1:dnENcc0KIqQo3HSXdgboXAHgqsCIutkqq6ntQjYtm2U=
