@@ -241,9 +241,10 @@ func (fs *FileSystem) flush(ts int64) error {
 	mt := merkle.Tree(hashes)
 	root := *mt[len(mt)-1] // Last element is root
 	fr := backend.FlushRecord{
-		Root:           root,
-		Hashes:         mt[:len(hashes)], // Only store hashes
-		FlushTimestamp: time.Now().Unix(),
+		Root:            root,
+		Hashes:          mt[:len(hashes)], // Only store hashes
+		FlushTimestamp:  time.Now().Unix(),
+		ServerTimestamp: ts,
 	}
 	if !fs.testing {
 		tx, err := fs.wallet.Construct(root)
@@ -513,8 +514,7 @@ func (fs *FileSystem) getTimestamp(timestamp int64) (backend.TimestampResult, er
 // with the READ lock held.
 func (fs *FileSystem) getDigest(now time.Time, current *leveldb.DB, digest [sha256.Size]byte) (backend.GetResult, error) {
 	gdme := backend.GetResult{
-		Digest:    digest,
-		Timestamp: now.Unix(),
+		Digest: digest,
 	}
 
 	// Lookup in global database if there are dups.
@@ -546,6 +546,7 @@ func (fs *FileSystem) getDigest(now time.Time, current *leveldb.DB, digest [sha2
 		gdme.MerkleRoot = fr.Root
 		// That pointer better not be nil!
 		gdme.MerklePath = *merkle.AuthPath(fr.Hashes, &digest)
+		gdme.Timestamp = fr.ServerTimestamp
 
 		// Override error code during testing
 		if fs.testing {

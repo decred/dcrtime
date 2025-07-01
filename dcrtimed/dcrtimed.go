@@ -37,9 +37,7 @@ const (
 	forward = "X-Forwarded-For"
 )
 
-var (
-	interruptSignals = []os.Signal{os.Interrupt}
-)
+var interruptSignals = []os.Signal{os.Interrupt}
 
 // DcrtimeStore application context.
 type DcrtimeStore struct {
@@ -51,9 +49,7 @@ type DcrtimeStore struct {
 	apiTokens  map[string]struct{}
 }
 
-func (d *DcrtimeStore) sendToBackend(ctx context.Context, w http.ResponseWriter,
-	method, route, contentType, remoteAddr string, body *bytes.Reader) {
-
+func (d *DcrtimeStore) sendToBackend(ctx context.Context, w http.ResponseWriter, method, route, contentType, remoteAddr string, body *bytes.Reader) {
 	storeHost := fmt.Sprintf("https://%s%s", d.cfg.StoreHost, route)
 	req, err := http.NewRequestWithContext(ctx, method, storeHost, body)
 	if err != nil {
@@ -361,7 +357,6 @@ func (d *DcrtimeStore) version(w http.ResponseWriter, r *http.Request) {
 			versions = append(versions, v2.APIVersion)
 			prefixes = append(prefixes, v2.RoutePrefix)
 		}
-
 	}
 	versionReply := v2.VersionReply{
 		Versions:      versions,
@@ -575,9 +570,8 @@ func (d *DcrtimeStore) verifyV1(w http.ResponseWriter, r *http.Request) {
 		vt.CollectionInformation.Digests = make([]string, 0,
 			len(ts.Digests))
 		for _, digest := range ts.Digests {
-			vt.CollectionInformation.Digests =
-				append(vt.CollectionInformation.Digests,
-					hex.EncodeToString(digest[:]))
+			vt.CollectionInformation.Digests = append(vt.CollectionInformation.Digests,
+				hex.EncodeToString(digest[:]))
 		}
 
 		tsReply = append(tsReply, vt)
@@ -892,9 +886,8 @@ func (d *DcrtimeStore) verifyBatchV2(w http.ResponseWriter, r *http.Request) {
 		vt.CollectionInformation.Digests = make([]string, 0,
 			len(ts.Digests))
 		for _, digest := range ts.Digests {
-			vt.CollectionInformation.Digests =
-				append(vt.CollectionInformation.Digests,
-					hex.EncodeToString(digest[:]))
+			vt.CollectionInformation.Digests = append(vt.CollectionInformation.Digests,
+				hex.EncodeToString(digest[:]))
 		}
 
 		tsReply = append(tsReply, vt)
@@ -1146,9 +1139,8 @@ func (d *DcrtimeStore) verifyV2(w http.ResponseWriter, r *http.Request) {
 		vt.CollectionInformation.Digests = make([]string, 0,
 			len(ts.Digests))
 		for _, digest := range ts.Digests {
-			vt.CollectionInformation.Digests =
-				append(vt.CollectionInformation.Digests,
-					hex.EncodeToString(digest[:]))
+			vt.CollectionInformation.Digests = append(vt.CollectionInformation.Digests,
+				hex.EncodeToString(digest[:]))
 		}
 
 		tsReply = vt
@@ -1503,7 +1495,6 @@ func _main() error {
 			loadedCfg.Confirmations,
 			loadedCfg.MaxDigests,
 			[]byte(loadedCfg.WalletPassphrase))
-
 		if err != nil {
 			return err
 		}
@@ -1606,7 +1597,7 @@ func _main() error {
 	}
 
 	// Pretty print web page for individual digest/timestamp
-	//d.router.HandleFunc(v1.TimestampRoute+"{id:[0-9a-zA-Z]+}",
+	// d.router.HandleFunc(v1.TimestampRoute+"{id:[0-9a-zA-Z]+}",
 	//	d.getTimestamp).Methods(http.MethodGet)
 
 	// Bind to a port and pass our router in

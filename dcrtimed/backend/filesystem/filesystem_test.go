@@ -184,6 +184,11 @@ func TestGetDigests(t *testing.T) {
 			t.Fatalf("invalid ErrorCode got %x want %x",
 				gr.ErrorCode, backend.ErrorNotFound)
 		}
+		// Ensure the server timestamp is set to the directory timestamp.
+		if gr.ErrorCode == 0 && gr.Timestamp != timestamp {
+			t.Fatalf("server timmestamp should be the directory timestamp, want %d got %d",
+				timestamp, gr.Timestamp)
+		}
 	}
 }
 
@@ -344,8 +349,10 @@ func TestGetTimestamp(t *testing.T) {
 	}
 
 	// Get invalid timestamp+1, timestamp+2, timestamp+3
-	gtmes, err := fs.GetTimestamps([]int64{timestamp + 1, timestamp + 2,
-		timestamp + 3})
+	gtmes, err := fs.GetTimestamps([]int64{
+		timestamp + 1, timestamp + 2,
+		timestamp + 3,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -360,8 +367,10 @@ func TestGetTimestamp(t *testing.T) {
 	}
 
 	// Get invalid timestamp+1, timestamp+2, timestamp+3 and valid timestamp
-	gtmes, err = fs.GetTimestamps([]int64{timestamp + 1, timestamp + 2,
-		timestamp + 3, timestamp})
+	gtmes, err = fs.GetTimestamps([]int64{
+		timestamp + 1, timestamp + 2,
+		timestamp + 3, timestamp,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
