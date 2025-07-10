@@ -164,6 +164,7 @@ type VerifyReply struct {
 type VerifyDigest struct {
 	Digest           string           `json:"digest"`
 	ServerTimestamp  int64            `json:"servertimestamp"`
+	FlushTimestamp   int64            `json:"flushtimestamp"`
 	Result           ResultT          `json:"result"`
 	ChainInformation ChainInformation `json:"chaininformation"`
 }
@@ -172,6 +173,7 @@ type VerifyDigest struct {
 // blockchain; it is however set to the block timestamp it was anchored in.
 type VerifyTimestamp struct {
 	ServerTimestamp       int64                 `json:"servertimestamp"`
+	FlushTimestamp        int64                 `json:"flushtimestamp"`
 	Result                ResultT               `json:"result"`
 	CollectionInformation CollectionInformation `json:"collectioninformation"`
 }

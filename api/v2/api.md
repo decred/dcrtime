@@ -28,7 +28,6 @@ showing and validating their inclusion in the Decred blockchain.
 
 ### Methods
 
-
 #### `Timestamp Batch`
 
 Upload multiple digests to the time server. The server adds this
@@ -38,50 +37,50 @@ added to. You must use the verify call to find out when it has been anchored to
 a block (which is done in batches at a set time interval that is not related to
 the api calls).
 
-* **URL**
+- **URL**
 
   `/v2/timestamp/batch`
 
-* **HTTP Method:**
+- **HTTP Method:**
 
   `POST`
 
-*  *Params*
+- *Params*
 
-	**Required**
+ **Required**
 
    `digests=[{hash},{...}]`
 
     Digests is an array of digests (SHA256 hashes) to send to the server.
 
-	**Optional**
+ **Optional**
 
    `id=[string]`
 
-	ID is a user provided identifier that may be used in case the client
-	requires a unique identifier.
+ ID is a user provided identifier that may be used in case the client
+ requires a unique identifier.
 
-* **Results**
+- **Results**
 
-	`id`
+ `id`
 
-	id is copied from the original call for the client to use to match calls
-	 and responses.
+ id is copied from the original call for the client to use to match calls
+  and responses.
 
-	`servertimestamp`
+ `servertimestamp`
 
-	servertimestamp is the collection the digests belong to.
+ servertimestamp is the collection the digests belong to.
 
-	`digests`
+ `digests`
 
-	digests is the list of digests processed by the server.
+ digests is the list of digests processed by the server.
 
-	`results`
+ `results`
 
-	results is a list of integers representing the result for each digest.
-	See #Results for details on return codes.
+ results is a list of integers representing the result for each digest.
+ See #Results for details on return codes.
 
-* **Example**
+- **Example**
 
 Request:
 
@@ -99,13 +98,13 @@ Reply:
 ```json
 {
     "id":"dcrtime cli",
-	"servertimestamp":1497376800,
-	"digests":[
-	    "d412ba345bc44fb6fbbaf2db9419b648752ecfcda6fd1aec213b45a5584d1b13"
-	],
-	"results":[
-	    1
-	]
+ "servertimestamp":1497376800,
+ "digests":[
+     "d412ba345bc44fb6fbbaf2db9419b648752ecfcda6fd1aec213b45a5584d1b13"
+ ],
+ "results":[
+     1
+ ]
 }
 ```
 
@@ -118,129 +117,135 @@ collection information relative to that timestamp, including all the digests
 grouped on that collection. If it has not been anchored on the blockchain yet,
 it returns zero. Digests and timestamps can be verified on the same request.
 
-* **URL**
+- **URL**
 
   `/v2/verify/batch`
 
-* **HTTP Method:**
+- **HTTP Method:**
 
   `POST`
 
-*  *Params*
+- *Params*
 
-	**Required**
+ **Required**
 
-	`digests=[{hash},{...}]`
+ `digests=[{hash},{...}]`
 
-	Digests is an array of digests (SHA256 hashes) to send to the server.
+ Digests is an array of digests (SHA256 hashes) to send to the server.
 
-	or
+ or
 
-	`timestamps=[{timestamp}, {...}]`
+ `timestamps=[{timestamp}, {...}]`
 
+ Timestamps is an array of int64 timestamps to be confirmed by the server.
 
-	Timestamps is an array of int64 timestamps to be confirmed by the server.
-
-	**Optional**
+ **Optional**
 
    `id=[string]`
 
-	ID is a user provided identifier that may be used in case the client
-	requires a unique identifier.
+ ID is a user provided identifier that may be used in case the client
+ requires a unique identifier.
 
-* **Results**
+- **Results**
 
-	`id`
+ `id`
 
-	id is copied from the original call for the client to use to match calls
-	and responses.
+ id is copied from the original call for the client to use to match calls
+ and responses.
 
-	`digests`
+ `digests`
 
-	The batch of digests requested by the client. Each digest will return the
-	following fields:
+ The batch of digests requested by the client. Each digest will return the
+ following fields:
 
-	`digest`
+ `digest`
 
-	The digest processed by the server.
+ The digest processed by the server.
 
-	`servertimestamp`
+ `servertimestamp`
 
-	The collection the digest belongs to (if anchored).
+ The collection timestamp the digest belongs to.
 
-	`result`
+ `flushtimestamp`
 
-	Return code, see #Results.
+ The timestamp when the digest was flushed from the server to the blockchain.
 
-	`chaininformation`
+ `result`
 
-	A JSON object with the information about the onchain timestamp.
+ Return code, see #Results.
 
-	`chaintimestamp`
+ `chaininformation`
 
-	Timestamp from the server.
+ A JSON object with the information about the onchain timestamp.
 
-	`transaction`
+ `chaintimestamp`
 
-	Transaction hash that includes the digest.
+ Timestamp from the server.
 
-	`merkleroot`
+ `transaction`
 
-	MerkleRoot of the block containing the transaction (if mined).
+ Transaction hash that includes the digest.
 
-	`merklepath`
+ `merkleroot`
 
-	Merklepath contains additional information for the mined transaction
-	(if available).
+ MerkleRoot of the block containing the transaction (if mined).
 
-	`timestamps`
+ `merklepath`
 
-	The batch of timestamps requested by the client. Each timestamp will return
-	 the following fields:
+ Merklepath contains additional information for the mined transaction
+ (if available).
 
-	`servertimestamp`
+ `timestamps`
 
-	The timestamp itself.
+ The batch of timestamps requested by the client. Each timestamp will return
+  the following fields:
 
-	`result`
+ `servertimestamp`
 
-	Return code, see #Results.
+ The timestamp itself.
 
-	`collectioninformation`
+ `flushtimestamp`
 
-	A JSON object with the information about that timestamp collection.
+ The timestamp when the digest was flushed from the server to the blockchain.
 
-	`chaintimestamp`
+ `result`
 
-	Timestamp from the server.
+ Return code, see #Results.
 
-	`transaction`
+ `collectioninformation`
 
-	Transaction hash that includes the digest.
+ A JSON object with the information about that timestamp collection.
 
-	`merkleroot`
+ `chaintimestamp`
 
-	MerkleRoot of the block containing the transaction (if mined).
+ Timestamp from the server.
 
-	`digests`
+ `transaction`
 
-	Digests contains all digests grouped and anchored on that timestamp
-	collection.
+ Transaction hash that includes the digest.
 
+ `merkleroot`
 
-* **Example**
+ MerkleRoot of the block containing the transaction (if mined).
+
+ `digests`
+
+ Digests contains all digests grouped and anchored on that timestamp
+ collection.
+
+- **Example**
 
 Request:
 
 ```json
 {
     "id":"dcrtime cli",
-	"digests":[
+ "digests":[
         "d412ba345bc44fb6fbbaf2db9419b648752ecfcda6fd1aec213b45a5584d1b13"
     ],
-	"timestamps": [
-		1497376800
-	]
+ "timestamps": [
+  1497376800
+ ]
 }
 ```
 
@@ -249,38 +254,40 @@ Reply:
 ```json
 {
     "id":"dcrtime cli",
-	"digests":[{
-	    "digest":
-			"d412ba345bc44fb6fbbaf2db9419b648752ecfcda6fd1aec213b45a5584d1b13",
-	    "servertimestamp":1497376800,
-	    "result":0,
-	    "chaininformation":{
-	        "chaintimestamp":0,
-	        "transaction":
-			"0000000000000000000000000000000000000000000000000000000000000000",
-	        "merkleroot":
-			"0000000000000000000000000000000000000000000000000000000000000000",
-	        "merklepath":{
-	            "NumLeaves":0,
-	            "Hashes":null,
-	            "Flags":null
-	        }
-	    }
-	}],
-	"timestamps":[{
-		"servertimestamp":1497376800,
-		"result":0,
-		"collectioninformation":{
-			"chaintimestamp":0,
-			"transaction":
-			"0000000000000000000000000000000000000000000000000000000000000000",
-			"merkleroot":
-			"0000000000000000000000000000000000000000000000000000000000000000",
-			"digests":[
-			"d412ba345bc44fb6fbbaf2db9419b648752ecfcda6fd1aec213b45a5584d1b13"
-			]
-		}
-	}]
+ "digests":[{
+     "digest":
+   "d412ba345bc44fb6fbbaf2db9419b648752ecfcda6fd1aec213b45a5584d1b13",
+     "servertimestamp":1497376800,
+     "flushtimestamp":1497377800,
+     "result":0,
+     "chaininformation":{
+         "chaintimestamp":0,
+         "transaction":
+   "0000000000000000000000000000000000000000000000000000000000000000",
+         "merkleroot":
+   "0000000000000000000000000000000000000000000000000000000000000000",
+         "merklepath":{
+             "NumLeaves":0,
+             "Hashes":null,
+             "Flags":null
+         }
+     }
+ }],
+ "timestamps":[{
+  "servertimestamp":1497376800,
+  "flushtimestamp":1497377800,
+  "result":0,
+  "collectioninformation":{
+   "chaintimestamp":0,
+   "transaction":
+   "0000000000000000000000000000000000000000000000000000000000000000",
+   "merkleroot":
+   "0000000000000000000000000000000000000000000000000000000000000000",
+   "digests":[
+   "d412ba345bc44fb6fbbaf2db9419b648752ecfcda6fd1aec213b45a5584d1b13"
+   ]
+  }
+ }]
 }
 ```
 
@@ -290,50 +297,50 @@ Upload one digest to the time server from a pure HTML form data on the client
 side. This route exists to serve no-JS clients. Anchors the digest to the
 server the same way as batched ones.
 
-* **URL**
+- **URL**
 
   `/v2/timestamp`
 
-* **HTTP Method:**
+- **HTTP Method:**
 
   `POST`
 
-*  *Params*
+- *Params*
 
-	**Required**
+ **Required**
 
    `digest={hash}`
 
     Digest is a digest (SHA256 hash) to send to the server.
 
-	**Optional**
+ **Optional**
 
    `id=[string]`
 
-	ID is a user provided identifier that may be used in case the client
-	requires a unique identifier.
+ ID is a user provided identifier that may be used in case the client
+ requires a unique identifier.
 
-* **Results**
+- **Results**
 
-	`id`
+ `id`
 
-	id is copied from the original call for the client to use to match calls
-	 and responses.
+ id is copied from the original call for the client to use to match calls
+  and responses.
 
-	`servertimestamp`
+ `servertimestamp`
 
-	servertimestamp is the collection the digests belong to.
+ servertimestamp is the collection the digests belong to.
 
-	`digest`
+ `digest`
 
-	digest is the digest processed by the server.
+ digest is the digest processed by the server.
 
-	`result`
+ `result`
 
-	result is a integer representing the result for the digest. See #Result
-	 for details on return codes.
+ result is a integer representing the result for the digest. See #Result
+  for details on return codes.
 
-* **Example**
+- **Example**
 
 Request form data:
 
@@ -347,44 +354,44 @@ Reply:
 ```json
 {
     "id":"dcrtime cli",
-	"servertimestamp":1497376800,
-	"digest":
-		"d412ba345bc44fb6fbbaf2db9419b648752ecfcda6fd1aec213b45a5584d1b13",
-	"result": 1
+ "servertimestamp":1497376800,
+ "digest":
+  "d412ba345bc44fb6fbbaf2db9419b648752ecfcda6fd1aec213b45a5584d1b13",
+ "result": 1
 }
 ```
 
 ### Results
 
-* `ResultInvalid`
+- `ResultInvalid`
 
-	`0`
+ `0`
 
 The requested operation was invalid.
 
-* `ResultOK`
+- `ResultOK`
 
-	`1`
+ `1`
 
 The operation completed successfully.
 
-* `ResultExistsError`
+- `ResultExistsError`
 
-	`2`
+ `2`
 
 The digest was rejected because it exists. This is only relevant for the
 `Timestamp` call.
 
-* `ResultDoesntExistError`
+- `ResultDoesntExistError`
 
-	`3`
+ `3`
 
 The timestamp or digest could not be found by the server. This is only
 relevant for the `Verify` call.
 
-* `ResultDisabled`
+- `ResultDisabled`
 
-	`4`
+ `4`
 
 Querying is disabled.
 
@@ -393,117 +400,123 @@ Querying is disabled.
 Verifies the status of a digest or timestamp on the server. Verifies through
 the same process as batched ones.
 
-* **URL**
+- **URL**
 
   `/v2/verify`
 
-* **HTTP Method:**
+- **HTTP Method:**
 
   `POST`
 
-*  *Params*
+- *Params*
 
-	**Required**
+ **Required**
 
-	`digest={hash}`
+ `digest={hash}`
 
-	Digest is a digest (SHA256 hash) to be confirmed by the server.
+ Digest is a digest (SHA256 hash) to be confirmed by the server.
 
-	or
+ or
 
-	`timestamp={timestamp}`
+ `timestamp={timestamp}`
 
+ Timestamp is a int64 timestamp to be confirmed by the server.
 
-	Timestamp is a int64 timestamp to be confirmed by the server.
-
-	**Optional**
+ **Optional**
 
    `id=[string]`
 
-	ID is a user provided identifier that may be used in case the client
-	requires a unique identifier.
+ ID is a user provided identifier that may be used in case the client
+ requires a unique identifier.
 
-* **Results**
+- **Results**
 
-	`id`
+ `id`
 
-	id is copied from the original call for the client to use to match calls
-	and responses.
+ id is copied from the original call for the client to use to match calls
+ and responses.
 
-	`digest`
+ `digest`
 
-	The batch of digests requested by the client. Each digest will return the
-	following fields:
+ The batch of digests requested by the client. Each digest will return the
+ following fields:
 
-	`digest`
+ `digest`
 
-	The digest processed by the server.
+ The digest processed by the server.
 
-	`servertimestamp`
+ `servertimestamp`
 
-	The collection the digest belongs to (if anchored).
+ The collection timestamp the digest belongs to.
 
-	`result`
+ `flushtimestamp`
 
-	Return code, see #Results.
+ The timestamp when the digest was flushed from the server to the blockchain.
 
-	`chaininformation`
+ `result`
 
-	A JSON object with the information about the onchain timestamp.
+ Return code, see #Results.
 
-	`chaintimestamp`
+ `chaininformation`
 
-	Timestamp from the server.
+ A JSON object with the information about the onchain timestamp.
 
-	`transaction`
+ `chaintimestamp`
 
-	Transaction hash that includes the digest.
+ Timestamp from the server.
 
-	`merkleroot`
+ `transaction`
 
-	MerkleRoot of the block containing the transaction (if mined).
+ Transaction hash that includes the digest.
 
-	`merklepath`
+ `merkleroot`
 
-	Merklepath contains additional information for the mined transaction
-	(if available).
+ MerkleRoot of the block containing the transaction (if mined).
 
-	`timestamp`
+ `merklepath`
 
-	The batch of timestamps requested by the client. Each timestamp will return
-	 the following fields:
+ Merklepath contains additional information for the mined transaction
+ (if available).
 
-	`servertimestamp`
+ `timestamp`
 
-	The timestamp itself.
+ The batch of timestamps requested by the client. Each timestamp will return
+  the following fields:
 
-	`result`
+ `servertimestamp`
 
-	Return code, see #Results.
+ The timestamp itself.
 
-	`collectioninformation`
+ `flushtimestamp`
 
-	A JSON object with the information about that timestamp collection.
+ The timestamp when the digest was flushed from the server to the blockchain.
 
-	`chaintimestamp`
+ `result`
 
-	Timestamp from the server.
+ Return code, see #Results.
 
-	`transaction`
+ `collectioninformation`
 
-	Transaction hash that includes the digest.
+ A JSON object with the information about that timestamp collection.
 
-	`merkleroot`
+ `chaintimestamp`
 
-	MerkleRoot of the block containing the transaction (if mined).
+ Timestamp from the server.
 
-	`digests`
+ `transaction`
 
-	Digests contains all digests grouped and anchored on that timestamp
-	collection.
+ Transaction hash that includes the digest.
 
+ `merkleroot`
 
-* **Example**
+ MerkleRoot of the block containing the transaction (if mined).
+
+ `digests`
+
+ Digests contains all digests grouped and anchored on that timestamp
+ collection.
+
+- **Example**
 
 Request form data:
 
@@ -518,38 +531,40 @@ Reply:
 ```json
 {
     "id":"dcrtime cli",
-	"digest": {
-	    "digest":
-			"d412ba345bc44fb6fbbaf2db9419b648752ecfcda6fd1aec213b45a5584d1b13",
-	    "servertimestamp":1497376800,
-	    "result":0,
-	    "chaininformation":{
-	        "chaintimestamp":0,
-	        "transaction":
-			"0000000000000000000000000000000000000000000000000000000000000000",
-	        "merkleroot":
-			"0000000000000000000000000000000000000000000000000000000000000000",
-	        "merklepath":{
-	            "NumLeaves":0,
-	            "Hashes":null,
-	            "Flags":null
-	        }
-	    }
-	},
-	"timestamp": {
-		"servertimestamp":1497376800,
-		"result":0,
-		"collectioninformation":{
-			"chaintimestamp":0,
-			"transaction":
-			"0000000000000000000000000000000000000000000000000000000000000000",
-			"merkleroot":
-			"0000000000000000000000000000000000000000000000000000000000000000",
-			"digests":[
-			"d412ba345bc44fb6fbbaf2db9419b648752ecfcda6fd1aec213b45a5584d1b13"
-			]
-		}
-	}
+ "digest": {
+     "digest":
+   "d412ba345bc44fb6fbbaf2db9419b648752ecfcda6fd1aec213b45a5584d1b13",
+     "servertimestamp":1497376800,
+     "flushtimestamp":1497377800,
+     "result":0,
+     "chaininformation":{
+         "chaintimestamp":0,
+         "transaction":
+   "0000000000000000000000000000000000000000000000000000000000000000",
+         "merkleroot":
+   "0000000000000000000000000000000000000000000000000000000000000000",
+         "merklepath":{
+             "NumLeaves":0,
+             "Hashes":null,
+             "Flags":null
+         }
+     }
+ },
+ "timestamp": {
+  "servertimestamp":1497376800,
+  "flushtimestamp":1497377800,
+  "result":0,
+  "collectioninformation":{
+   "chaintimestamp":0,
+   "transaction":
+   "0000000000000000000000000000000000000000000000000000000000000000",
+   "merkleroot":
+   "0000000000000000000000000000000000000000000000000000000000000000",
+   "digests":[
+   "d412ba345bc44fb6fbbaf2db9419b648752ecfcda6fd1aec213b45a5584d1b13"
+   ]
+  }
+ }
 }
 ```
 
@@ -809,3 +824,4 @@ Reply:
    ]
 }
 ```
+
