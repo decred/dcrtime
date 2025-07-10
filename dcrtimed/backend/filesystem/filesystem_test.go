@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"reflect"
 	"testing"
@@ -71,7 +70,7 @@ func TestTimestamp(t *testing.T) {
 }
 
 func TestGetDigests(t *testing.T) {
-	dir, err := ioutil.TempDir("", "dcrtimed.test")
+	dir, err := os.MkdirTemp("", "dcrtimed.test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -202,7 +201,7 @@ func TestGetDigests(t *testing.T) {
 // all existing returned with ErrorCode = foundPrevious which means digests
 // were found in previous container.
 func TestGetDigestsFoundInPrevious(t *testing.T) {
-	dir, err := ioutil.TempDir("", "dcrtimed.test")
+	dir, err := os.MkdirTemp("", "dcrtimed.test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -313,7 +312,7 @@ func TestGetDigestsFoundInPrevious(t *testing.T) {
 }
 
 func TestGetTimestamp(t *testing.T) {
-	dir, err := ioutil.TempDir("", "dcrtimed.test")
+	dir, err := os.MkdirTemp("", "dcrtimed.test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -450,7 +449,7 @@ func TestGetTimestamp(t *testing.T) {
 }
 
 func TestPut(t *testing.T) {
-	dir, err := ioutil.TempDir("", "dcrtimed.test")
+	dir, err := os.MkdirTemp("", "dcrtimed.test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -540,7 +539,7 @@ func TestPut(t *testing.T) {
 }
 
 func TestPutFoundInPrevious(t *testing.T) {
-	dir, err := ioutil.TempDir("", "dcrtimed.test")
+	dir, err := os.MkdirTemp("", "dcrtimed.test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -606,7 +605,7 @@ func TestPutFoundInPrevious(t *testing.T) {
 }
 
 func TestFlusher(t *testing.T) {
-	dir, err := ioutil.TempDir("", "dcrtimed.test")
+	dir, err := os.MkdirTemp("", "dcrtimed.test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -694,7 +693,7 @@ func TestFlusher(t *testing.T) {
 }
 
 func TestFlusherSkipNow(t *testing.T) {
-	dir, err := ioutil.TempDir("", "dcrtimed.test")
+	dir, err := os.MkdirTemp("", "dcrtimed.test")
 	if err != nil {
 		t.Fatal(err)
 	}

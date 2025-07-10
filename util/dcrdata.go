@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/decred/dcrd/txscript/v4"
@@ -41,7 +41,7 @@ func VerifyAnchor(url, tx string, mr []byte) error {
 	defer r.Body.Close()
 
 	if r.StatusCode != http.StatusOK {
-		body, err := ioutil.ReadAll(r.Body)
+		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			return fmt.Errorf("invalid body: %v %v",
 				r.StatusCode, body)

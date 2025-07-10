@@ -10,7 +10,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
+	"os"
 
 	pb "decred.org/dcrwallet/v3/rpc/walletrpc"
 	"github.com/decred/dcrd/chaincfg/chainhash"
@@ -202,7 +202,7 @@ func New(cert, host, clientCert, clientKey string, passphrase []byte) (*DcrtimeW
 	}
 
 	serverCAs := x509.NewCertPool()
-	serverCert, err := ioutil.ReadFile(cert)
+	serverCert, err := os.ReadFile(cert)
 	if err != nil {
 		return nil, err
 	}

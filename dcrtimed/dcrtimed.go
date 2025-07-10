@@ -14,7 +14,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"os/signal"
@@ -109,7 +108,7 @@ func (d *DcrtimeStore) sendToBackend(ctx context.Context, w http.ResponseWriter,
 }
 
 func (d *DcrtimeStore) proxyStatusV1(w http.ResponseWriter, r *http.Request) {
-	b, err := ioutil.ReadAll(r.Body)
+	b, err := io.ReadAll(r.Body)
 	if err != nil {
 		util.RespondWithError(w, http.StatusBadRequest,
 			"Unable to read request")
@@ -132,7 +131,7 @@ func (d *DcrtimeStore) proxyStatusV1(w http.ResponseWriter, r *http.Request) {
 }
 
 func (d *DcrtimeStore) proxyTimestampV1(w http.ResponseWriter, r *http.Request) {
-	b, err := ioutil.ReadAll(r.Body)
+	b, err := io.ReadAll(r.Body)
 	if err != nil {
 		util.RespondWithError(w, http.StatusBadRequest,
 			"Unable to read request")
@@ -157,7 +156,7 @@ func (d *DcrtimeStore) proxyTimestampV1(w http.ResponseWriter, r *http.Request) 
 }
 
 func (d *DcrtimeStore) proxyVerifyV1(w http.ResponseWriter, r *http.Request) {
-	b, err := ioutil.ReadAll(r.Body)
+	b, err := io.ReadAll(r.Body)
 	if err != nil {
 		util.RespondWithError(w, http.StatusBadRequest,
 			"Unable to read request")
@@ -196,7 +195,7 @@ func (d *DcrtimeStore) proxyLastAnchorV1(w http.ResponseWriter, r *http.Request)
 }
 
 func (d *DcrtimeStore) proxyStatusV2(w http.ResponseWriter, r *http.Request) {
-	b, err := ioutil.ReadAll(r.Body)
+	b, err := io.ReadAll(r.Body)
 	r.Body.Close()
 	if err != nil {
 		util.RespondWithError(w, http.StatusBadRequest,
@@ -243,7 +242,7 @@ func (d *DcrtimeStore) proxyVerifyV2(w http.ResponseWriter, r *http.Request) {
 }
 
 func (d *DcrtimeStore) proxyTimestampBatchV2(w http.ResponseWriter, r *http.Request) {
-	b, err := ioutil.ReadAll(r.Body)
+	b, err := io.ReadAll(r.Body)
 	r.Body.Close()
 	if err != nil {
 		util.RespondWithError(w, http.StatusBadRequest,
@@ -271,7 +270,7 @@ func (d *DcrtimeStore) proxyTimestampBatchV2(w http.ResponseWriter, r *http.Requ
 }
 
 func (d *DcrtimeStore) proxyVerifyBatchV2(w http.ResponseWriter, r *http.Request) {
-	b, err := ioutil.ReadAll(r.Body)
+	b, err := io.ReadAll(r.Body)
 	r.Body.Close()
 	if err != nil {
 		util.RespondWithError(w, http.StatusBadRequest,
@@ -1474,7 +1473,7 @@ func _main() error {
 			return fmt.Errorf("unable to find store cert %v",
 				loadedCfg.StoreCert)
 		}
-		storeCert, err := ioutil.ReadFile(loadedCfg.StoreCert)
+		storeCert, err := os.ReadFile(loadedCfg.StoreCert)
 		if err != nil {
 			return fmt.Errorf("unable to read store cert %v: %v",
 				loadedCfg.StoreCert, err)

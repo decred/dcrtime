@@ -10,7 +10,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -253,7 +253,7 @@ func (fs *FileSystem) fsckTimestamp(options *backend.FsckOptions, ts int64, empt
 		defer r.Body.Close()
 
 		if r.StatusCode != http.StatusOK {
-			body, err := ioutil.ReadAll(r.Body)
+			body, err := io.ReadAll(r.Body)
 			if err != nil {
 				return fmt.Errorf("   *** ERROR invalid "+
 					"body: %v %v", r.StatusCode, body)
@@ -369,7 +369,7 @@ func (fs *FileSystem) fsckTimestamp(options *backend.FsckOptions, ts int64, empt
 }
 
 func (fs *FileSystem) fsckTimestamps(options *backend.FsckOptions, empties map[int64]struct{}) error {
-	files, err := ioutil.ReadDir(fs.root)
+	files, err := os.ReadDir(fs.root)
 	if err != nil {
 		return err
 	}
@@ -610,7 +610,7 @@ func (fs *FileSystem) fsckDup(options *backend.FsckOptions, ts int64, dups map[s
 
 // fsckDups checks for duplicate digests in all timestamp containers.
 func (fs *FileSystem) fsckDups(options *backend.FsckOptions) error {
-	files, err := ioutil.ReadDir(fs.root)
+	files, err := os.ReadDir(fs.root)
 	if err != nil {
 		return err
 	}

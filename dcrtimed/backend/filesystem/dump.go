@@ -9,7 +9,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
@@ -103,6 +102,7 @@ func (fs *FileSystem) dumpGlobal(f *os.File, verbose bool) error {
 	}
 	return i.Error()
 }
+
 func dumpFlushRecord(f *os.File, flushRecord *backend.FlushRecord) {
 	fmt.Fprintf(f, "Merkle root    : %x\n",
 		flushRecord.Root)
@@ -184,7 +184,7 @@ func (fs *FileSystem) dumpTimestamp(f *os.File, verbose bool, ts int64) error {
 }
 
 func (fs *FileSystem) dumpTimestamps(f *os.File, verbose bool) error {
-	files, err := ioutil.ReadDir(fs.root)
+	files, err := os.ReadDir(fs.root)
 	if err != nil {
 		return err
 	}

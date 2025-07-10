@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -293,7 +292,7 @@ func (fs *FileSystem) doFlush() (int, error) {
 	now := fs.now().Format(fStr)
 
 	// Get Dirs.
-	files, err := ioutil.ReadDir(fs.root)
+	files, err := os.ReadDir(fs.root)
 	if err != nil {
 		return 0, err
 	}
@@ -591,7 +590,7 @@ func (fs *FileSystem) getDigest(now time.Time, current *leveldb.DB, digest [sha2
 
 	// Lookup in previous not flushed dirs
 	// Get Dirs.
-	files, err := ioutil.ReadDir(fs.root)
+	files, err := os.ReadDir(fs.root)
 	if err != nil {
 		return gdme, err
 	}
@@ -898,7 +897,7 @@ func (fs *FileSystem) Put(hashes [][sha256.Size]byte) (int64, []backend.PutResul
 
 		// Lookup in previous not flushed dirs
 		// Get Dirs.
-		files, err := ioutil.ReadDir(fs.root)
+		files, err := os.ReadDir(fs.root)
 		if err != nil {
 			return 0, []backend.PutResult{}, err
 		}
@@ -1016,7 +1015,7 @@ func (fs *FileSystem) Close() {
 func (fs *FileSystem) LastAnchor() (*backend.LastAnchorResult, error) {
 	now := fs.now().Format(fStr)
 	// Get Dirs.
-	files, err := ioutil.ReadDir(fs.root)
+	files, err := os.ReadDir(fs.root)
 	if err != nil {
 		return &backend.LastAnchorResult{}, err
 	}
