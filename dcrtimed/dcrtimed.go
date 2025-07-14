@@ -849,6 +849,7 @@ func (d *DcrtimeStore) verifyBatchV2(w http.ResponseWriter, r *http.Request) {
 	for _, ts := range tsr {
 		vt := v2.VerifyTimestamp{
 			ServerTimestamp: ts.Timestamp,
+			FlushTimestamp:  ts.FlushTimestamp,
 			CollectionInformation: v2.CollectionInformation{
 				ChainTimestamp:   ts.AnchoredTimestamp,
 				Confirmations:    ts.Confirmations,
@@ -913,6 +914,7 @@ func (d *DcrtimeStore) verifyBatchV2(w http.ResponseWriter, r *http.Request) {
 		vd := v2.VerifyDigest{
 			Digest:          hex.EncodeToString(dr.Digest[:]),
 			ServerTimestamp: dr.Timestamp,
+			FlushTimestamp:  dr.FlushTimestamp,
 			ChainInformation: v2.ChainInformation{
 				Confirmations:    dr.Confirmations,
 				MinConfirmations: dr.MinConfirmations,
@@ -1102,6 +1104,7 @@ func (d *DcrtimeStore) verifyV2(w http.ResponseWriter, r *http.Request) {
 		ts := tsr[len(tsr)-1]
 		vt := v2.VerifyTimestamp{
 			ServerTimestamp: ts.Timestamp,
+			FlushTimestamp:  ts.FlushTimestamp,
 			CollectionInformation: v2.CollectionInformation{
 				ChainTimestamp:   ts.AnchoredTimestamp,
 				Confirmations:    ts.Confirmations,
@@ -1167,6 +1170,7 @@ func (d *DcrtimeStore) verifyV2(w http.ResponseWriter, r *http.Request) {
 		vd := v2.VerifyDigest{
 			Digest:          hex.EncodeToString(dr.Digest[:]),
 			ServerTimestamp: dr.Timestamp,
+			FlushTimestamp:  dr.FlushTimestamp,
 			ChainInformation: v2.ChainInformation{
 				Confirmations:    dr.Confirmations,
 				MinConfirmations: dr.MinConfirmations,

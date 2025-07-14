@@ -188,6 +188,10 @@ func TestGetDigests(t *testing.T) {
 			t.Fatalf("server timmestamp should be the directory timestamp, want %d got %d",
 				timestamp, gr.Timestamp)
 		}
+		// Ensure the flush timestamp is set
+		if gr.ErrorCode == 0 && gr.FlushTimestamp == 0 {
+			t.Fatalf("expected flush timestamp to be set, got 0")
+		}
 	}
 }
 
@@ -445,6 +449,10 @@ func TestGetTimestamp(t *testing.T) {
 	}
 	if len(exists) != count {
 		t.Fatalf("expected %v exists got %v", count, len(exists))
+	}
+	// Ensure flush timestamp is set
+	if gtme.FlushTimestamp == 0 {
+		t.Fatalf("expected flush timestamp to be set, got 0")
 	}
 }
 

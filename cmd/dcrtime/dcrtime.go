@@ -443,6 +443,8 @@ func verifyDigests(vd []v2.VerifyDigest) {
 			d.ChainInformation.ChainTimestamp)
 		fmt.Printf("  %-16v: %v\n", "Server Timestamp",
 			d.ServerTimestamp)
+		fmt.Printf("  %-16v: %v\n", "Flush Timestamp",
+			d.FlushTimestamp)
 		fmt.Printf("  %-16v: %v\n", "Merkle Root",
 			d.ChainInformation.MerkleRoot)
 		fmt.Printf("  %-16v: %v\n", "TxID",
@@ -497,6 +499,10 @@ func verifyTimestamps(vt []v2.VerifyTimestamp) error {
 			fmt.Printf("  %-15v: %v\n", prefix, digest)
 			prefix = ""
 		}
+
+		// Print flush time
+		fmt.Printf("  %-15v: %v\n", "Flush Timestamp",
+			t.FlushTimestamp)
 
 		// Only print additional info if we are anchored
 		if t.CollectionInformation.ChainTimestamp == 0 {

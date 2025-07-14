@@ -52,9 +52,10 @@ type PutResult struct {
 	ErrorCode uint
 }
 
-// TimestampResult is a cooked error returned by the backend.
+// TimestampResult is a cooked response returned by the backend.
 type TimestampResult struct {
 	Timestamp         int64               // Collection timestamp
+	FlushTimestamp    int64               // Flush timestamp
 	ErrorCode         uint                // Overall result
 	Confirmations     *int32              // Tx confirmations
 	MinConfirmations  int32               // Mininum number of confirmations to return timestamp proof
@@ -72,6 +73,7 @@ type GetResult struct {
 	Confirmations     *int32            // Tx confirmations
 	MinConfirmations  int32             // Mininum number of confirmations to return timestamp proof
 	AnchoredTimestamp int64             // Anchored timestamp
+	FlushTimestamp    int64             // Flush timestamp
 	Tx                chainhash.Hash    // Anchor Tx
 	MerkleRoot        [sha256.Size]byte // Merkle root
 	MerklePath        merkle.Branch     // Auth path

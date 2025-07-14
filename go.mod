@@ -12,7 +12,7 @@ require (
 	github.com/decred/dcrd/txscript/v4 v4.1.0
 	github.com/decred/dcrd/wire v1.6.0
 	github.com/decred/dcrdata/api/types/v5 v5.0.1
-	github.com/decred/dcrtime/api/v2 v2.0.0
+	github.com/decred/dcrtime/api/v2 v2.1.0
 	github.com/decred/slog v1.2.0
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0

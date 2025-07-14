@@ -477,6 +477,7 @@ func (fs *FileSystem) getTimestamp(timestamp int64) (backend.TimestampResult, er
 		}
 
 		gtme.AnchoredTimestamp = fr.ChainTimestamp
+		gtme.FlushTimestamp = fr.FlushTimestamp
 
 		return gtme, nil
 	}
@@ -546,6 +547,7 @@ func (fs *FileSystem) getDigest(now time.Time, current *leveldb.DB, digest [sha2
 		// That pointer better not be nil!
 		gdme.MerklePath = *merkle.AuthPath(fr.Hashes, &digest)
 		gdme.Timestamp = fr.ServerTimestamp
+		gdme.FlushTimestamp = fr.FlushTimestamp
 
 		// Override error code during testing
 		if fs.testing {
