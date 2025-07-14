@@ -40,14 +40,16 @@ var (
 	// application shutdown.
 	logRotator *rotator.Rotator
 
-	log     = backendLog.Logger("DCRT")
-	fsbeLog = backendLog.Logger("FSBE")
+	log       = backendLog.Logger("DCRT")
+	fsbeLog   = backendLog.Logger("FSBE")
+	walletLog = backendLog.Logger("DCRW")
 )
 
 // subsystemLoggers maps each subsystem identifier to its associated logger.
 var subsystemLoggers = map[string]slog.Logger{
 	"DCRT": log,
 	"FSBE": fsbeLog,
+	"DCRW": walletLog,
 }
 
 // initLogRotator initializes the logging rotater to write logs to logFile and

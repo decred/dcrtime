@@ -1147,7 +1147,6 @@ func New(root, cert, host, clientCert, clientKey string, enableCollections bool,
 	fs.maxDigests = maxDigests
 
 	// Runtime bits
-	dcrtimewallet.UseLogger(log)
 	fs.wallet, err = dcrtimewallet.New(cert, host, clientCert, clientKey, passphrase)
 	if err != nil {
 		return nil, err
