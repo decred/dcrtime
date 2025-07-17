@@ -9,6 +9,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -316,7 +317,7 @@ func (fs *FileSystem) fsckTimestamp(options *backend.FsckOptions, ts int64, empt
 
 		gdbts, err := fs.db.Get(key, nil)
 		if err != nil {
-			if err == leveldb.ErrNotFound {
+			if errors.Is(err, leveldb.ErrNotFound) {
 				continue
 			}
 			return fmt.Errorf("   *** ERROR found in db: %v %v",
@@ -376,7 +377,7 @@ func (fs *FileSystem) fsckTimestamps(options *backend.FsckOptions, empties map[i
 
 	for _, fi := range files {
 		if !fi.IsDir() {
-			return fmt.Errorf("Unexpected file %v",
+			return fmt.Errorf("unexpected file %v",
 				filepath.Join(fs.root, fi.Name()))
 		}
 		if fi.Name() == globalDBDir {
@@ -453,9 +454,8 @@ func (fs *FileSystem) fsckGlobal(options *backend.FsckOptions, empties map[int64
 			// At this point we treat this as fatal because there
 			// is no need to write code for theoretical issues that
 			// should not have happned.
-			return fmt.Errorf("   *** ERROR hash not found in "+
-				"timestamp : %v %v\n", filepath.Join(fs.root,
-				ts2dirname(value)), key)
+			return fmt.Errorf("hash not found in timestamp : %v %v", filepath.Join(
+				fs.root, ts2dirname(value)), key)
 		}
 
 		// Check to see if this timestamp exists in the empties map.
@@ -618,7 +618,7 @@ func (fs *FileSystem) fsckDups(options *backend.FsckOptions) error {
 	digests := make(map[string]int64)
 	for _, fi := range files {
 		if !fi.IsDir() {
-			return fmt.Errorf("Unexpected file %v",
+			return fmt.Errorf("unexpected file %v",
 				filepath.Join(fs.root, fi.Name()))
 		}
 		if fi.Name() == globalDBDir {

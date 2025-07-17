@@ -29,7 +29,7 @@ func verifyV2(digest string, fProof *os.File) error {
 	var vr v2.VerifyBatchReply
 	decoder := json.NewDecoder(fProof)
 	if err := decoder.Decode(&vr); err != nil {
-		return fmt.Errorf("Could node decode VerifyBatchReply: %v", err)
+		return fmt.Errorf("could not decode VerifyBatchReply: %v", err)
 	}
 
 	// Ensure file digest exists in the proof and that the saved answer was
@@ -97,7 +97,7 @@ func verifyV1(digest string, fProof *os.File) error {
 	var vr v1.VerifyReply
 	decoder := json.NewDecoder(fProof)
 	if err := decoder.Decode(&vr); err != nil {
-		return fmt.Errorf("Could node decode VerifyReply: %v", err)
+		return fmt.Errorf("could not decode VerifyReply: %v", err)
 	}
 
 	// Ensure file digest exists in the proof and that the saved answer was
@@ -178,7 +178,7 @@ func _main() error {
 	case v2.APIVersion:
 		verify = verifyV2
 	default:
-		return fmt.Errorf("Invalid API version %v", *apiVersion)
+		return fmt.Errorf("invalid API version %v", *apiVersion)
 	}
 
 	// require -f

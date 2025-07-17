@@ -463,14 +463,17 @@ func (fs *FileSystem) getTimestamp(timestamp int64) (backend.TimestampResult, er
 		if fr.ChainTimestamp == 0 && !fs.testing {
 			lfr, err := fs.lazyFlush(timestamp, fr)
 			if err != nil {
-				if err == errNotEnoughConfirmation {
+				switch {
+				case errors.Is(err, errNotEnoughConfirmation):
 					gtme.Confirmations = &lfr.Confirmations
 					gtme.MinConfirmations = fs.confirmations
-				} else if err == errInvalidConfirmations {
+
+				case errors.Is(err, errInvalidConfirmations):
 					log.Errorf("%v: Confirmations = -1",
 						fr.Tx.String())
 					return gtme, err
-				} else {
+
+				default:
 					return gtme, err
 				}
 			}
@@ -549,23 +552,29 @@ func (fs *FileSystem) getDigest(now time.Time, current *leveldb.DB, digest [sha2
 		gdme.Timestamp = fr.ServerTimestamp
 		gdme.FlushTimestamp = fr.FlushTimestamp
 
+		switch {
 		// Override error code during testing
-		if fs.testing {
+		case fs.testing:
 			gdme.ErrorCode = foundGlobal
-		} else if gdme.AnchoredTimestamp == 0 {
+
+		case gdme.AnchoredTimestamp == 0:
 			lfr, err := fs.lazyFlush(dbts, fr)
 			if err != nil {
-				if err == errNotEnoughConfirmation {
+				switch {
+				case errors.Is(err, errNotEnoughConfirmation):
 					gdme.Confirmations = &lfr.Confirmations
 					gdme.MinConfirmations = fs.confirmations
-				} else if err == errInvalidConfirmations {
+
+				case errors.Is(err, errInvalidConfirmations):
 					log.Errorf("%v: Confirmations = -1",
 						fr.Tx.String())
 					return gdme, err
-				} else {
+
+				default:
 					return gdme, err
 				}
 			}
+
 			gdme.AnchoredTimestamp = fr.ChainTimestamp
 		}
 
@@ -755,7 +764,7 @@ func (fs *FileSystem) GetTimestamps(timestamps []int64) ([]backend.TimestampResu
 // Get the last n digests in the added to the Backend
 func (fs *FileSystem) LastDigests(n int32) ([]backend.GetResult, error) {
 	if n > fs.maxDigests {
-		return nil, fmt.Errorf("Invalid number %d of digests requested. Max is: %d", n, fs.maxDigests)
+		return nil, fmt.Errorf("invalid number %d of digests requested. Max is: %d", n, fs.maxDigests)
 	}
 
 	results := make([]backend.GetResult, 0)
@@ -776,7 +785,7 @@ func (fs *FileSystem) LastDigests(n int32) ([]backend.GetResult, error) {
 				break
 			}
 			if !files[i].IsDir() {
-				return nil, fmt.Errorf("Unexpected file %v",
+				return nil, fmt.Errorf("unexpected file %v",
 					filepath.Join(fs.root, files[i].Name()))
 			}
 

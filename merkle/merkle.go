@@ -15,9 +15,7 @@ import (
 	"sort"
 )
 
-var (
-	ErrEmpty = errors.New("empty merkle branch")
-)
+var ErrEmpty = errors.New("empty merkle branch")
 
 type sortableSlice []*[sha256.Size]byte
 
@@ -328,7 +326,7 @@ func VerifyAuthPath(mb *Branch) (*[sha256.Size]byte, error) {
 	}
 
 	// Validate that we consumed all bits and bobs.
-	flagByte := int(math.Floor(float64(m.bitsUsed / 8)))
+	flagByte := int(m.bitsUsed / 8)
 	if flagByte+1 < len(mb.Flags) && mb.Flags[flagByte] > 1<<m.bitsUsed%8 {
 		return nil, fmt.Errorf("did not consume all flag bits")
 	}

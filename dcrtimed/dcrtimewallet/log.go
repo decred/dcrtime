@@ -27,9 +27,9 @@ import (
 // requests it.
 var log = slog.Disabled
 
-// UseLogger sets the logger to use for the gRPC server.
+// UseGrpcLogger sets the logger to use for the gRPC server.
 func UseGrpcLogger(l slog.Logger) {
-	grpclog.SetLogger(logger{l})
+	grpclog.SetLoggerV2(logger{l})
 	log = l
 }
 
@@ -62,6 +62,30 @@ func stripGrpcPrefixArgs(args ...interface{}) []interface{} {
 		args[0] = stripGrpcPrefix(firstArgStr)
 	}
 	return args
+}
+
+func (l logger) V(level int) bool {
+	return uint32(l.Level()) == uint32(level)
+}
+
+func (l logger) Errorln(args ...interface{}) {
+	l.Error(stripGrpcPrefixArgs(args)...)
+}
+
+func (l logger) Infoln(args ...interface{}) {
+	l.Info(stripGrpcPrefixArgs(args)...)
+}
+
+func (l logger) Warning(args ...interface{}) {
+	l.Warn(stripGrpcPrefixArgs(args)...)
+}
+
+func (l logger) Warningf(format string, args ...interface{}) {
+	l.Warnf(stripGrpcPrefix(format), args...)
+}
+
+func (l logger) Warningln(args ...interface{}) {
+	l.Warn(stripGrpcPrefixArgs(args)...)
 }
 
 func (l logger) Fatal(args ...interface{}) {

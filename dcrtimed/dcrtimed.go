@@ -12,6 +12,7 @@ import (
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -434,7 +435,7 @@ func (d *DcrtimeStore) timestampV1(w http.ResponseWriter, r *http.Request) {
 			errorCode, err)
 
 		// Tell client there is a transient error.
-		if err == backend.ErrTryAgainLater {
+		if errors.Is(err, backend.ErrTryAgainLater) {
 			util.RespondWithError(w, http.StatusServiceUnavailable,
 				"Server busy, please try again later.")
 			return
@@ -748,7 +749,7 @@ func (d *DcrtimeStore) timestampBatchV2(w http.ResponseWriter, r *http.Request) 
 			errorCode, err)
 
 		// Tell client there is a transient error.
-		if err == backend.ErrTryAgainLater {
+		if errors.Is(err, backend.ErrTryAgainLater) {
 			util.RespondWithError(w, http.StatusServiceUnavailable,
 				"Server busy, please try again later.")
 			return
@@ -987,7 +988,7 @@ func (d *DcrtimeStore) timestampV2(w http.ResponseWriter, r *http.Request) {
 			errorCode, err)
 
 		// Tell client there is a transient error.
-		if err == backend.ErrTryAgainLater {
+		if errors.Is(err, backend.ErrTryAgainLater) {
 			util.RespondWithError(w, http.StatusServiceUnavailable,
 				"Server busy, please try again later.")
 			return
@@ -1384,11 +1385,11 @@ func getError(r io.Reader) (string, error) {
 	}
 	m, ok := e.(map[string]interface{})
 	if !ok {
-		return "", fmt.Errorf("Could not decode response")
+		return "", fmt.Errorf("could not decode response")
 	}
 	rError, ok := m["error"]
 	if !ok {
-		return "", fmt.Errorf("No error response")
+		return "", fmt.Errorf("no error response")
 	}
 	return fmt.Sprintf("%v", rError), nil
 }
@@ -1424,7 +1425,7 @@ func _main() error {
 	// initializes logging and configures it accordingly.
 	loadedCfg, _, err := loadConfig()
 	if err != nil {
-		return fmt.Errorf("Could not load configuration file: %v", err)
+		return fmt.Errorf("could not load configuration file: %v", err)
 	}
 	defer func() {
 		if logRotator != nil {
@@ -1440,7 +1441,7 @@ func _main() error {
 	}
 	log.Infof("Version : %v", version())
 	log.Infof("Mode    : %v", mode)
-	log.Infof("Network : %v", activeNetParams.Params.Name)
+	log.Infof("Network : %v", activeNetParams.Name)
 	log.Infof("Home dir: %v", loadedCfg.HomeDir)
 
 	// Sets subsystem loggers

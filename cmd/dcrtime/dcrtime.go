@@ -231,7 +231,7 @@ func downloadV1(questions []string) error {
 			for _, digest := range v.CollectionInformation.Digests {
 				d, ok := convertDigest(digest)
 				if !ok {
-					return fmt.Errorf("Invalid digest "+
+					return fmt.Errorf("invalid digest "+
 						"server response for "+
 						"timestamp: %v",
 						v.ServerTimestamp)
@@ -469,7 +469,7 @@ func verifyTimestamps(vt []v2.VerifyTimestamp) error {
 			for _, digest := range t.CollectionInformation.Digests {
 				d, ok := convertDigest(digest)
 				if !ok {
-					return fmt.Errorf("Invalid digest "+
+					return fmt.Errorf("invalid digest "+
 						"server response for "+
 						"timestamp: %v",
 						t.ServerTimestamp)
@@ -568,7 +568,7 @@ func uploadV1(digests []string, exists map[string]string) error {
 	var tsReply v1.TimestampReply
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&tsReply); err != nil {
-		return fmt.Errorf("Could node decode TimestampReply: %v", err)
+		return fmt.Errorf("could not decode TimestampReply: %v", err)
 	}
 
 	// Print human readable results.
@@ -638,7 +638,7 @@ func uploadV2Batch(digests []string, exists map[string]string) error {
 	var tsReply v2.TimestampBatchReply
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&tsReply); err != nil {
-		return fmt.Errorf("Could node decode TimestampReply: %v", err)
+		return fmt.Errorf("could not decode TimestampReply: %v", err)
 	}
 
 	// Print human readable results.
@@ -704,7 +704,7 @@ func uploadV2Single(digest string, exists map[string]string) error {
 	var tsReply v2.TimestampReply
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&tsReply); err != nil {
-		return fmt.Errorf("Could node decode TimestampReply: %v", err)
+		return fmt.Errorf("could not decode TimestampReply: %v", err)
 	}
 
 	// Print human readable results.
@@ -770,10 +770,10 @@ func showWalletBalanceV1() error {
 	if response.StatusCode != http.StatusOK {
 		e, err := getError(response.Body)
 		if err != nil {
-			return fmt.Errorf("Retrieve wallet balance failed: %v",
+			return fmt.Errorf("retrieve wallet balance failed: %v",
 				response.Status)
 		}
-		return fmt.Errorf("Retrieve wallet balance failed - %v: %v",
+		return fmt.Errorf("retrieve wallet balance failed - %v: %v",
 			response.Status, e)
 	}
 
@@ -781,7 +781,7 @@ func showWalletBalanceV1() error {
 	var balance v1.WalletBalanceReply
 	jsonDecoder := json.NewDecoder(response.Body)
 	if err := jsonDecoder.Decode(&balance); err != nil {
-		return fmt.Errorf("Could not decode WalletBalanceReply: %v", err)
+		return fmt.Errorf("could not decode WalletBalanceReply: %v", err)
 	}
 
 	if *verbose {
@@ -832,10 +832,10 @@ func showWalletBalanceV2() error {
 	if response.StatusCode != http.StatusOK {
 		e, err := getError(response.Body)
 		if err != nil {
-			return fmt.Errorf("Retrieve wallet balance failed: %v",
+			return fmt.Errorf("retrieve wallet balance failed: %v",
 				response.Status)
 		}
-		return fmt.Errorf("Retrieve wallet balance failed - %v: %v",
+		return fmt.Errorf("retrieve wallet balance failed - %v: %v",
 			response.Status, e)
 	}
 
@@ -843,7 +843,7 @@ func showWalletBalanceV2() error {
 	var balance v2.WalletBalanceReply
 	jsonDecoder := json.NewDecoder(response.Body)
 	if err := jsonDecoder.Decode(&balance); err != nil {
-		return fmt.Errorf("Could not decode WalletBalanceReply: %v", err)
+		return fmt.Errorf("could not decode WalletBalanceReply: %v", err)
 	}
 
 	if *verbose {
@@ -891,10 +891,10 @@ func lastAnchorV1() error {
 	if response.StatusCode != http.StatusOK {
 		e, err := getError(response.Body)
 		if err != nil {
-			return fmt.Errorf("Retrieve last anchor info failed: %v",
+			return fmt.Errorf("retrieve last anchor info failed: %v",
 				response.Status)
 		}
-		return fmt.Errorf("Retrieve last anchor info failed - %v: %v",
+		return fmt.Errorf("retrieve last anchor info failed - %v: %v",
 			response.Status, e)
 	}
 
@@ -902,7 +902,7 @@ func lastAnchorV1() error {
 	var anchor v1.LastAnchorReply
 	jsonDecoder := json.NewDecoder(response.Body)
 	if err := jsonDecoder.Decode(&anchor); err != nil {
-		return fmt.Errorf("Could not decode LastAnchorReply: %v", err)
+		return fmt.Errorf("could not decode LastAnchorReply: %v", err)
 	}
 
 	fmt.Printf(
@@ -946,10 +946,10 @@ func lastAnchorV2() error {
 	if response.StatusCode != http.StatusOK {
 		e, err := getError(response.Body)
 		if err != nil {
-			return fmt.Errorf("Retrieve last anchor info failed: %v",
+			return fmt.Errorf("retrieve last anchor info failed: %v",
 				response.Status)
 		}
-		return fmt.Errorf("Retrieve last anchor info failed - %v: %v",
+		return fmt.Errorf("retrieve last anchor info failed - %v: %v",
 			response.Status, e)
 	}
 
@@ -957,7 +957,7 @@ func lastAnchorV2() error {
 	var anchor v2.LastAnchorReply
 	jsonDecoder := json.NewDecoder(response.Body)
 	if err := jsonDecoder.Decode(&anchor); err != nil {
-		return fmt.Errorf("Could not decode LastAnchorReply: %v", err)
+		return fmt.Errorf("could not decode LastAnchorReply: %v", err)
 	}
 
 	fmt.Printf(
@@ -1018,10 +1018,10 @@ func lastDigestsV2(n int32) error {
 	if r.StatusCode != http.StatusOK {
 		e, err := getError(r.Body)
 		if err != nil {
-			return fmt.Errorf("Retrieve last %d digests info failed: %v", n,
+			return fmt.Errorf("retrieve last %d digests info failed: %v", n,
 				r.Status)
 		}
-		return fmt.Errorf("Retrieve last %d digests info failed - %v: %v",
+		return fmt.Errorf("retrieve last %d digests info failed - %v: %v",
 			n, r.Status, e)
 	}
 
@@ -1029,7 +1029,7 @@ func lastDigestsV2(n int32) error {
 	var ldr v2.LastDigestsReply
 	jsonDecoder := json.NewDecoder(r.Body)
 	if err := jsonDecoder.Decode(&ldr); err != nil {
-		return fmt.Errorf("Could not decode LastDigestsReply: %v", err)
+		return fmt.Errorf("could not decode LastDigestsReply: %v", err)
 	}
 
 	fmt.Printf(
@@ -1074,7 +1074,7 @@ func loadCredentialsIfRequired() error {
 		// Token not provided via command line. Try to load via config file.
 		config, err := loadConfig()
 		if err != nil {
-			return fmt.Errorf("Attempt to load api token "+
+			return fmt.Errorf("attempt to load api token "+
 				"from configuration file failed: %v", err)
 		}
 
@@ -1134,7 +1134,7 @@ func _main() error {
 		lastAnchorInfo = lastAnchorV2
 		lastDigestsInfo = lastDigestsV2
 	default:
-		return fmt.Errorf("Invalid API version %v", *apiVersion)
+		return fmt.Errorf("invalid API version %v", *apiVersion)
 	}
 
 	if *host == "" {
