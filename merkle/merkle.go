@@ -1,5 +1,5 @@
 // Copyright (c) 2013-2016 The btcsuite developers
-// Copyright (c) 2015-2020 The Decred developers
+// Copyright (c) 2015-2026 The Decred developers
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
 
@@ -15,7 +15,11 @@ import (
 	"sort"
 )
 
-var ErrEmpty = errors.New("empty merkle branch")
+var (
+	ErrEmpty             = errors.New("empty merkle branch")
+	errNotEnoughFlagBits = errors.New("not enough flag bits")
+	errNotEnoughHashes   = errors.New("not enough hashes")
+)
 
 type sortableSlice []*[sha256.Size]byte
 
@@ -277,9 +281,17 @@ type merkleBranch struct {
 
 // extract recurses over the merkleBranch and returns the merkle root.
 func (m *merkleBranch) extract(height, pos uint32) (*[sha256.Size]byte, error) {
+	// merkleBranch fields may be decoded straight from a web request, so the
+	// bits and hashes fields must be checked before use.
+	if m.bitsUsed >= uint32(len(m.bits)) {
+		return nil, errNotEnoughFlagBits
+	}
 	parentOfMatch := m.bits[m.bitsUsed]
 	m.bitsUsed++
 	if height == 0 || parentOfMatch == 0 {
+		if m.hashUsed >= uint32(len(m.inHashes)) {
+			return nil, errNotEnoughHashes
+		}
 		hash := m.inHashes[m.hashUsed]
 		m.hashUsed++
 		if height == 0 && parentOfMatch == 1 {

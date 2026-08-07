@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2020 The Decred developers
+// Copyright (c) 2017-2026 The Decred developers
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
 
@@ -9,6 +9,8 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
+	"errors"
+	"math"
 	"testing"
 )
 
@@ -198,5 +200,60 @@ func TestAuthPathEmpty(t *testing.T) {
 
 	if mb != nil {
 		t.Fatalf("Should have gotten nil")
+	}
+}
+
+// TestExtractInvalid ensures that attempting to extract from a merkle branch
+// with an invalid combination of fields returns an error.
+func TestExtractInvalid(t *testing.T) {
+	hash := [sha256.Size]byte{}
+	binary.LittleEndian.PutUint64(hash[:], 1)
+
+	tests := []struct {
+		name      string
+		numLeaves uint32
+		hashes    [][sha256.Size]byte
+		bits      []byte
+		wantErr   error
+	}{{
+		name:      "flag bits run out",
+		numLeaves: 1000,
+		hashes:    [][sha256.Size]byte{hash},
+		bits:      []byte{0xff},
+		wantErr:   errNotEnoughFlagBits,
+	}, {
+		name:      "no flag bits",
+		numLeaves: 4,
+		hashes:    [][sha256.Size]byte{hash},
+		bits:      []byte{},
+		wantErr:   errNotEnoughFlagBits,
+	}, {
+		name:      "hashes run out",
+		numLeaves: 4,
+		hashes:    [][sha256.Size]byte{hash},
+		bits:      []byte{0xff, 0xff},
+		wantErr:   errNotEnoughHashes,
+	}, {
+		name:      "no hashes",
+		numLeaves: 4,
+		hashes:    [][sha256.Size]byte{},
+		bits:      []byte{0xff},
+		wantErr:   errNotEnoughHashes,
+	}}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			m := &merkleBranch{
+				bits:      bytes2bits(test.bits),
+				inHashes:  test.hashes,
+				numLeaves: test.numLeaves,
+			}
+
+			height := uint32(math.Ceil(math.Log2(float64(test.numLeaves))))
+			_, err := m.extract(height, 0)
+			if !errors.Is(err, test.wantErr) {
+				t.Fatalf("got error %q, want %q", err, test.wantErr)
+			}
+		})
 	}
 }
