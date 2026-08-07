@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2019 The Decred developers
+// Copyright (c) 2017-2026 The Decred developers
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
 
@@ -831,10 +831,10 @@ func (fs *FileSystem) LastDigests(n int32) ([]backend.GetResult, error) {
 			}
 
 			// Convert array of digests to array of pointers to digests so we
-			// can pass as a pram to merkle.AuthPath and get the MerklePath
+			// can pass as a pram to merkle.AuthPath and get the MerklePath.
 			ptDigests := make([]*[sha256.Size]byte, 0, len(res.Digests))
-			for _, d := range res.Digests {
-				ptDigests = append(ptDigests, &d)
+			for i := range res.Digests {
+				ptDigests = append(ptDigests, &res.Digests[i])
 			}
 			for _, digest := range res.Digests {
 				gdme := backend.GetResult{
